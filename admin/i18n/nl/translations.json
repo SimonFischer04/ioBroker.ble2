@@ -4,7 +4,6 @@
     "Allow creation of devices without advertised data": "Maken van apparaten zonder geadverteerde gegevens toestaan",
     "Monitored services, * for all services:": "Gecontroleerd diensten, * voor alle diensten:",
     "On linux this can be determined with `hciconfig`:": "Op linux kan dit vastgesteld worden met `hciconfig`:",
-    "Plugin names, comma separated.": "Plug-namen, komma ' s gescheiden.",
     "RSSI update interval [ms]:": "RSSI update-interval [ms]:",
     "Select device:": "Selecteer apparaat:",
     "Service characteristics as HEX codes or UUID, comma separated.": "Service kenmerken als HEX-codes of UUID door komma ' s gescheiden.",
@@ -12,5 +11,11 @@
     "Too frequent updates can slow down the admin.": "Te frequente updates kunnen vertragen de admin.",
     "Use remote server:": "Externe server gebruiken:",
     "when configured, the local bluetooth adapter is not used": "Indien ingesteld, wordt de lokale Bluetooth-adapter niet gebruikt",
-    "address:port": "adres:poort"
+    "address:port": "adres:poort",
+    "Select the plugins for your sensors. Basic advertisement data is always available.": "Selecteer de plug-ins voor je sensoren. Algemene advertentiegegevens zijn altijd beschikbaar.",
+    "Xiaomi": "Xiaomi",
+    "Mi Flora": "Mi Flora",
+    "Ruuvi Tag": "Ruuvi Tag",
+    "BTHome": "BTHome",
+    "Mopeka Pro Check": "Mopeka Pro Check"
 }

@@ -53,10 +53,48 @@
         },
         "plugins": {
             "type": "text",
+            "hidden": true,
+            "onChange": {
+                "alsoDependsOn": [
+                    "_pluginSelection"
+                ],
+                "calculateFunc": "(data._pluginSelection || []).join(',')"
+            },
+            "xs": 12,
+            "sm": 12,
+            "md": 12,
+            "lg": 12,
+            "xl": 12
+        },
+        "_pluginSelection": {
+            "type": "select",
+            "multiple": true,
             "label": "Active plugins:",
-            "help": "Plugin names, comma separated.",
-            "minRows": 3,
-            "trim": false,
+            "help": "Select the plugins for your sensors. Basic advertisement data is always available.",
+            "doNotSave": true,
+            "defaultFunc": "[...new Set((Array.isArray(data.plugins) ? data.plugins : String(data.plugins || '').split(',')).map(p => p.trim().toLowerCase()).filter(p => ['xiaomi', 'mi-flora', 'ruuvi-tag', 'bthome', 'mopeka'].includes(p)))]",
+            "options": [
+                {
+                    "label": "Xiaomi",
+                    "value": "xiaomi"
+                },
+                {
+                    "label": "Mi Flora",
+                    "value": "mi-flora"
+                },
+                {
+                    "label": "Ruuvi Tag",
+                    "value": "ruuvi-tag"
+                },
+                {
+                    "label": "BTHome",
+                    "value": "bthome"
+                },
+                {
+                    "label": "Mopeka Pro Check",
+                    "value": "mopeka"
+                }
+            ],
             "xs": 12,
             "sm": 6,
             "md": 6,

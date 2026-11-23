@@ -4,7 +4,6 @@
     "Allow creation of devices without advertised data": "Allow creation of devices without advertised data",
     "Monitored services, * for all services:": "Monitored services, * for all services:",
     "On linux this can be determined with `hciconfig`:": "On linux this can be determined with `hciconfig`:",
-    "Plugin names, comma separated.": "Plugin names, comma separated.",
     "RSSI update interval [ms]:": "RSSI update interval [ms]:",
     "Select device:": "Select device:",
     "Service characteristics as HEX codes or UUID, comma separated.": "Service characteristics as HEX codes or UUID, comma separated.",
@@ -12,5 +11,11 @@
     "Too frequent updates can slow down the admin.": "Too frequent updates can slow down the admin.",
     "Use remote server:": "Use remote server:",
     "when configured, the local bluetooth adapter is not used": "when configured, the local bluetooth adapter is not used",
-    "address:port": "address:port"
+    "address:port": "address:port",
+    "Select the plugins for your sensors. Basic advertisement data is always available.": "Select the plugins for your sensors. Basic advertisement data is always available.",
+    "Xiaomi": "Xiaomi",
+    "Mi Flora": "Mi Flora",
+    "Ruuvi Tag": "Ruuvi Tag",
+    "BTHome": "BTHome",
+    "Mopeka Pro Check": "Mopeka Pro Check"
 }

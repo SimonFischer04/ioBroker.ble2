@@ -43,6 +43,8 @@ For a standalone remote scanner, `npm run build:server` generates `bin/blerp.js`
 
 The admin interface is provided by ioBroker JSONConfig (`admin/jsonConfig.json`) and requires admin 7.6.20 or newer. It has no separate frontend build. Existing instance settings retain the same names and types; **Accept new devices** controls the live `options.allowNewDevices` state and still resets after five minutes.
 
+Choose one or more entries from the **Active plugins** dropdown. Existing plugin settings are loaded automatically; the basic advertisement handler stays enabled even when no plugin is selected.
+
 Run `npm run lint` to check the adapter, tests, and JavaScript helpers using the shared ioBroker ESLint configuration. Use `npm run lint -- --fix` to apply automatic fixes.
 
 The adapter supports extension via plugins. Those define which advertised services should be listened to and how to translate the data. The plugin structure is defined in https://github.com/SimonFischer04/ioBroker.ble2/blob/master/src/plugins/plugin.ts and an example of a working plugin is defined here https://github.com/SimonFischer04/ioBroker.ble2/blob/master/src/plugins/_default.ts
@@ -106,6 +108,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * **BREAKING:** Require js-controller 7.2.2 or newer; update adapter-core and release tools, repository metadata, and Dependabot configuration.
 -->
 ### __WORK IN PROGRESS__
+* Replace manual plugin names with a multi-select dropdown, preserving existing plugin settings.
 * Add Mopeka Pro Check support with raw level, temperature, battery, and reading quality states.
 * Replace the custom React settings page with responsive native JSONConfig (requires admin 7.6.20 or newer), preserving settings and the live discovery switch.
 * **BREAKING:** Rename the maintained fork to `iobroker.ble2` with the `ble2` adapter namespace.

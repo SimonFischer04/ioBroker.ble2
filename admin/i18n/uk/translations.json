@@ -4,7 +4,6 @@
     "Allow creation of devices without advertised data": "Дозволити створення пристроїв без переданих даних",
     "Monitored services, * for all services:": "Служби для відстеження, * для всіх служб:",
     "On linux this can be determined with `hciconfig`:": "У Linux це можна визначити за допомогою `hciconfig`:",
-    "Plugin names, comma separated.": "Назви плагінів, розділені комами.",
     "RSSI update interval [ms]:": "Інтервал оновлення RSSI [мс]:",
     "Select device:": "Виберіть пристрій:",
     "Service characteristics as HEX codes or UUID, comma separated.": "Характеристики служб як HEX-коди або UUID, розділені комами.",
@@ -12,5 +11,11 @@
     "Too frequent updates can slow down the admin.": "Занадто часті оновлення можуть уповільнити admin.",
     "Use remote server:": "Використовувати віддалений сервер:",
     "when configured, the local bluetooth adapter is not used": "Якщо налаштовано, локальний адаптер Bluetooth не використовується",
-    "address:port": "адреса:порт"
+    "address:port": "адреса:порт",
+    "Select the plugins for your sensors. Basic advertisement data is always available.": "Виберіть плагіни для ваших датчиків. Основні дані оголошень завжди доступні.",
+    "Xiaomi": "Xiaomi",
+    "Mi Flora": "Mi Flora",
+    "Ruuvi Tag": "Ruuvi Tag",
+    "BTHome": "BTHome",
+    "Mopeka Pro Check": "Mopeka Pro Check"
 }
