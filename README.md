@@ -25,7 +25,7 @@ sudo setcap cap_net_raw+eip $(eval readlink -f `which node`)
 which requires `libcap2-bin` to be installed.
 
 ## Configuration
-If you have multiple bluetooth devices on your system, select the one to use from the dropdown.
+Select the local Bluetooth adapter by its HCI name and bus type, such as `hci0 (USB)`. If the list is unavailable, enter the index manually using the number after `hci`.
 In the textbox below, enter all UUIDs of the advertised services you want to record (as found in the nRF Connect app).
 
 ### Moving from ble to ble2
@@ -41,7 +41,7 @@ Build the adapter from source with `npm ci` followed by `npm run build`. The gen
 
 For a standalone remote scanner, `npm run build:server` generates `bin/blerp.js`. This generated bundle is also ignored by Git; it loads the installed `@stoprocent/noble` driver at runtime.
 
-The admin interface is provided by ioBroker JSONConfig (`admin/jsonConfig.json`) and requires admin 7.6.20 or newer. It has no separate frontend build. Existing instance settings retain the same names and types; **Accept new devices** controls the live `options.allowNewDevices` state and still resets after five minutes.
+The admin interface is provided by ioBroker JSONConfig (`admin/jsonConfig.json`) and requires admin 7.6.20 or newer. It has no separate frontend build. **Accept new devices** controls the live `options.allowNewDevices` state and resets after five minutes.
 
 Choose one or more entries from the **Active plugins** dropdown. Existing plugin settings are loaded automatically; the basic advertisement handler stays enabled even when no plugin is selected.
 

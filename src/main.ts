@@ -1,8 +1,9 @@
 import * as utils from "@iobroker/adapter-core";
 import { entries } from "alcalzone-shared/objects";
-import { exec, fork, type ChildProcess } from "node:child_process";
+import { execFile, fork, type ChildProcess } from "node:child_process";
 import * as path from "node:path";
 import { Global as _ } from "./lib/global";
+import { getHciOptions, parseHciIndex, parseHciPorts } from "./lib/hci-ports";
 import {
 	extendChannel,
 	extendDevice,
@@ -220,29 +221,32 @@ const adapter = utils.adapter({
 		// handle the message
 		if (obj) {
 			switch (obj.command) {
+				case "getHCIOptions":
 				case "getHCIPorts":
-					exec("hciconfig | grep hci", (error, stdout, _stderr) => {
-						// hci1:   Type: BR/EDR  Bus: USB
-						// hci0:   Type: BR/EDR  Bus: UART
-						if (error != null) {
-							respond({ error });
-							return;
-						}
-						// parse index and bus type
-						const ports: { index: number; bus: string }[] = [];
-						const regex = /^hci(\d+):.+Bus:\s(\w+)$/gm;
-						let result: RegExpExecArray | null;
-
-						while (true) {
-							result = regex.exec(stdout);
-							if (!(result && result.length)) {
-								break;
+					if (!obj.callback) {
+						return;
+					}
+					execFile(
+						"hciconfig",
+						{ timeout: 3000 },
+						(error, stdout) => {
+							const wantsOptions =
+								obj.command === "getHCIOptions";
+							if (error != null) {
+								respond(wantsOptions ? [] : { error });
+								return;
 							}
-							const port = { index: +result[1], bus: result[2] };
-							ports.push(port);
-						}
-						respond({ error: null, result: ports });
-					});
+							const ports = parseHciPorts(stdout);
+							respond(
+								wantsOptions
+									? getHciOptions(
+											ports,
+											adapter.config.hciDevice,
+										)
+									: { error: null, result: ports },
+							);
+						},
+					);
 					return;
 				default:
 					respond(predefinedResponses.ERROR_UNKNOWN_COMMAND);
@@ -260,8 +264,9 @@ function startScanProcess(): void {
 	if (manufacturerIds.length > 0) {
 		args.push("--manufacturerIds", ...manufacturerIds.map(String));
 	}
-	if (adapter.config.hciDevice) {
-		args.push("-d", adapter.config.hciDevice.toString());
+	const hciIndex = parseHciIndex(adapter.config.hciDevice);
+	if (hciIndex) {
+		args.push("-d", hciIndex.toString());
 	}
 	adapter.log.info("starting scanner process...");
 	scanProcess = fork(path.join(__dirname, "scanProcess"), args, {
