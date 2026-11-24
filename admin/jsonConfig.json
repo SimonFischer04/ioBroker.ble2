@@ -15,11 +15,13 @@
             "xl": 4
         },
         "hciDevice": {
-            "type": "number",
+            "type": "selectSendTo",
             "label": "Select device:",
             "help": "On linux this can be determined with `hciconfig`:",
-            "min": 0,
-            "step": 1,
+            "command": "getHCIOptions",
+            "manual": true,
+            "validator": "String(data.hciDevice ?? '').trim() === '' || (/^\\d+$/.test(String(data.hciDevice).trim()) && Number.isSafeInteger(Number(data.hciDevice)))",
+            "validatorNoSaveOnError": true,
             "xs": 12,
             "sm": 6,
             "md": 4,
