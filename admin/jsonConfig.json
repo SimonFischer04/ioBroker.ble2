@@ -74,7 +74,7 @@
             "label": "Active plugins:",
             "help": "Select the plugins for your sensors. Basic advertisement data is always available.",
             "doNotSave": true,
-            "defaultFunc": "[...new Set((Array.isArray(data.plugins) ? data.plugins : String(data.plugins || '').split(',')).map(p => p.trim().toLowerCase()).filter(p => ['xiaomi', 'mi-flora', 'ruuvi-tag', 'bthome', 'mopeka'].includes(p)))]",
+            "defaultFunc": "[...new Set((Array.isArray(data.plugins) ? data.plugins : String(data.plugins || '').split(',')).map(p => p.trim().toLowerCase()).filter(p => ['xiaomi', 'mi-flora', 'ruuvi-tag', 'bthome', 'mopeka', 'eddystone'].includes(p)))]",
             "options": [
                 {
                     "label": "Xiaomi",
@@ -83,6 +83,10 @@
                 {
                     "label": "Mi Flora",
                     "value": "mi-flora"
+                },
+                {
+                    "label": "Eddystone",
+                    "value": "eddystone"
                 },
                 {
                     "label": "Ruuvi Tag",
