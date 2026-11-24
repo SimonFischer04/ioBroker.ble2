@@ -106,11 +106,14 @@
 			]
 		}
 	},
+	"encryptedNative": ["bthomeBindkeys"],
+	"protectedNative": ["bthomeBindkeys"],
 	"native": {
 		"services": "",
 		"hciDevice": 0,
 		"server": "",
 		"plugins": "",
+		"bthomeBindkeys": "",
 		"allowEmptyDevices": false,
 		"rssiThrottle": 0
 	},

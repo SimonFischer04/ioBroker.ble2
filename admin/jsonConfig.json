@@ -54,12 +54,6 @@
         "plugins": {
             "type": "text",
             "hidden": true,
-            "onChange": {
-                "alsoDependsOn": [
-                    "_pluginSelection"
-                ],
-                "calculateFunc": "(data._pluginSelection || []).join(',')"
-            },
             "xs": 12,
             "sm": 12,
             "md": 12,
@@ -73,6 +67,9 @@
             "help": "Select the plugins for your sensors. Basic advertisement data is always available.",
             "doNotSave": true,
             "defaultFunc": "[...new Set((Array.isArray(data.plugins) ? data.plugins : String(data.plugins || '').split(',')).map(p => p.trim().toLowerCase()).filter(p => ['xiaomi', 'mi-flora', 'ruuvi-tag', 'bthome', 'mopeka'].includes(p)))]",
+            "onChange": {
+                "calculateFunc": "const selection = data._pluginSelection || []; data.plugins = selection.join(','); return selection;"
+            },
             "options": [
                 {
                     "label": "Xiaomi",
@@ -143,6 +140,51 @@
                     "xl": 12
                 }
             }
+        },
+        "bthomeBindkeys": {
+            "type": "text",
+            "hidden": true
+        },
+        "_bthomeHeading": {
+            "type": "header",
+            "text": "BTHome bindkeys",
+            "size": 3,
+            "hidden": "!(data._pluginSelection || []).includes('bthome')",
+            "xs": 12
+        },
+        "_bthomeDevices": {
+            "type": "table",
+            "help": "Enter the Bluetooth MAC address and bindkey for each encrypted BTHome device.",
+            "hidden": "!(data._pluginSelection || []).includes('bthome')",
+            "doNotSave": true,
+            "defaultFunc": "try { const rows = JSON.parse(data.bthomeBindkeys || '[]'); return Array.isArray(rows) ? rows : []; } catch { return []; }",
+            "onChange": {
+                "calculateFunc": "const rows = data._bthomeDevices || []; data.bthomeBindkeys = JSON.stringify(rows); return rows;"
+            },
+            "xs": 12,
+            "useCardFor": ["xs", "sm"],
+            "uniqueColumns": ["address"],
+            "items": [
+                {
+                    "type": "text",
+                    "attr": "address",
+                    "title": "Bluetooth MAC address",
+                    "placeholder": "54:48:E6:8F:80:A5",
+                    "default": "",
+                    "validator": "/^(?:[0-9a-f]{12}|(?:[0-9a-f]{2}:){5}[0-9a-f]{2})$/i.test((data.address || '').trim())",
+                    "validatorErrorText": "Enter a valid Bluetooth MAC address.",
+                    "validatorNoSaveOnError": true
+                },
+                {
+                    "type": "password",
+                    "attr": "key",
+                    "title": "Bindkey",
+                    "default": "",
+                    "validator": "/^(?:[0-9a-f]{32}|[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})$/i.test((data.key || '').trim())",
+                    "validatorErrorText": "Enter a 32-digit hexadecimal bindkey.",
+                    "validatorNoSaveOnError": true
+                }
+            ]
         }
     }
 }

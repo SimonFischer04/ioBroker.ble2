@@ -17,5 +17,11 @@
     "Mi Flora": "Mi Flora",
     "Ruuvi Tag": "Ruuvi Tag",
     "BTHome": "BTHome",
-    "Mopeka Pro Check": "Mopeka Pro Check"
+    "Mopeka Pro Check": "Mopeka Pro Check",
+    "BTHome bindkeys": "BTHome 密钥",
+    "Enter the Bluetooth MAC address and bindkey for each encrypted BTHome device.": "为每个启用加密的 BTHome 设备输入蓝牙 MAC 地址和密钥。",
+    "Bluetooth MAC address": "蓝牙 MAC 地址",
+    "Bindkey": "加密密钥",
+    "Enter a valid Bluetooth MAC address.": "请输入有效的蓝牙 MAC 地址。",
+    "Enter a 32-digit hexadecimal bindkey.": "请输入由 32 个十六进制字符组成的密钥。"
 }

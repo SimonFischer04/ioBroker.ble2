@@ -83,6 +83,9 @@ const adapter = utils.adapter({
 		enabledPlugins = plugins.filter(
 			(p) => enabledPluginNames.indexOf(p.name.toLowerCase()) > -1,
 		);
+		for (const plugin of enabledPlugins) {
+			plugin.initialize?.();
+		}
 		_.adapter.log.info(
 			`enabled plugins: ${enabledPlugins.map((p) => p.name).join(", ")}`,
 		);

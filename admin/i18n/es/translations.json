@@ -17,5 +17,11 @@
     "Mi Flora": "Mi Flora",
     "Ruuvi Tag": "Ruuvi Tag",
     "BTHome": "BTHome",
-    "Mopeka Pro Check": "Mopeka Pro Check"
+    "Mopeka Pro Check": "Mopeka Pro Check",
+    "BTHome bindkeys": "Claves de BTHome",
+    "Enter the Bluetooth MAC address and bindkey for each encrypted BTHome device.": "Introduce la dirección MAC Bluetooth y la clave de cada dispositivo BTHome cifrado.",
+    "Bluetooth MAC address": "Dirección MAC Bluetooth",
+    "Bindkey": "Clave de cifrado",
+    "Enter a valid Bluetooth MAC address.": "Introduce una dirección MAC Bluetooth válida.",
+    "Enter a 32-digit hexadecimal bindkey.": "Introduce una clave de 32 dígitos hexadecimales."
 }

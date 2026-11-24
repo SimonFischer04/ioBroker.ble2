@@ -7,6 +7,7 @@ declare global {
 			server: string;
 			hciDevice: number;
 			plugins: string;
+			bthomeBindkeys?: string;
 			allowEmptyDevices: boolean;
 			rssiThrottle: number;
 		}

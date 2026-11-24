@@ -2,6 +2,7 @@ import { Global as _ } from "../lib/global";
 import {
 	BTHomeAdvertisement,
 	type BTHomeBinarySensorData,
+	type BTHomeCredentials,
 	type BTHomeEvent,
 	type BTHomeMultilevelSensorData,
 	type SpecialSensors,
@@ -21,23 +22,64 @@ interface BTHomeContext {
 	readonly events: readonly BTHomeEvent[];
 }
 
-function parseAdvertisement(data: Buffer): BTHomeAdvertisement | undefined {
-	// try to parse the data
-	let advertisement: BTHomeAdvertisement;
+interface BTHomeDevice extends BTHomeCredentials {
+	lastCounter?: number;
+}
+
+const devices = new Map<string, BTHomeDevice>();
+
+function normalizeMac(address: string): string {
+	return address.trim().replaceAll(":", "").toLowerCase();
+}
+
+function loadBindkeys(): void {
+	devices.clear();
+	let rows: unknown;
 	try {
-		advertisement = new BTHomeAdvertisement(data);
+		rows = JSON.parse(_.adapter.config.bthomeBindkeys || "[]");
 	} catch {
-		_.adapter.log.debug(`bthome >> failed to parse data`);
+		_.adapter.log.warn("BTHome: could not read bindkey configuration");
 		return;
 	}
 
-	// succesful - return it
-	return advertisement;
+	if (!Array.isArray(rows)) {
+		_.adapter.log.warn("BTHome: expected a list of bindkeys");
+		return;
+	}
+
+	for (const [index, row] of rows.entries()) {
+		const address =
+			typeof row?.address === "string" ? row.address.trim() : "";
+		const key = typeof row?.key === "string" ? row.key.trim() : "";
+		if (
+			!/^(?:[\da-f]{12}|(?:[\da-f]{2}:){5}[\da-f]{2})$/i.test(address) ||
+			!/^(?:[\da-f]{32}|[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12})$/i.test(
+				key,
+			)
+		) {
+			_.adapter.log.warn(
+				`BTHome: invalid MAC address or bindkey in row ${index + 1}`,
+			);
+			continue;
+		}
+		const mac = normalizeMac(address);
+		if (devices.has(mac)) {
+			_.adapter.log.warn(
+				`BTHome: duplicate MAC address in bindkey row ${index + 1}`,
+			);
+			continue;
+		}
+		devices.set(mac, {
+			mac: Buffer.from(mac, "hex"),
+			key: Buffer.from(key.replaceAll("-", ""), "hex"),
+		});
+	}
 }
 
 const plugin: Plugin<BTHomeContext> = {
 	name: "BTHome",
 	description: "BTHome devices",
+	initialize: loadBindkeys,
 
 	advertisedServices: ["fcd2"],
 	isHandling: (p) => {
@@ -54,9 +96,25 @@ const plugin: Plugin<BTHomeContext> = {
 
 		_.adapter.log.debug(`bthome >> got data: ${data.toString("hex")}`);
 
-		const advertisement = parseAdvertisement(data);
-		if (!advertisement) {
+		const device = devices.get(normalizeMac(peripheral.address ?? ""));
+		let advertisement: BTHomeAdvertisement;
+		try {
+			advertisement = new BTHomeAdvertisement(data, device);
+		} catch {
+			_.adapter.log.debug(
+				`bthome >> failed to parse or authenticate data from ${peripheral.address}`,
+			);
 			return;
+		}
+
+		if (device && advertisement.encryptionCounter !== undefined) {
+			if (
+				device.lastCounter !== undefined &&
+				advertisement.encryptionCounter <= device.lastCounter
+			) {
+				return;
+			}
+			device.lastCounter = advertisement.encryptionCounter;
 		}
 
 		return {
