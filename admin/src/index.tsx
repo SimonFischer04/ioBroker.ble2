@@ -57,21 +57,23 @@ const SettingsPageContent: React.FC = React.memo(() => {
 			<Grid container spacing={8}>
 				<Grid item xs={4}>
 					<TextField
-						label={_("Use remote server:")}
+						label={_("Remote scan servers:")}
+						multiline={true}
+						minRows={2}
 						fullWidth={true}
 						InputLabelProps={{
 							// Avoid overlapping the text if it was filled out
 							shrink: true,
 						}}
-						placeholder="address:port"
-						value={settings.server}
+						placeholder="host:port"
+						value={settings.remoteServers ?? ""}
 						onChange={(event) =>
-							handleChange("server", event.target.value)
+							handleChange("remoteServers", event.target.value)
 						}
 					/>
 					<Typography variant="body2">
 						{_(
-							"when configured, the local bluetooth adapter is not used",
+							"One per line, as host or host:port (default port 8734). Each runs bin/blerp.js. They are used together with the local Bluetooth adapter.",
 						)}
 					</Typography>
 				</Grid>
@@ -195,7 +197,7 @@ const SettingsPageContent: React.FC = React.memo(() => {
 					/>
 					<Typography variant="body2">
 						{_(
-							"When disabled, only advertisements delivered by other adapters are handled. No Bluetooth hardware is needed then.",
+							"When disabled, only advertisements from remote scan servers and other adapters are handled. No Bluetooth hardware is needed then.",
 						)}
 					</Typography>
 				</Grid>

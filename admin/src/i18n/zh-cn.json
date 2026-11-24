@@ -13,5 +13,7 @@
 	"This will be automatically disabled after 5 minutes.": "这将在 5 分钟后自动禁用。",
 	"Accept new devices": "接受新设备",
 	"Use the Bluetooth adapter of this host": "使用此主机的蓝牙适配器",
-	"When disabled, only advertisements delivered by other adapters are handled. No Bluetooth hardware is needed then.": "禁用后，仅处理其他适配器传递的广播数据，此时不需要蓝牙硬件。"
+	"When disabled, only advertisements from remote scan servers and other adapters are handled. No Bluetooth hardware is needed then.": "禁用后，仅处理来自远程扫描服务器和其他适配器的广播数据，此时不需要蓝牙硬件。",
+	"Remote scan servers:": "远程扫描服务器：",
+	"One per line, as host or host:port (default port 8734). Each runs bin/blerp.js. They are used together with the local Bluetooth adapter.": "每行一个，格式为主机或主机:端口（默认端口 8734）。每台主机上运行 bin/blerp.js。它们与本地蓝牙适配器一起使用。"
 }

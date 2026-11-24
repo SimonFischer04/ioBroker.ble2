@@ -12,6 +12,10 @@ import { fixServiceName, matchesServiceFilter } from "./scanner/service-filter";
 import { NobleLocalTransport } from "./transports/noble-local";
 import { NobleRemoteTransport } from "./transports/noble-remote";
 import { RemoteGatewayTransport } from "./transports/remote-gateway";
+import {
+	migrateServerSettings,
+	parseServerList,
+} from "./transports/server-list";
 import type { Transport, TransportContext } from "./transports/transport";
 
 let processor: AdvertisementProcessor | undefined;
@@ -35,6 +39,25 @@ const adapter = utils.adapter({
 
 		// Workaround für fehlende InstanceObjects nach update
 		await _.ensureInstanceObjects();
+
+		// Up to 0.14 there was a single remote scan server, which disabled the local Bluetooth adapter
+		const migration = migrateServerSettings(adapter.config);
+		if (migration) {
+			adapter.log.info(
+				`Moving the remote scan server "${migration.remoteServers}" to the list of remote scan servers. The local Bluetooth adapter stays disabled as before.`,
+			);
+			Object.assign(adapter.config, migration);
+			try {
+				await adapter.extendForeignObjectAsync(
+					`system.adapter.${adapter.namespace}`,
+					{ native: migration },
+				);
+			} catch (e) {
+				adapter.log.warn(
+					`Could not save the migrated settings: ${(e as Error).message}`,
+				);
+			}
+		}
 
 		// Plugins laden
 		_.adapter.log.info(
@@ -126,16 +149,19 @@ const adapter = utils.adapter({
 		// bis der User es explizit erlaubt.
 		await adapter.setStateAsync("options.allowNewDevices", false, true);
 
-		// Other adapters can always deliver advertisements. The local scanner applies the
-		// service filter while scanning, for those advertisements we have to do it here.
-		remoteGateway = new RemoteGatewayTransport({
+		// The local scanner applies the service filter while scanning. Advertisements from other
+		// adapters and from remote scan servers are filtered here, so every source behaves the same.
+		const filteredContext: TransportContext = {
 			...transportContext,
 			onAdvertisement: (peripheral) => {
 				if (matchesServiceFilter(peripheral, services)) {
 					handleAdvertisement(peripheral);
 				}
 			},
-		});
+		};
+
+		// Other adapters can always deliver advertisements
+		remoteGateway = new RemoteGatewayTransport(filteredContext);
 		transports.push(remoteGateway);
 		handleMessage = createMessageHandler({
 			adapter,
@@ -144,22 +170,35 @@ const adapter = utils.adapter({
 			remoteGateway,
 		});
 
-		// And start scanning
-		if (adapter.config.server) {
-			transports.push(
-				new NobleRemoteTransport(
-					transportContext,
-					adapter.config.server,
-				),
+		// And start scanning: with the Bluetooth adapter of this host and with the remote scan
+		// servers, all at the same time
+		const useLocalScanner = adapter.config.localScanner !== false;
+		const { servers, invalid } = parseServerList(
+			adapter.config.remoteServers,
+		);
+		for (const entry of invalid) {
+			adapter.log.warn(
+				`Ignoring the invalid remote scan server "${entry}", expected host or host:port`,
 			);
-		} else if (adapter.config.localScanner !== false) {
+		}
+		if (useLocalScanner) {
 			transports.push(
 				new NobleLocalTransport(transportContext, {
 					services,
 					hciDevice: adapter.config.hciDevice,
 				}),
 			);
-		} else {
+		}
+		for (const server of servers) {
+			transports.push(
+				new NobleRemoteTransport(filteredContext, server, {
+					// info.driverState has a single source: the local Bluetooth adapter, or the only
+					// remote scan server, as up to 0.14
+					reportDriverState: !useLocalScanner && servers.length === 1,
+				}),
+			);
+		}
+		if (!useLocalScanner && servers.length === 0) {
 			adapter.log.info(
 				"The local Bluetooth adapter is not used, waiting for advertisements from external gateways",
 			);

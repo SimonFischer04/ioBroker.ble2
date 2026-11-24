@@ -105,7 +105,7 @@
     "prepublishOnly": "npm run test:package",
     "translate": "translate-adapter translate",
     "release": "release-script",
-    "build:server": "esbuild src/scanProcess.ts --bundle --main-fields=main --outfile=bin/blerp.js --platform=node --format=cjs --target=node14.18 --external:@abandonware/noble"
+    "build:server": "esbuild src/scanProcess.ts --bundle --main-fields=main --outfile=bin/blerp.js --platform=node --format=cjs --target=node14.18 --external:@stoprocent/noble"
   },
   "bugs": {
     "url": "https://github.com/AlCalzone/ioBroker.ble/issues"

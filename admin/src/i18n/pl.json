@@ -13,5 +13,7 @@
 	"This will be automatically disabled after 5 minutes.": "Zostanie to automatycznie wyłączone po 5 minutach.",
 	"Accept new devices": "Zaakceptuj nowe urządzenia",
 	"Use the Bluetooth adapter of this host": "Użyj adaptera Bluetooth tego hosta",
-	"When disabled, only advertisements delivered by other adapters are handled. No Bluetooth hardware is needed then.": "Po wyłączeniu przetwarzane są tylko pakiety dostarczane przez inne adaptery. Sprzęt Bluetooth nie jest wtedy potrzebny."
+	"When disabled, only advertisements from remote scan servers and other adapters are handled. No Bluetooth hardware is needed then.": "Po wyłączeniu przetwarzane są tylko pakiety ze zdalnych serwerów skanowania i innych adapterów. Sprzęt Bluetooth nie jest wtedy potrzebny.",
+	"Remote scan servers:": "Zdalne serwery skanowania:",
+	"One per line, as host or host:port (default port 8734). Each runs bin/blerp.js. They are used together with the local Bluetooth adapter.": "Jeden w wierszu, jako host lub host:port (domyślny port 8734). Na każdym działa bin/blerp.js. Są używane razem z lokalnym adapterem Bluetooth."
 }

@@ -152,7 +152,7 @@
 	"native": {
 		"services": "",
 		"hciDevice": 0,
-		"server": "",
+		"remoteServers": "",
 		"plugins": "",
 		"allowEmptyDevices": false,
 		"rssiThrottle": 0,

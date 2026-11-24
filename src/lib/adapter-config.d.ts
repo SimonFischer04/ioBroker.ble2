@@ -4,7 +4,16 @@ declare global {
 	namespace ioBroker {
 		interface AdapterConfig {
 			services: string;
-			server: string;
+			/**
+			 * Up to version 0.14: a single remote scan server ("host:port"). Moved to remoteServers
+			 * when the adapter starts, see migrateServerSettings().
+			 */
+			server?: string;
+			/**
+			 * Remote scan servers (bin/blerp.js): "host", "host:port" or "[ipv6]:port", separated by
+			 * commas, semicolons, spaces or line breaks. Missing in old configurations.
+			 */
+			remoteServers?: string;
 			hciDevice: number;
 			plugins: string;
 			allowEmptyDevices: boolean;
