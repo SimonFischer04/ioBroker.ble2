@@ -1,16 +1,21 @@
 {
     "Accept new devices": "Neue Geräte akzeptieren",
     "Active plugins:": "Aktive Plugins:",
-    "Allow creation of devices without advertised data": "Erfassen von Geräten ohne gesendete Daten erlauben",
+    "Allow creation of devices without advertised data": "Erfassen von Geräten ohne Daten in Bluetooth-Advertising-Paketen erlauben",
     "Monitored services, * for all services:": "Überwachte Dienste, * für alle Dienste:",
     "On linux this can be determined with `hciconfig`:": "Unter Linux kann der Index mit `hciconfig` ermittelt werden:",
-    "Plugin names, comma separated.": "Plugin-Namen durch Komma getrennt.",
-    "RSSI update interval [ms]:": "RSSI Update-Intervall [ms]:",
+    "RSSI update interval [ms]:": "RSSI-Aktualisierungsintervall [ms]:",
     "Select device:": "Gerät auswählen:",
-    "Service characteristics as HEX codes or UUID, comma separated.": "Dienstcharakteristiken als HEX oder UUID, durch Komma getrennt.",
+    "Service characteristics as HEX codes or UUID, comma separated.": "Dienstkennungen als HEX-Codes oder UUIDs, durch Kommas getrennt.",
     "This will be automatically disabled after 5 minutes.": "Dies wird nach 5 Minuten automatisch deaktiviert.",
     "Too frequent updates can slow down the admin.": "Zu häufige Updates können den Admin verlangsamen.",
     "Use remote server:": "Remote-Server verwenden:",
     "when configured, the local bluetooth adapter is not used": "Wenn konfiguriert, wird der lokale Bluetooth-Adapter nicht verwendet",
-    "address:port": "Adresse:Port"
+    "address:port": "Adresse:Port",
+    "Select the plugins for your sensors. Basic advertisement data is always available.": "Wähle die Plugins für deine Sensoren. Die grundlegenden Daten aus Bluetooth-Advertising-Paketen sind immer verfügbar.",
+    "Xiaomi": "Xiaomi",
+    "Mi Flora": "Mi Flora",
+    "Ruuvi Tag": "Ruuvi Tag",
+    "BTHome": "BTHome",
+    "Mopeka Pro Check": "Mopeka Pro Check"
 }
