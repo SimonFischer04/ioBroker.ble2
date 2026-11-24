@@ -1,5 +1,6 @@
 import * as utils from "@iobroker/adapter-core";
 import { createMessageHandler } from "./api/message-handler";
+import { ConnectionManager } from "./connections/connection-manager";
 import { DeviceRegistry } from "./devices/device-registry";
 import { GatewayRegistry } from "./gateways/gateway-registry";
 import type { PeripheralInfo } from "./lib/advertisement";
@@ -21,6 +22,7 @@ import type { Transport, TransportContext } from "./transports/transport";
 let processor: AdvertisementProcessor | undefined;
 let gateways: GatewayRegistry | undefined;
 let remoteGateway: RemoteGatewayTransport | undefined;
+let connections: ConnectionManager | undefined;
 let handleMessage: ((obj: ioBroker.Message) => void) | undefined;
 /** The sources of advertisements that are in use */
 const transports: Transport[] = [];
@@ -171,11 +173,21 @@ const adapter = utils.adapter({
 		// Connections through a gateway that went offline have ended
 		gateways.onGatewayOffline = (gatewayId) =>
 			remoteGateway?.gatewayOffline(gatewayId);
+		// Connections to devices, through the gateways other adapters provide
+		connections = new ConnectionManager({
+			log: adapter.log,
+			devices,
+			gateways,
+			provider: remoteGateway,
+			setTimeout: (callback, ms) => adapter.setTimeout(callback, ms),
+			clearTimeout: (timer) => adapter.clearTimeout(timer),
+		});
 		handleMessage = createMessageHandler({
 			adapter,
 			gateways,
 			devices,
 			remoteGateway,
+			connections,
 		});
 
 		// And start scanning: with the Bluetooth adapter of this host and with the remote scan
@@ -217,6 +229,8 @@ const adapter = utils.adapter({
 	// is called when adapter shuts down - callback has to be called under any circumstances!
 	unload: (callback) => {
 		try {
+			// Before the transports, so the sessions can still say goodbye to their gateways
+			connections?.dispose();
 			for (const transport of transports) transport.stop();
 			processor?.dispose();
 			gateways?.dispose();
