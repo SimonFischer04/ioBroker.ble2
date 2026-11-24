@@ -61,6 +61,7 @@ If you have any device transmitting specially encoded information via advertisem
 * `"mi-flora"`: Original plugin for the flower care plant sensor, now aliased to `"xiaomi"`
 * `"ruuvi-tag"`: [Ruuvi Tag](https://tag.ruuvi.com/) multisensor with firmware versions v1 and v2. **Untested, please give feedback!** 
 * `"bthome"`: Sensors using the [BTHome](https://bthome.io) protocol. For now this is limited to the `v2` revision of the protocol and does not support encrypted packets.
+* `"mi-scale"`: Mi Scale V1 and V2 broadcast weight in kilograms and a stabilized flag (`181d` and `181b`).
 * `"mopeka"`: Mopeka Pro Check LPG tank sensors (standard sensor type `0x03`).
 
 For Mopeka, add `mopeka` to **Active plugins** and enable **Accept new devices** while discovering the sensor. Local scanning includes its manufacturer identifier automatically. A remote scanner with service filters also needs `--manufacturerIds 89` to forward manufacturer-only advertisements.
