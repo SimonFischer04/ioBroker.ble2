@@ -150,6 +150,7 @@ export class GatewayRegistry {
 				connected: false,
 				advertisements: 0,
 				duplicates: 0,
+				connect: false,
 				objectId: `gateways.${this.toObjectId(description.id)}`,
 				queue: Promise.resolve(),
 				lastAdvertisementWritten: 0,
