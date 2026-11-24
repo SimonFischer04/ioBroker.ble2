@@ -229,6 +229,34 @@ const plugin: Plugin<XiaomiContext> = {
 				native: undefined,
 			});
 		}
+		if ("powerState" in event) {
+			stateObjects.push({
+				id: "powerState",
+				common: {
+					role: "value",
+					name: "Power status",
+					type: "number",
+					read: true,
+					write: false,
+					states: { 0: "Off", 1: "On" },
+				},
+				native: undefined,
+			});
+		}
+		if ("consumableRemaining" in event) {
+			stateObjects.push({
+				id: "consumableRemaining",
+				common: {
+					role: "value",
+					name: "Consumable remaining",
+					type: "number",
+					unit: "%",
+					read: true,
+					write: false,
+				},
+				native: undefined,
+			});
+		}
 		// Create objects for unknown events
 		for (const key of Object.keys(event)) {
 			if (key.startsWith("unknown ")) {
