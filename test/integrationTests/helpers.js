@@ -346,13 +346,14 @@ async function waitForValue(harness, id, expected, timeoutMs) {
  *
  * @param {any} harness - Integration test harness
  * @param {Record<string, any>} [native] - Settings of the instance
+ * @param {Record<string, string>} [env] - Environment variables of the adapter process, e.g. TZ
  * @returns {Promise<void>}
  */
-async function startAdapter(harness, native = {}) {
+async function startAdapter(harness, native = {}, env = {}) {
 	await harness.changeAdapterConfig("ble", {
 		native: { localScanner: false, ...native },
 	});
-	await harness.startAdapterAndWait();
+	await harness.startAdapterAndWait(false, env);
 	// The adapter answers messages once it has finished starting
 	await waitFor(async () => {
 		const response = await sendToAdapter(harness, "getGateways", {}, 2000);

@@ -6,9 +6,10 @@
  * behind every gateway.
  */
 
-const { getMessageClient } = require("./helpers");
+const { NAMESPACE, getMessageClient } = require("./helpers");
 
-// Service 0x1f10 with one characteristic 0x1f1f (read, write, notify), like the pvvx thermometers
+// Service 0x1f10 with one characteristic 0x1f1f (read, write without response, notify), like the
+// pvvx thermometers
 const SERVICES = [
 	{
 		uuid: "00001f10-0000-1000-8000-00805f9b34fb",
@@ -17,7 +18,7 @@ const SERVICES = [
 			{
 				uuid: "00001f1f-0000-1000-8000-00805f9b34fb",
 				handle: 32,
-				properties: 0x1a,
+				properties: 0x16,
 				descriptors: [
 					{
 						uuid: "00002902-0000-1000-8000-00805f9b34fb",
@@ -57,9 +58,27 @@ class FakeGattGateway {
 		this.connectDelayMs = {};
 		/** @type {Set<string>} Commands that are not answered */
 		this.silent = new Set();
+		/** @type {Set<string>} Subscribed handles as "<gatewayId>|<address>|<handle>" */
+		this.subscriptions = new Set();
+		/**
+		 * Answers writes with notifications, see setWriteHandler()
+		 *
+		 * @type {((address: string, handle: number, dataHex: string) => string[] | undefined) | undefined}
+		 */
+		this.writeHandler = undefined;
 		this.client.onRequest((command, message) =>
 			this.handle(command, message),
 		);
+	}
+
+	/**
+	 * Sets what the device answers to writes: the payloads (hex) are sent as notifications to ble.0
+	 * after the write was answered, if the handle was subscribed on this connection
+	 *
+	 * @param {((address: string, handle: number, dataHex: string) => string[] | undefined) | undefined} handler - The handler
+	 */
+	setWriteHandler(handler) {
+		this.writeHandler = handler;
 	}
 
 	/** Forgets what happened so far, keeps the open connections */
@@ -121,6 +140,11 @@ class FakeGattGateway {
 			}
 			case "gatt:disconnect":
 				this.open.delete(key);
+				for (const subscription of [...this.subscriptions]) {
+					if (subscription.startsWith(`${key}|`)) {
+						this.subscriptions.delete(subscription);
+					}
+				}
 				return { error: null, result: {} };
 		}
 
@@ -143,13 +167,42 @@ class FakeGattGateway {
 						).toString("base64"),
 					},
 				};
-			case "gatt:write":
-				this.values.set(
-					message.handle,
-					Buffer.from(message.data, "base64").toString("hex"),
+			case "gatt:write": {
+				const dataHex = Buffer.from(message.data, "base64").toString(
+					"hex",
 				);
+				this.values.set(message.handle, dataHex);
+				const notifications = this.writeHandler?.(
+					message.address,
+					message.handle,
+					dataHex,
+				);
+				if (
+					notifications &&
+					this.subscriptions.has(`${key}|${message.handle}`)
+				) {
+					// After the answer to the write
+					setTimeout(() => {
+						for (const hex of notifications) {
+							this.client.push(`system.adapter.${NAMESPACE}`, {
+								command: "gateway:notification",
+								message: {
+									gatewayId: message.gatewayId,
+									address: message.address,
+									handle: message.handle,
+									data: Buffer.from(hex, "hex").toString(
+										"base64",
+									),
+								},
+								from: this.client.from,
+							});
+						}
+					}, 10);
+				}
 				return { error: null, result: {} };
+			}
 			case "gatt:subscribe":
+				this.subscriptions.add(`${key}|${message.handle}`);
 				return { error: null, result: {} };
 			default:
 				return FakeGattGateway.error(
