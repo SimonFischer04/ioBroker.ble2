@@ -123,4 +123,44 @@ describe("devices/device-registry => DeviceRegistry", () => {
 			"a4:c1:38:00:00:01",
 		]);
 	});
+
+	it("track() alone does not make a packet a duplicate", () => {
+		const registry = new DeviceRegistry();
+		registry.track(peripheral("a", -80), 1000);
+		expect(registry.observe(peripheral("a", -80), 1010).duplicate).to.be
+			.false;
+	});
+
+	it("lists the gateways that receive a device, strongest first", () => {
+		const registry = new DeviceRegistry({ rssiMaxAgeMs: 30000 });
+		registry.track(peripheral("old", -40), 0);
+		registry.track(peripheral("far", -85), 20000);
+		registry.track(peripheral("near", -55), 21000);
+
+		expect(registry.getReceivers("a4:c1:38:12:34:56", 35000)).to.deep.equal(
+			[
+				{ gatewayId: "near", rssi: -55 },
+				{ gatewayId: "far", rssi: -85 },
+			],
+		);
+	});
+
+	it("lists no gateways for an unknown device", () => {
+		expect(
+			new DeviceRegistry().getReceivers("a4:c1:38:00:00:09"),
+		).to.deep.equal([]);
+	});
+
+	it("remembers the address type of a device", () => {
+		const registry = new DeviceRegistry();
+		const address = "a4:c1:38:12:34:56";
+		expect(registry.getAddressType(address)).to.equal("public");
+
+		registry.track({ ...peripheral("a", -70), addressType: "random" }, 0);
+		expect(registry.getAddressType(address)).to.equal("random");
+
+		// An advertisement that does not tell keeps what is known
+		registry.track({ ...peripheral("b", -70), addressType: "unknown" }, 10);
+		expect(registry.getAddressType(address)).to.equal("random");
+	});
 });

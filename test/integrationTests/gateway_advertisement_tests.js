@@ -346,13 +346,15 @@ exports.runTests = function (suite) {
 				expect(await deviceExists(harness, manufacturerDataOnly)).to.be
 					.false;
 
-				// They are not listed either
+				// They are listed, a connection may still be wanted to a device that is not decoded
 				const devices = await sendToAdapter(harness, "getDevices", {});
 				expect(
 					devices.result
 						.map((/** @type {any} */ d) => d.address)
 						.sort(),
-				).to.deep.equal([marker, known].sort());
+				).to.deep.equal(
+					[otherService, manufacturerDataOnly, marker, known].sort(),
+				);
 			});
 
 			it("keeps updating known devices after new ones are no longer accepted", async function () {

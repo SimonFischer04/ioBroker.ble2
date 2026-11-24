@@ -29,6 +29,8 @@ interface DeviceEntry {
 	name?: string;
 	gateways: Map<string, GatewayReception>;
 	lastSeen: number;
+	/** The address type the device last reported, if it was known */
+	addressType?: "public" | "random";
 	/** The payload that was last passed on to the decoders... */
 	processedFingerprint?: string;
 	/** ...when... */
@@ -63,11 +65,11 @@ export class DeviceRegistry {
 	private readonly devices = new Map<string, DeviceEntry>();
 	private lastPrune = 0;
 
-	/** Records a received advertisement and tells how to treat it */
-	public observe(
-		peripheral: PeripheralInfo,
-		now: number = Date.now(),
-	): Observation {
+	/**
+	 * Records that a gateway received the device, whether its advertisement is decoded or not.
+	 * Connections need to know every device in range.
+	 */
+	public track(peripheral: PeripheralInfo, now: number = Date.now()): void {
 		const gatewayId = peripheral.gatewayId ?? UNKNOWN_GATEWAY;
 
 		let device = this.devices.get(peripheral.address);
@@ -81,13 +83,31 @@ export class DeviceRegistry {
 			this.devices.set(peripheral.address, device);
 		}
 		device.lastSeen = now;
-		if (peripheral.advertisement.localName) {
+		if (peripheral.advertisement?.localName) {
 			device.name = peripheral.advertisement.localName;
+		}
+		if (
+			peripheral.addressType === "public" ||
+			peripheral.addressType === "random"
+		) {
+			device.addressType = peripheral.addressType;
 		}
 		device.gateways.set(gatewayId, {
 			rssi: peripheral.rssi,
 			lastSeen: now,
 		});
+
+		if (now - this.lastPrune > 60000) this.prune(now);
+	}
+
+	/** Records a received advertisement and tells how to treat it */
+	public observe(
+		peripheral: PeripheralInfo,
+		now: number = Date.now(),
+	): Observation {
+		const gatewayId = peripheral.gatewayId ?? UNKNOWN_GATEWAY;
+		this.track(peripheral, now);
+		const device = this.devices.get(peripheral.address)!;
 
 		// A packet is a duplicate when a different gateway delivered the same payload just before.
 		// The same gateway delivering it again is a retransmission of the device and treated as
@@ -115,9 +135,28 @@ export class DeviceRegistry {
 			}
 		}
 
-		if (now - this.lastPrune > 60000) this.prune(now);
-
 		return { duplicate, bestRssi, bestGateway };
+	}
+
+	/** The gateways that received the device within rssiMaxAgeMs, strongest signal first */
+	public getReceivers(
+		address: string,
+		now: number = Date.now(),
+	): { gatewayId: string; rssi: number }[] {
+		const device = this.devices.get(address);
+		if (!device) return [];
+		return [...device.gateways]
+			.filter(
+				([, reception]) =>
+					now - reception.lastSeen <= this.options.rssiMaxAgeMs,
+			)
+			.map(([gatewayId, { rssi }]) => ({ gatewayId, rssi }))
+			.sort((a, b) => b.rssi - a.rssi);
+	}
+
+	/** The address type the device reported. "public" if it is unknown. */
+	public getAddressType(address: string): "public" | "random" {
+		return this.devices.get(address)?.addressType ?? "public";
 	}
 
 	/** Lists the devices that were recently received */

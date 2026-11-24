@@ -154,6 +154,8 @@ const adapter = utils.adapter({
 		const filteredContext: TransportContext = {
 			...transportContext,
 			onAdvertisement: (peripheral) => {
+				// Connections need to know every device in range, also the ones that are not decoded
+				devices.track(peripheral);
 				if (matchesServiceFilter(peripheral, services)) {
 					handleAdvertisement(peripheral);
 				}
