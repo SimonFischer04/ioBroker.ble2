@@ -1,6 +1,6 @@
 # Plan: zentrale Bluetooth-Infrastruktur in `ioBroker.ble`
 
-Status: Phase 0, 1a und 1b umgesetzt, mehrere Remote-Scanner umgesetzt, Phase 2 und 3 spezifiziert · Stand 2026-11-24
+Status: Phase 0, 1a, 1b und 2 umgesetzt, mehrere Remote-Scanner umgesetzt, Phase 3 spezifiziert · Stand 2026-11-24
 
 ## Wie dieses Dokument zu lesen ist
 
@@ -18,7 +18,7 @@ Dieses Dokument beschreibt **Architektur und Entscheidungen**. Es ist keine Arbe
 |---|---|---|
 | 0, 1a | umgesetzt (dieses Repo) | – |
 | 1b | umgesetzt (`DrozmotiX/ioBroker.esphome`, Branch `ccr-ble-gateway-forwarding`) | – |
-| 2 | offen | `docs/spec-phase-2-gatt.md` |
+| 2 | umgesetzt (dieses Repo, Teil A/B; `DrozmotiX/ioBroker.esphome`, Branch `ccr-ble-gateway-gatt` auf `main`, Teil C). Nicht an Hardware geprüft: Verbindungen über einen echten ESP32, CCCD-Schreiben nach Notify | `docs/spec-phase-2-gatt.md` |
 | 3 | offen, kann nach Phase 2 beginnen | `docs/spec-phase-3-pvvx-time.md` |
 | 4 | offen. Das Protokoll steht in `docs/pvvx-protocol.md`. Hängt von Phase 2 ab und braucht zusätzlich `gatt:writeSequence`. | fehlt |
 | 5, 6 | offen | fehlt |
