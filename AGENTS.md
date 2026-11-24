@@ -35,7 +35,8 @@ src/lib/iobroker-objects.ts           extendDevice / extendChannel / extendState
 src/lib/object-cache.ts, global.ts    object cache and the global adapter reference (`Global as _`)
 src/transports/transport.ts           Transport and TransportContext
 src/transports/noble-local.ts         gateway "local": forks scanProcess
-src/transports/noble-remote.ts        gateway "server": TCP client for a remote scanProcess (option `server`)
+src/transports/noble-remote.ts        gateways "server:<host>:<port>": TCP client for a remote scanProcess (bin/blerp.js)
+src/transports/server-list.ts         parses the setting remoteServers, migrates the setting `server` of 0.14
 src/transports/remote-gateway.ts      gateways delivered by other adapters: validates "gateway:advertisements"
 src/transports/scan-errors.ts         classifies errors of the Bluetooth driver
 src/gateways/gateway-registry.ts      all gateways, whether they are active, states `gateways.*` and `info.connection`

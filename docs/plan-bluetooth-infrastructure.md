@@ -1,6 +1,6 @@
 # Plan: zentrale Bluetooth-Infrastruktur in `ioBroker.ble`
 
-Status: Phase 0, 1a und 1b umgesetzt, Phase 2 und 3 spezifiziert · Stand 2026-11-19
+Status: Phase 0, 1a und 1b umgesetzt, mehrere Remote-Scanner umgesetzt, Phase 2 und 3 spezifiziert · Stand 2026-11-24
 
 ## Wie dieses Dokument zu lesen ist
 
@@ -73,7 +73,7 @@ Wichtige Beobachtungen:
                        │  transports/       Transport-Interface                         │
                        │   ├─ remote-gateway/ von anderen Adaptern gelieferte Gateways  │
                        │   ├─ noble-local/  bestehender Kindprozess (Scan)              │
-                       │   └─ noble-remote/ bestehender TCP-Client (`server`)           │
+                       │   └─ noble-remote/ TCP-Clients für Remote-Scanner (blerp.js)   │
                        └──────────────▲─────────────────────────────────────────────────┘
                                       │ sendTo an ble.0: Pakete abliefern (§4a)
                                       │ (Rückweg nur für GATT-Befehle)
@@ -140,6 +140,13 @@ Der Hauptprozess lädt schon heute keinen nativen Code. `noble` wird nur im Kind
 Das `setcap` auf `node` aus dem README ist nur für den lokalen Scanner nötig. Das README bekommt einen eigenen Abschnitt für den Hub-Betrieb.
 
 Zu prüfen ist, was passiert, wenn die Installation der `osDependencies` fehlschlägt, zum Beispiel in einem Container ohne Paketquellen.
+
+**E9: Linux-Rechner als Empfänger: `blerp.js` nur für den Empfang, als vollwertiges Gateway über ioBroker-Multihost.**
+Der Remote-Scanner `bin/blerp.js` ist `src/scanProcess.ts` als eigenständiger TCP-Server: Er schickt Advertisements als JSON-Zeilen an genau einen Client, ohne Rückkanal, ohne Authentifizierung und ohne Verschlüsselung.
+- **Für den Empfang ist er ein Gateway wie die anderen.** Seit 2026-11-24 kann `ble` mehrere Remote-Scanner gleichzeitig nutzen, parallel zum lokalen Stick und zu gelieferten Gateways (Setting `remoteServers`, Gateway-ID `server:<host>:<port>`). Duplikat-Erkennung und „bester Empfang“ greifen dadurch automatisch.
+- **Für Verbindungen zu Geräten wird `blerp.js` nicht ausgebaut.** Das bräuchte ein eigenes Protokoll in beide Richtungen (gegen die Grundsätze), und über ein ungesichertes TCP-Socket könnte jeder im LAN auf Geräte schreiben und Firmware einspielen. Dazu kommen die bekannten Probleme von `noble` beim gleichzeitigen Scannen und Verbinden.
+- **Ein Linux-Rechner wird zum vollwertigen Gateway über ioBroker-Multihost.** Auf ihm läuft eine zweite Instanz (`ble.1`) mit lokalem Stick. Sie dekodiert nicht selbst, sondern liefert ihre Advertisements über die Gateway-Schnittstelle an `ble.0` und beantwortet dessen `gatt:*`-Befehle mit ihrem Stick, genau wie `esphome` es für ESP32-Proxies tut. Transport, Rechte, Updates und Logs übernimmt ioBroker, ein neues Protokoll entsteht nicht. Das setzt lokales GATT voraus und ist deshalb Teil von Phase 6.
+- `ble` bleibt dabei bei E7: `ble.0` kennt `ble.1` nur als Lieferanten wie jeden anderen. Die Weiterleitung ist eine Einstellung von `ble.1` („Advertisements weiterleiten an“), ohne Sonderfall in `ble.0`.
 
 ---
 
@@ -298,7 +305,7 @@ Dazu kommt instanzweit `firmware.updateAll`.
 
 - **Konfiguration `ble` (`native`):**
   - `localScanner` (an/aus, Standard an, siehe E8) und `hciDevice` (wie heute)
-  - `server` (wie heute, wird zum Transport `noble-remote`)
+  - `remoteServers`: Liste der Remote-Scanner (`bin/blerp.js`), ersetzt seit 2026-11-24 das einzelne `server`, siehe E9
   - pvvx-Driver: `autoTimeSync`, `timeSyncIntervalH`, `minBatteryForOta`
   - Für Gateways gibt es nichts zu konfigurieren. Sie erscheinen von selbst, sobald ein Adapter Pakete liefert.
 - **Konfiguration `esphome`:**
@@ -332,7 +339,7 @@ Jede Phase ist für sich releasefähig.
 | **3: pvvx-Zeitsync** | Spezifikation: `docs/spec-phase-3-pvvx-time.md`. `drivers/pvvx`: Geräte aus einer Liste in den Einstellungen, Zeit lesen und setzen, Version und Hardware-ID lesen, Auslöser Start, Intervall, Zeitumstellung und Knopf, Wiederholungen nach Fehlern. | Eine simulierte Zeitumstellung (Offset gemockt) stellt alle Geräte nacheinander neu, und `pvvx.timeDeviation` zeigt die Abweichung vor dem Stellen. | M |
 | **4: pvvx-OTA** | `esphome`: `gatt:writeSequence`. `ble`: Firmware-Verwaltung, Vorab-Prüfungen, serieller Rollout, Fortschritt. | Ein Testgerät wird über einen Proxy erfolgreich geflasht, und ein absichtlicher Abbruch lässt das Gerät funktionsfähig. | L |
 | **5: Externe API** | Vollständige `sendTo`-API (Abschnitt 4) mit Leases, Advertisement-Abos und Doku. | Ein Beispieladapter oder -skript liest per API ein Characteristic und erhält Notifications. | M |
-| **6 (optional): Lokales GATT** | BlueZ über D-Bus oder noble als Connect-fähiger Transport. | Der lokale Dongle kann als Gateway für Sessions dienen. | M–L |
+| **6 (optional): Lokales GATT und Weiterleitung** | BlueZ über D-Bus oder noble als Connect-fähiger Transport. Dazu der Weiterleitungsmodus (E9): Eine Instanz liefert ihre Advertisements an eine andere `ble`-Instanz und beantwortet deren `gatt:*`-Befehle mit dem lokalen Stick. | Der lokale Dongle kann als Gateway für Sessions dienen. Ein Raspberry Pi mit `ble.1` im ioBroker-Multihost ist für `ble.0` ein Gateway mit Verbindungen, wie ein ESPHome-Proxy. | L |
 | **später** | Verschlüsselte BTHome-Pakete (Bindkey pro Gerät), Identitätsauflösung für rotierende Adressen (IRK). | n/a | n/a |
 
 Den PoC aus der Diskussion („ESPHome-Proxy, GATT-Verbindung über `sendToAsync`, lesen und schreiben“) decken die Phasen 1 und 2 ab. Phase 0 lohnt sich trotzdem vorab: Sie ist klein und verhindert, dass der Umbau in den 544 Zeilen von `main.ts` landet.
@@ -371,6 +378,19 @@ Integrationstests liegen in `test/integrationTests/`, nach dem Muster des `v2`-B
 | `gateway_lifecycle_tests.js` | Gateway erscheint, geht offline (Timeout, Absender gestoppt) und kommt zurück |
 
 Noch offen aus E8: Was passiert, wenn die Installation der `osDependencies` fehlschlägt.
+
+### Umgesetzt: mehrere Remote-Scanner (2026-11-24, außerhalb der Phasen)
+
+- **Setting `remoteServers`:** Liste aus `host`, `host:port` oder `[ipv6]:port` (Standard-Port 8734), getrennt durch Komma, Semikolon, Leerzeichen oder Zeilenumbruch (`src/transports/server-list.ts`). Ungültige Einträge werden mit Warnung übergangen.
+- **Ein Gateway pro Server:** `server:<host>:<port>`, mit States unter `gateways.server_<host>_<port>`.
+- **Parallel zu allen anderen Quellen:** Die Server laufen zusammen mit dem lokalen Stick und den gelieferten Gateways. Bis 0.14 schloss ein konfigurierter Server den lokalen Stick aus.
+- **Migration:** Das alte Setting `server` wird beim Start nach `remoteServers` verschoben, und `localScanner` wird auf `false` gesetzt. Das alte Verhalten bleibt damit erhalten. Die Migration ist nötig, weil js-controller beim Upgrade `localScanner: true` aus den neuen Defaults ergänzt.
+- **Service-Filter:** gilt jetzt auch für Remote-Server, wie für gelieferte Gateways.
+- **`info.driverState`:** schreibt nur noch der lokale Stick oder, wenn er aus ist, der einzige Remote-Server.
+- **Logs:** Ein nicht erreichbarer Server wird einmal als Warnung gemeldet, danach nur noch im Debug-Log, bis er wieder erreichbar ist.
+- **Tests:** `src/transports/server-list.test.ts` (Parsen, Migration) und `test/integrationTests/remote_server_tests.js` mit einem nachgebauten Server (`fakeScanServer.js`, dasselbe Zeilenprotokoll wie `blerp.js`): zwei Server gleichzeitig, Duplikate, Service-Filter, Ausfall und Wiederverbindung, Migration.
+
+`bin/blerp.js` selbst ist unverändert. Im Build-Skript `build:server` stand noch der alte Paketname `@abandonware/noble` als extern, korrigiert auf `@stoprocent/noble`.
 
 ### Umgesetzt (Phase 1b, in `ioBroker.esphome`)
 
@@ -417,6 +437,7 @@ Noch nicht getestet ist der Weg mit einem echten ESP32 und mit beiden Adaptern i
 6. **Lasten bei vielen Proxies.** Jedes Advertisement kommt N-fach an. Dedupe muss vor dem Decoder und vor allen DB-Zugriffen passieren (der heutige `onDiscover` macht pro Paket mehrere `getStateAsync`/`objectExists`).
 7. **Verhältnis zu Upstream.** Das Repo ist ein Fork von `AlCalzone/ioBroker.ble`. Vor Phase 1 sollte geklärt werden, ob die Änderungen upstream gehen (dann Phase 0 als eigenen PR anbieten) oder der Fork eigenständig released wird.
 8. **Hub-Betrieb ohne Bluetooth-Hardware.** Die Gateway-Schnittstelle braucht in `ble` keine nativen Module und keine `cap_net_raw`-Rechte. Die nötigen Änderungen stehen in E8. Offen ist dort nur das Verhalten der `osDependencies` bei fehlgeschlagener Installation.
+9. **Remote-Scanner ohne Absicherung.** `blerp.js` spricht Klartext-TCP ohne Authentifizierung und lauscht standardmäßig auf allen Interfaces. Für Advertisements ist das vertretbar, die kann jeder in Funkreichweite mitlesen. Das README weist darauf hin. Für Verbindungen wird er deshalb nicht ausgebaut (E9).
 
 ---
 

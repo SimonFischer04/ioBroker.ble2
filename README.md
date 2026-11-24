@@ -28,6 +28,28 @@ The Bluetooth adapter of the host is optional. Disable **Use the Bluetooth adapt
 
 If the option is enabled but the Bluetooth adapter cannot be used (no hardware, missing permissions, driver not installed), the adapter logs an error and keeps running, so it can still receive advertisements from other adapters.
 
+### Remote scan servers
+A Linux computer with Bluetooth in another room, e.g. a Raspberry Pi, can scan for the adapter. It runs the scanner of this adapter as a small server, `bin/blerp.js`, without ioBroker:
+
+```bash
+mkdir blerp && cd blerp
+# copy bin/blerp.js of this adapter into this directory, then:
+npm install @stoprocent/noble
+sudo setcap cap_net_raw+eip $(eval readlink -f `which node`)
+node blerp.js --listenPort 8734 --hciDevice 0
+```
+
+Enter it under **Remote scan servers** in the settings as `host` or `host:port` (default port 8734), one per line. Several servers can be used at the same time, together with the Bluetooth adapter of the ioBroker host and with other adapters that deliver advertisements. Every server is a gateway of its own (`server:<host>:<port>`): a packet that several of them receive is decoded once, and when a server is unreachable the adapter tries again every 10 seconds.
+
+Things to know:
+* A server serves one adapter instance at a time.
+* The connection is neither authenticated nor encrypted. Only use it in a network you trust, and do not make the port reachable from outside.
+* The servers only receive advertisements, they cannot connect to devices.
+* The monitored services from the settings also apply to what the servers deliver. `--services` on the server reduces the traffic in addition.
+* `info.driverState` shows the state of the Bluetooth driver of the local Bluetooth adapter, or of the server if it is the only source.
+
+Up to version 0.14 there was a single server (setting "Use remote server"), which disabled the Bluetooth adapter of the host. Such a configuration is moved to the new setting when the adapter starts, and the Bluetooth adapter of the host stays disabled.
+
 ## Receiving advertisements from other adapters
 Other adapters can deliver the BLE advertisements they receive, e.g. from ESPHome Bluetooth proxies distributed in the house. They are handled exactly like the ones received by the local Bluetooth adapter: the same plugins, the same objects and states. The device ID is the MAC address in lowercase, no matter which receiver delivered the advertisement.
 
@@ -88,7 +110,9 @@ If you have any device transmitting specially encoded information via advertisem
 * Other adapters can deliver BLE advertisements they received, e.g. from ESPHome Bluetooth proxies (`gateway:advertisements`). Several receivers can be used at the same time.
 * The adapter can run without Bluetooth hardware: the Bluetooth adapter of the host can be disabled in the settings, and the Bluetooth driver is an optional dependency now
 * A problem with the Bluetooth adapter of the host no longer terminates the adapter
-* The connection to a remote scan server is re-established when it was lost
+* Several remote scan servers (`bin/blerp.js`) can be used at the same time, together with the Bluetooth adapter of the host. The setting of version 0.14 is migrated, its behaviour stays the same.
+* The connection to a remote scan server is re-established when it was lost, a server that is down is reported once instead of every 10 seconds
+* The monitored services also apply to the advertisements of remote scan servers
 
 ### 0.14.1 (2025-02-09)
 * Fixed compatibility issues with newer OS and Node.js versions (#874)
