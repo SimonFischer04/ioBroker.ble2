@@ -26,7 +26,10 @@ __export(remote_gateway_exports, {
 module.exports = __toCommonJS(remote_gateway_exports);
 var import_ad_parser = require("../lib/ad-parser");
 var import_advertisement = require("../lib/advertisement");
+var import_gateway_error = require("../lib/gateway-error");
 var import_gateway_protocol = require("../lib/gateway-protocol");
+var import_send_request = require("../lib/send-request");
+var import_remote_gatt_link = require("./remote-gatt-link");
 const GATEWAY_ID_REGEX = /^[A-Za-z0-9_.-]{1,64}$/;
 const BASE64_REGEX = /^[A-Za-z0-9+/]*={0,2}$/;
 const MAX_ANNOUNCED_GATEWAYS = 100;
@@ -146,11 +149,113 @@ class RemoteGatewayTransport {
   constructor(ctx, epoch) {
     this.ctx = ctx;
     this.epoch = epoch;
+    const adapter = ctx.adapter;
+    this.requestSender = {
+      sendTo: (instance, command, message, callback) => adapter.sendTo(
+        instance,
+        command,
+        message,
+        callback
+      ),
+      setTimeout: (callback, ms) => adapter.setTimeout(callback, ms),
+      clearTimeout: (timer) => adapter.clearTimeout(timer)
+    };
   }
   senders = /* @__PURE__ */ new Set();
+  requestSender;
+  links = /* @__PURE__ */ new Map();
   start() {
   }
   stop() {
+    for (const link of [...this.links.values()])
+      link.handleEnded();
+  }
+  async connect(gatewayId, address, addressType) {
+    var _a;
+    const separator = gatewayId.indexOf(":");
+    if (separator < 1) {
+      throw new import_gateway_error.GatewayError(
+        "UNKNOWN_GATEWAY",
+        `${gatewayId} is not a gateway of another adapter`
+      );
+    }
+    const instance = gatewayId.slice(0, separator);
+    const localGatewayId = gatewayId.slice(separator + 1);
+    const result = await (0, import_send_request.sendRequest)(
+      this.requestSender,
+      instance,
+      import_gateway_protocol.GattCommands.connect,
+      {
+        gatewayId: localGatewayId,
+        address,
+        addressType,
+        epoch: this.epoch
+      },
+      import_remote_gatt_link.GATT_TIMEOUTS_MS.connect
+    );
+    const mtu = Number.isInteger(result == null ? void 0 : result.mtu) && result.mtu >= 23 ? result.mtu : 23;
+    const key = `${gatewayId}|${address}`;
+    (_a = this.links.get(key)) == null ? void 0 : _a.handleEnded();
+    const link = new import_remote_gatt_link.RemoteGattLink(
+      this.requestSender,
+      this.ctx.adapter.log,
+      gatewayId,
+      instance,
+      localGatewayId,
+      address,
+      mtu,
+      () => {
+        if (this.links.get(key) === link)
+          this.links.delete(key);
+      }
+    );
+    this.links.set(key, link);
+    return link;
+  }
+  handleConnectionState(sender, payload) {
+    const target = this.parseTarget(sender, payload);
+    if (!target) {
+      this.ctx.adapter.log.debug(
+        `Ignoring an invalid gateway:connectionState from ${sender}`
+      );
+      return;
+    }
+    const link = this.links.get(target);
+    if (!link)
+      return;
+    this.ctx.adapter.log.debug(
+      `The connection ${target} was ended by the gateway`
+    );
+    link.handleEnded();
+  }
+  handleNotification(sender, payload) {
+    var _a;
+    const target = this.parseTarget(sender, payload);
+    if (!target)
+      return;
+    const { handle, data } = payload;
+    if (!Number.isInteger(handle) || handle < 0 || typeof data !== "string" || !BASE64_REGEX.test(data)) {
+      return;
+    }
+    (_a = this.links.get(target)) == null ? void 0 : _a.handleNotification(handle, Buffer.from(data, "base64"));
+  }
+  gatewayOffline(gatewayId) {
+    for (const [key, link] of [...this.links]) {
+      if (key.startsWith(`${gatewayId}|`))
+        link.handleEnded();
+    }
+  }
+  parseTarget(sender, payload) {
+    if (payload == null || typeof payload !== "object")
+      return void 0;
+    const { gatewayId, address } = payload;
+    if (typeof gatewayId !== "string" || !GATEWAY_ID_REGEX.test(gatewayId)) {
+      return void 0;
+    }
+    const normalized = (0, import_advertisement.normalizeAddress)(address);
+    if (!normalized)
+      return void 0;
+    return `${sender}:${gatewayId}|${normalized}`;
   }
   handleAdvertisements(sender, payload) {
     const parsed = parseGatewayMessage(sender, payload);

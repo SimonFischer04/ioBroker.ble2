@@ -19,6 +19,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 var utils = __toESM(require("@iobroker/adapter-core"));
 var import_message_handler = require("./api/message-handler");
+var import_connection_manager = require("./connections/connection-manager");
 var import_device_registry = require("./devices/device-registry");
 var import_gateway_registry = require("./gateways/gateway-registry");
 var import_global = require("./lib/global");
@@ -33,6 +34,7 @@ var import_server_list = require("./transports/server-list");
 let processor;
 let gateways;
 let remoteGateway;
+let connections;
 let handleMessage;
 const transports = [];
 const adapter = utils.adapter({
@@ -128,11 +130,21 @@ const adapter = utils.adapter({
     };
     remoteGateway = new import_remote_gateway.RemoteGatewayTransport(filteredContext, epoch);
     transports.push(remoteGateway);
+    gateways.onGatewayOffline = (gatewayId) => remoteGateway == null ? void 0 : remoteGateway.gatewayOffline(gatewayId);
+    connections = new import_connection_manager.ConnectionManager({
+      log: adapter.log,
+      devices,
+      gateways,
+      provider: remoteGateway,
+      setTimeout: (callback, ms) => adapter.setTimeout(callback, ms),
+      clearTimeout: (timer) => adapter.clearTimeout(timer)
+    });
     handleMessage = (0, import_message_handler.createMessageHandler)({
       adapter,
       gateways,
       devices,
-      remoteGateway
+      remoteGateway,
+      connections
     });
     const useLocalScanner = adapter.config.localScanner !== false;
     const { servers, invalid } = (0, import_server_list.parseServerList)(
@@ -168,6 +180,7 @@ const adapter = utils.adapter({
   },
   unload: (callback) => {
     try {
+      connections == null ? void 0 : connections.dispose();
       for (const transport of transports)
         transport.stop();
       processor == null ? void 0 : processor.dispose();

@@ -82,10 +82,21 @@ The types of the interface are defined in [`src/lib/gateway-protocol.ts`](src/li
 | Command | Result |
 |---|---|
 | `gateway:advertisements` | Delivers advertisements, see above |
-| `getGateways` | All sources of advertisements: `[{ id, type, sender, connected, lastAdvertisement, advertisements, duplicates }]` |
+| `gateway:announce` | Announces gateways that can connect to devices, see below |
+| `getGateways` | All sources of advertisements: `[{ id, type, sender, connected, lastAdvertisement, advertisements, duplicates, connect, freeSlots, slotLimit }]` |
 | `getDevices` | The devices received in the last 10 minutes: `[{ address, name, gateways: [{ id, rssi, lastSeen }] }]`, strongest gateway first |
+| `discoverServices` | `{ address }` → `{ services: [{ uuid, handle, characteristics: [{ uuid, handle, properties, descriptors }] }] }` |
+| `readCharacteristic` | `{ address, service, characteristic }` → `{ data }` (base64) |
+| `writeCharacteristic` | `{ address, service, characteristic, data, withResponse? }` → `{}`. `withResponse` defaults to `true` |
 
-For every gateway the states `gateways.<id>.connected` and `gateways.<id>.lastAdvertisement` are created. `info.connection` is `true` while at least one source of advertisements is active.
+For every gateway the states `gateways.<id>.connected` and `gateways.<id>.lastAdvertisement` are created, for gateways that can connect also `gateways.<id>.freeSlots`. `info.connection` is `true` while at least one source of advertisements is active.
+
+### Connecting to devices
+`discoverServices`, `readCharacteristic` and `writeCharacteristic` connect to a device, do their work and disconnect again. UUIDs can be given short (`"1f10"`, `"0x1F10"`) or in full, with or without dashes. The adapter connects through the gateway that receives the device best and can connect, tries the next one if that fails, and runs only one request per device at a time. Errors come as `{ error: { code, message } }`, e.g. `NO_GATEWAY` when no gateway that can connect receives the device.
+
+So far, only gateways of other adapters can connect, e.g. ESPHome Bluetooth proxies through ioBroker.esphome, not the Bluetooth adapter of the host or the remote scan servers.
+
+An adapter that provides such gateways announces them with `gateway:announce` (`{ protocol: "ble-gateway/1", gateways: [{ gatewayId, connect: true, freeSlots, slotLimit }] }`), answers the `gatt:*` commands this adapter sends to it and reports ended connections and notifications with `gateway:connectionState` and `gateway:notification`. The details are in [`docs/spec-phase-2-gatt.md`](docs/spec-phase-2-gatt.md), part A, and the types in `src/lib/gateway-protocol.ts`.
 
 ## Plugin system
 The adapter supports extension via plugins. Those define which advertised services should be listened to and how to translate the data. The plugin structure is defined in https://github.com/AlCalzone/ioBroker.ble/blob/master/src/plugins/plugin.ts and an example of a working plugin is defined here https://github.com/AlCalzone/ioBroker.ble/blob/master/src/plugins/_default.ts
@@ -113,6 +124,7 @@ If you have any device transmitting specially encoded information via advertisem
 * Several remote scan servers (`bin/blerp.js`) can be used at the same time, together with the Bluetooth adapter of the host. The setting of version 0.14 is migrated, its behaviour stays the same.
 * The connection to a remote scan server is re-established when it was lost, a server that is down is reported once instead of every 10 seconds
 * The monitored services also apply to the advertisements of remote scan servers
+* Connections to devices through gateways of other adapters, e.g. ESPHome Bluetooth proxies: `discoverServices`, `readCharacteristic` and `writeCharacteristic`
 
 ### 0.14.1 (2025-02-09)
 * Fixed compatibility issues with newer OS and Node.js versions (#874)
