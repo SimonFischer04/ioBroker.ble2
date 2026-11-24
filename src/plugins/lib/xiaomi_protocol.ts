@@ -27,6 +27,8 @@ export enum XiaomiEventIDs_Internal {
 	Fertility = 0x1009,
 	Battery = 0x100a,
 	TemperatureAndHumidity = 0x100d, // 2 byte temperature / 10, 2 byte humidity / 10
+	PowerState = 0x1012, // 0 = off, 1 = on
+	ConsumableRemaining = 0x1013, // remaining amount in percent
 }
 
 export type XiaomiEventIDs =
@@ -36,7 +38,9 @@ export type XiaomiEventIDs =
 	| "moisture"
 	| "fertility"
 	| "battery"
-	| "kettleStatus";
+	| "kettleStatus"
+	| "powerState"
+	| "consumableRemaining";
 
 export type XiaomiEvent = Partial<Record<XiaomiEventIDs, number>>;
 type ValueTransform = (
@@ -72,6 +76,8 @@ const valueTransforms: Partial<
 		kettleStatus: val & 0xff,
 		temperature: val >>> 8,
 	}),
+	PowerState: (val) => ({ powerState: val }),
+	ConsumableRemaining: (val) => ({ consumableRemaining: val }),
 };
 
 export class XiaomiAdvertisement {
