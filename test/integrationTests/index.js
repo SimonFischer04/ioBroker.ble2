@@ -4,6 +4,7 @@ const gateway_advertisement_tests = require("./gateway_advertisement_tests");
 const gateway_lifecycle_tests = require("./gateway_lifecycle_tests");
 const hub_mode_tests = require("./hub_mode_tests");
 const multi_gateway_tests = require("./multi_gateway_tests");
+const remote_server_tests = require("./remote_server_tests");
 
 // Every suite exports runTests(suite) and is registered here.
 //
@@ -25,4 +26,7 @@ exports.runTests = function (suite) {
 
 	// Gateways appearing, going offline and coming back
 	gateway_lifecycle_tests.runTests(suite);
+
+	// Remote scan servers (bin/blerp.js), played by a fake TCP server
+	remote_server_tests.runTests(suite);
 };

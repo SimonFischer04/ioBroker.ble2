@@ -1,5 +1,7 @@
 // @ts-check
 
+const { spawnSync } = require("child_process");
+
 /**
  * Helpers to talk to the adapter the way another adapter does: with sendTo
  */
@@ -370,6 +372,29 @@ async function stopAdapter(harness) {
 	}
 }
 
+/**
+ * Lists the command lines of the child processes of a process
+ *
+ * @param {number} pid - ID of the parent process
+ * @returns {string[] | undefined} undefined if they cannot be determined on this platform
+ */
+function getChildProcesses(pid) {
+	if (process.platform !== "linux") {
+		return undefined;
+	}
+	const result = spawnSync("ps", ["-o", "args=", "--ppid", String(pid)], {
+		encoding: "utf8",
+	});
+	if (result.error) {
+		return undefined;
+	}
+	// ps exits with 1 when there is no child process
+	return result.stdout
+		.split("\n")
+		.map((line) => line.trim())
+		.filter((line) => line !== "");
+}
+
 module.exports = {
 	NAMESPACE,
 	SENDER,
@@ -379,6 +404,7 @@ module.exports = {
 	buildAdvertisement,
 	delay,
 	deliver,
+	getChildProcesses,
 	getMessageClient,
 	getValue,
 	sendToAdapter,

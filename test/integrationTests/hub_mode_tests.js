@@ -12,7 +12,6 @@
  * adapter must keep running and still accept advertisements from gateways.
  */
 
-const { spawnSync } = require("child_process");
 const { expect } = require("chai");
 const {
 	PACKETS,
@@ -20,6 +19,7 @@ const {
 	allowNewDevices,
 	delay,
 	deliver,
+	getChildProcesses,
 	getValue,
 	sendToAdapter,
 	startAdapter,
@@ -29,29 +29,6 @@ const {
 } = require("./helpers");
 
 const DEVICE = "a4:c1:38:12:34:56";
-
-/**
- * Lists the command lines of the child processes of a process
- *
- * @param {number} pid - ID of the parent process
- * @returns {string[] | undefined} undefined if they cannot be determined on this platform
- */
-function getChildProcesses(pid) {
-	if (process.platform !== "linux") {
-		return undefined;
-	}
-	const result = spawnSync("ps", ["-o", "args=", "--ppid", String(pid)], {
-		encoding: "utf8",
-	});
-	if (result.error) {
-		return undefined;
-	}
-	// ps exits with 1 when there is no child process
-	return result.stdout
-		.split("\n")
-		.map((line) => line.trim())
-		.filter((line) => line !== "");
-}
 
 /** @param {(name: string, fn: (getHarness: () => any) => void) => void} suite */
 exports.runTests = function (suite) {
