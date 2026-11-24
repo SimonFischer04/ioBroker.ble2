@@ -37,6 +37,9 @@ const adapter = utils.adapter({
 		// Cache objects for 1 minute
 		_.objectCache = new ObjectCache(60000);
 
+		// When this start happened. Gateways that keep connections for us learn from it that we restarted.
+		const epoch = Date.now();
+
 		// Workaround für fehlende InstanceObjects nach update
 		await _.ensureInstanceObjects();
 
@@ -163,7 +166,7 @@ const adapter = utils.adapter({
 		};
 
 		// Other adapters can always deliver advertisements
-		remoteGateway = new RemoteGatewayTransport(filteredContext);
+		remoteGateway = new RemoteGatewayTransport(filteredContext, epoch);
 		transports.push(remoteGateway);
 		handleMessage = createMessageHandler({
 			adapter,

@@ -35,6 +35,7 @@ class GatewayRegistry {
   timer;
   anyConnected = false;
   disposed = false;
+  onGatewayOffline;
   async init() {
     const states = await this.adapter.getStatesAsync(
       `${this.adapter.namespace}.gateways.*`
@@ -59,8 +60,60 @@ class GatewayRegistry {
   }
   list() {
     return [...this.gateways.values()].map(
-      ({ objectId, queue, lastAdvertisementWritten, ...info }) => info
+      (gateway) => this.toInfo(gateway)
     );
+  }
+  get(id) {
+    const gateway = this.gateways.get(id);
+    return gateway && this.toInfo(gateway);
+  }
+  toInfo({
+    objectId,
+    queue,
+    lastAdvertisementWritten,
+    lastMessage,
+    freeSlotsObject,
+    freeSlotsWritten,
+    ...info
+  }) {
+    return info;
+  }
+  announce(description, capabilities, now = Date.now()) {
+    const gateway = this.getOrCreate(description);
+    gateway.connect = capabilities.connect;
+    gateway.freeSlots = capabilities.freeSlots;
+    gateway.slotLimit = capabilities.slotLimit;
+    gateway.lastMessage = now;
+    this.updateConnected(gateway, true);
+    const freeSlots = capabilities.freeSlots;
+    if (freeSlots !== void 0 && freeSlots !== gateway.freeSlotsWritten) {
+      gateway.freeSlotsWritten = freeSlots;
+      const create = !gateway.freeSlotsObject;
+      gateway.freeSlotsObject = true;
+      this.enqueue(gateway, async () => {
+        if (create) {
+          await this.adapter.setObjectNotExistsAsync(
+            `${gateway.objectId}.freeSlots`,
+            {
+              type: "state",
+              common: {
+                name: "Free connection slots",
+                role: "value",
+                type: "number",
+                read: true,
+                write: false
+              },
+              native: {}
+            }
+          );
+        }
+        await this.adapter.setStateAsync(
+          `${gateway.objectId}.freeSlots`,
+          freeSlots,
+          true
+        );
+      });
+    }
   }
   setConnected(description, connected) {
     const gateway = this.getOrCreate(description);
@@ -70,6 +123,7 @@ class GatewayRegistry {
     const gateway = this.getOrCreate(description);
     gateway.advertisements += count;
     gateway.lastAdvertisement = now;
+    gateway.lastMessage = now;
     this.updateConnected(gateway, true);
     if (now - gateway.lastAdvertisementWritten >= this.options.lastAdvertisementIntervalMs) {
       gateway.lastAdvertisementWritten = now;
@@ -96,11 +150,10 @@ class GatewayRegistry {
     }
   }
   checkTimeouts(now = Date.now()) {
-    var _a;
     for (const gateway of this.gateways.values()) {
-      if (gateway.type === "remote" && gateway.connected && now - ((_a = gateway.lastAdvertisement) != null ? _a : 0) > this.options.remoteTimeoutMs) {
+      if (gateway.type === "remote" && gateway.connected && now - gateway.lastMessage > this.options.remoteTimeoutMs) {
         this.adapter.log.info(
-          `Gateway ${gateway.id} is offline: no advertisements for ${Math.round(
+          `Gateway ${gateway.id} is offline: no message for ${Math.round(
             this.options.remoteTimeoutMs / 1e3
           )} seconds`
         );
@@ -116,9 +169,12 @@ class GatewayRegistry {
         connected: false,
         advertisements: 0,
         duplicates: 0,
+        connect: false,
         objectId: `gateways.${this.toObjectId(description.id)}`,
         queue: Promise.resolve(),
-        lastAdvertisementWritten: 0
+        lastAdvertisementWritten: 0,
+        lastMessage: 0,
+        freeSlotsObject: false
       };
       this.gateways.set(description.id, gateway);
       if (description.type === "remote") {
@@ -146,6 +202,15 @@ class GatewayRegistry {
     if (anyConnected !== this.anyConnected) {
       this.anyConnected = anyConnected;
       this.adapter.setState("info.connection", anyConnected, true);
+    }
+    if (!connected && this.onGatewayOffline) {
+      try {
+        this.onGatewayOffline(gateway.id);
+      } catch (e) {
+        this.adapter.log.warn(
+          `Error while taking gateway ${gateway.id} offline: ${e.message}`
+        );
+      }
     }
   }
   toObjectId(gatewayId) {

@@ -18,6 +18,12 @@ interface GatewayEntry extends GatewayInfo {
 	/** Serializes the DB writes for this gateway, so they arrive in order */
 	queue: Promise<void>;
 	lastAdvertisementWritten: number;
+	/** When the gateway last delivered or announced anything */
+	lastMessage: number;
+	/** Whether the state freeSlots was created */
+	freeSlotsObject: boolean;
+	/** The value last written to the state freeSlots */
+	freeSlotsWritten?: number;
 }
 
 export type GatewayDescription = Pick<GatewayInfo, "id" | "type" | "sender">;
@@ -40,6 +46,9 @@ export class GatewayRegistry {
 	private timer: NodeJS.Timeout | undefined;
 	private anyConnected = false;
 	private disposed = false;
+
+	/** Called when a gateway goes offline */
+	public onGatewayOffline?: (gatewayId: string) => void;
 
 	/** Must be called once before gateways are reported */
 	public async init(): Promise<void> {
@@ -69,9 +78,75 @@ export class GatewayRegistry {
 
 	/** Lists all gateways that were active since the adapter started */
 	public list(): GatewayInfo[] {
-		return [...this.gateways.values()].map(
-			({ objectId, queue, lastAdvertisementWritten, ...info }) => info,
+		return [...this.gateways.values()].map((gateway) =>
+			this.toInfo(gateway),
 		);
+	}
+
+	/** The gateway with this (full) ID */
+	public get(id: string): GatewayInfo | undefined {
+		const gateway = this.gateways.get(id);
+		return gateway && this.toInfo(gateway);
+	}
+
+	private toInfo({
+		objectId,
+		queue,
+		lastAdvertisementWritten,
+		lastMessage,
+		freeSlotsObject,
+		freeSlotsWritten,
+		...info
+	}: GatewayEntry): GatewayInfo {
+		return info;
+	}
+
+	/** Reports what a gateway can do. This also marks it as active. */
+	public announce(
+		description: GatewayDescription,
+		capabilities: {
+			connect: boolean;
+			freeSlots?: number;
+			slotLimit?: number;
+		},
+		now: number = Date.now(),
+	): void {
+		const gateway = this.getOrCreate(description);
+		gateway.connect = capabilities.connect;
+		gateway.freeSlots = capabilities.freeSlots;
+		gateway.slotLimit = capabilities.slotLimit;
+		gateway.lastMessage = now;
+		this.updateConnected(gateway, true);
+
+		const freeSlots = capabilities.freeSlots;
+		if (freeSlots !== undefined && freeSlots !== gateway.freeSlotsWritten) {
+			gateway.freeSlotsWritten = freeSlots;
+			const create = !gateway.freeSlotsObject;
+			gateway.freeSlotsObject = true;
+			this.enqueue(gateway, async () => {
+				if (create) {
+					await this.adapter.setObjectNotExistsAsync(
+						`${gateway.objectId}.freeSlots`,
+						{
+							type: "state",
+							common: {
+								name: "Free connection slots",
+								role: "value",
+								type: "number",
+								read: true,
+								write: false,
+							},
+							native: {},
+						},
+					);
+				}
+				await this.adapter.setStateAsync(
+					`${gateway.objectId}.freeSlots`,
+					freeSlots,
+					true,
+				);
+			});
+		}
 	}
 
 	/** Reports whether a gateway is active */
@@ -92,6 +167,7 @@ export class GatewayRegistry {
 		const gateway = this.getOrCreate(description);
 		gateway.advertisements += count;
 		gateway.lastAdvertisement = now;
+		gateway.lastMessage = now;
 		this.updateConnected(gateway, true);
 
 		if (
@@ -129,11 +205,10 @@ export class GatewayRegistry {
 			if (
 				gateway.type === "remote" &&
 				gateway.connected &&
-				now - (gateway.lastAdvertisement ?? 0) >
-					this.options.remoteTimeoutMs
+				now - gateway.lastMessage > this.options.remoteTimeoutMs
 			) {
 				this.adapter.log.info(
-					`Gateway ${gateway.id} is offline: no advertisements for ${Math.round(
+					`Gateway ${gateway.id} is offline: no message for ${Math.round(
 						this.options.remoteTimeoutMs / 1000,
 					)} seconds`,
 				);
@@ -154,6 +229,8 @@ export class GatewayRegistry {
 				objectId: `gateways.${this.toObjectId(description.id)}`,
 				queue: Promise.resolve(),
 				lastAdvertisementWritten: 0,
+				lastMessage: 0,
+				freeSlotsObject: false,
 			};
 			this.gateways.set(description.id, gateway);
 			if (description.type === "remote") {
@@ -181,6 +258,18 @@ export class GatewayRegistry {
 		if (anyConnected !== this.anyConnected) {
 			this.anyConnected = anyConnected;
 			this.adapter.setState("info.connection", anyConnected, true);
+		}
+
+		if (!connected && this.onGatewayOffline) {
+			try {
+				this.onGatewayOffline(gateway.id);
+			} catch (e) {
+				this.adapter.log.warn(
+					`Error while taking gateway ${gateway.id} offline: ${
+						(e as Error).message
+					}`,
+				);
+			}
 		}
 	}
 

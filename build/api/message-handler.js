@@ -59,6 +59,11 @@ function createMessageHandler(ctx) {
         );
         return;
       }
+      case import_gateway_protocol.GatewayCommands.announce: {
+        const sender = obj.from.replace(/^system\.adapter\./, "");
+        respond(ctx.remoteGateway.handleAnnounce(sender, obj.message));
+        return;
+      }
       case import_gateway_protocol.GatewayCommands.getGateways:
         respond({ error: null, result: ctx.gateways.list() });
         return;

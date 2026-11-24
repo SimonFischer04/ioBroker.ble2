@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../src/lib/gateway-error.ts"],
+  "sourcesContent": ["import type { GatewayErrorCode, GatewayResponse } from \"./gateway-protocol\";\n\n/** An error with one of the codes of the gateway interface */\nexport class GatewayError extends Error {\n\tpublic constructor(\n\t\tpublic readonly code: GatewayErrorCode,\n\t\tmessage: string,\n\t) {\n\t\tsuper(message);\n\t\tthis.name = \"GatewayError\";\n\t}\n}\n\n/** The answer to send for an error. Anything that is not a GatewayError becomes GATT_ERROR. */\nexport function toErrorResponse(error: unknown): GatewayResponse<never> {\n\tif (error instanceof GatewayError) {\n\t\treturn { error: { code: error.code, message: error.message } };\n\t}\n\tconst message =\n\t\terror instanceof Error\n\t\t\t? error.message\n\t\t\t: String(error ?? \"Unknown error\");\n\treturn { error: { code: \"GATT_ERROR\", message } };\n}\n"],
+  "mappings": ";;;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAGO,MAAM,qBAAqB,MAAM;AAAA,EAChC,YACU,MAChB,SACC;AACD,UAAM,OAAO;AAHG;AAIhB,SAAK,OAAO;AAAA,EACb;AACD;AAGO,SAAS,gBAAgB,OAAwC;AACvE,MAAI,iBAAiB,cAAc;AAClC,WAAO,EAAE,OAAO,EAAE,MAAM,MAAM,MAAM,SAAS,MAAM,QAAQ,EAAE;AAAA,EAC9D;AACA,QAAM,UACL,iBAAiB,QACd,MAAM,UACN,OAAO,wBAAS,eAAe;AACnC,SAAO,EAAE,OAAO,EAAE,MAAM,cAAc,QAAQ,EAAE;AACjD;",
+  "names": []
+}

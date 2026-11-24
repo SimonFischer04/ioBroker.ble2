@@ -40,6 +40,7 @@ const adapter = utils.adapter({
   ready: async () => {
     import_global.Global.adapter = adapter;
     import_global.Global.objectCache = new import_object_cache.ObjectCache(6e4);
+    const epoch = Date.now();
     await import_global.Global.ensureInstanceObjects();
     const migration = (0, import_server_list.migrateServerSettings)(adapter.config);
     if (migration) {
@@ -119,12 +120,13 @@ const adapter = utils.adapter({
     const filteredContext = {
       ...transportContext,
       onAdvertisement: (peripheral) => {
+        devices.track(peripheral);
         if ((0, import_service_filter.matchesServiceFilter)(peripheral, services)) {
           handleAdvertisement(peripheral);
         }
       }
     };
-    remoteGateway = new import_remote_gateway.RemoteGatewayTransport(filteredContext);
+    remoteGateway = new import_remote_gateway.RemoteGatewayTransport(filteredContext, epoch);
     transports.push(remoteGateway);
     handleMessage = (0, import_message_handler.createMessageHandler)({
       adapter,

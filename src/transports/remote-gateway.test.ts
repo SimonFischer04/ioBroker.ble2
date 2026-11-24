@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import { MAX_ADVERTISEMENTS_PER_MESSAGE } from "../lib/gateway-protocol";
 import {
+	parseAnnounceMessage,
 	parseGatewayMessage,
 	type ParsedGatewayMessage,
 } from "./remote-gateway";
@@ -110,6 +111,123 @@ describe("transports/remote-gateway => parseGatewayMessage()", () => {
 				items: new Array(MAX_ADVERTISEMENTS_PER_MESSAGE + 1).fill({}),
 			},
 			/more than/,
+		);
+	});
+});
+
+describe("transports/remote-gateway => parseAnnounceMessage()", () => {
+	const valid = {
+		protocol: "ble-gateway/1",
+		gateways: [
+			{
+				gatewayId: "proxy-og",
+				connect: true,
+				freeSlots: 3,
+				slotLimit: 3,
+			},
+			{ gatewayId: "proxy-eg", connect: false },
+		],
+	};
+
+	function expectError(
+		payload: unknown,
+		code: string,
+		message: RegExp,
+	): void {
+		const result = parseAnnounceMessage("esphome.0", payload) as any;
+		expect(result.error?.code, JSON.stringify(payload)).to.equal(code);
+		expect(result.error.message).to.match(message);
+	}
+
+	it("returns the gateways with their full IDs", () => {
+		expect(parseAnnounceMessage("esphome.0", valid)).to.deep.equal({
+			gateways: [
+				{
+					id: "esphome.0:proxy-og",
+					connect: true,
+					freeSlots: 3,
+					slotLimit: 3,
+				},
+				{
+					id: "esphome.0:proxy-eg",
+					connect: false,
+					freeSlots: undefined,
+					slotLimit: undefined,
+				},
+			],
+		});
+	});
+
+	it("accepts an empty list", () => {
+		expect(
+			parseAnnounceMessage("esphome.0", { ...valid, gateways: [] }),
+		).to.deep.equal({ gateways: [] });
+	});
+
+	it("rejects another protocol", () => {
+		expectError(
+			{ ...valid, protocol: "ble-gateway/2" },
+			"UNSUPPORTED_PROTOCOL",
+			/ble-gateway\/1/,
+		);
+		expectError({ gateways: [] }, "UNSUPPORTED_PROTOCOL", /ble-gateway\/1/);
+	});
+
+	it("rejects messages that are not understood", () => {
+		expectError(undefined, "INVALID_PAYLOAD", /object/);
+		expectError(
+			{ protocol: "ble-gateway/1" },
+			"INVALID_PAYLOAD",
+			/gateways/,
+		);
+		expectError(
+			{ protocol: "ble-gateway/1", gateways: {} },
+			"INVALID_PAYLOAD",
+			/gateways/,
+		);
+		expectError(
+			{
+				protocol: "ble-gateway/1",
+				gateways: new Array(101).fill({
+					gatewayId: "p",
+					connect: true,
+				}),
+			},
+			"INVALID_PAYLOAD",
+			/more than 100/,
+		);
+	});
+
+	it("rejects the whole message for one invalid gateway", () => {
+		const withGateway = (gateway: unknown): unknown => ({
+			protocol: "ble-gateway/1",
+			gateways: [valid.gateways[0], gateway],
+		});
+		expectError(withGateway(null), "INVALID_PAYLOAD", /object/);
+		expectError(
+			withGateway({ connect: true }),
+			"INVALID_PAYLOAD",
+			/gatewayId/,
+		);
+		expectError(
+			withGateway({ gatewayId: "proxy og", connect: true }),
+			"INVALID_PAYLOAD",
+			/gatewayId/,
+		);
+		expectError(
+			withGateway({ gatewayId: "p", connect: "yes" }),
+			"INVALID_PAYLOAD",
+			/connect/,
+		);
+		expectError(
+			withGateway({ gatewayId: "p", connect: true, freeSlots: -1 }),
+			"INVALID_PAYLOAD",
+			/freeSlots/,
+		);
+		expectError(
+			withGateway({ gatewayId: "p", connect: true, slotLimit: 1.5 }),
+			"INVALID_PAYLOAD",
+			/slotLimit/,
 		);
 	});
 });

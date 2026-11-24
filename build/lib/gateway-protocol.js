@@ -20,20 +20,36 @@ var gateway_protocol_exports = {};
 __export(gateway_protocol_exports, {
   GATEWAY_PROTOCOL: () => GATEWAY_PROTOCOL,
   GatewayCommands: () => GatewayCommands,
+  GattCommands: () => GattCommands,
   MAX_ADVERTISEMENTS_PER_MESSAGE: () => MAX_ADVERTISEMENTS_PER_MESSAGE
 });
 module.exports = __toCommonJS(gateway_protocol_exports);
 const GATEWAY_PROTOCOL = "ble-gateway/1";
 const GatewayCommands = {
   advertisements: "gateway:advertisements",
+  announce: "gateway:announce",
+  connectionState: "gateway:connectionState",
+  notification: "gateway:notification",
   getGateways: "getGateways",
-  getDevices: "getDevices"
+  getDevices: "getDevices",
+  discoverServices: "discoverServices",
+  readCharacteristic: "readCharacteristic",
+  writeCharacteristic: "writeCharacteristic"
+};
+const GattCommands = {
+  connect: "gatt:connect",
+  disconnect: "gatt:disconnect",
+  getServices: "gatt:getServices",
+  read: "gatt:read",
+  write: "gatt:write",
+  subscribe: "gatt:subscribe"
 };
 const MAX_ADVERTISEMENTS_PER_MESSAGE = 500;
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   GATEWAY_PROTOCOL,
   GatewayCommands,
+  GattCommands,
   MAX_ADVERTISEMENTS_PER_MESSAGE
 });
 //# sourceMappingURL=gateway-protocol.js.map

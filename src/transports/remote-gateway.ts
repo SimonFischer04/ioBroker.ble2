@@ -1,14 +1,19 @@
 import { parseAdvertisementData } from "../lib/ad-parser";
 import { normalizeAddress, type PeripheralInfo } from "../lib/advertisement";
 import {
+	GATEWAY_PROTOCOL,
 	MAX_ADVERTISEMENTS_PER_MESSAGE,
 	type GatewayAdvertisementsResult,
+	type GatewayAnnounceResult,
 	type GatewayResponse,
 } from "../lib/gateway-protocol";
 import type { Transport, TransportContext } from "./transport";
 
 const GATEWAY_ID_REGEX = /^[A-Za-z0-9_.-]{1,64}$/;
-const BASE64_REGEX = /^[A-Za-z0-9+/]*={0,2}$/;
+/** Base64 as the gateway interface transports binary data */
+export const BASE64_REGEX = /^[A-Za-z0-9+/]*={0,2}$/;
+/** At most this many gateways in one "gateway:announce" */
+const MAX_ANNOUNCED_GATEWAYS = 100;
 /** Extended advertisements can be up to 1650 bytes long */
 const MAX_DATA_LENGTH = 1650;
 const ALIVE_REGEX = /^system\.adapter\.(.+)\.alive$/;
@@ -23,6 +28,83 @@ export interface ParsedGatewayMessage {
 
 function invalid(message: string): GatewayResponse<never> {
 	return { error: { code: "INVALID_PAYLOAD", message } };
+}
+
+/** A gateway as "gateway:announce" reports it, with its full ID */
+export interface AnnouncedGateway {
+	/** "<sender>:<gatewayId>" */
+	id: string;
+	connect: boolean;
+	freeSlots?: number;
+	slotLimit?: number;
+}
+
+function isCount(value: unknown): boolean {
+	return (
+		value === undefined ||
+		(Number.isInteger(value) && (value as number) >= 0)
+	);
+}
+
+/** Validates the payload of "gateway:announce" */
+export function parseAnnounceMessage(
+	sender: string,
+	payload: unknown,
+): { gateways: AnnouncedGateway[] } | GatewayResponse<never> {
+	if (payload == null || typeof payload !== "object") {
+		return invalid("The message must be an object");
+	}
+	const { protocol, gateways } = payload as Record<string, unknown>;
+	if (protocol !== GATEWAY_PROTOCOL) {
+		return {
+			error: {
+				code: "UNSUPPORTED_PROTOCOL",
+				message: `Only the protocol "${GATEWAY_PROTOCOL}" is supported`,
+			},
+		};
+	}
+	if (!Array.isArray(gateways)) {
+		return invalid(`"gateways" must be an array`);
+	}
+	if (gateways.length > MAX_ANNOUNCED_GATEWAYS) {
+		return invalid(
+			`"gateways" must not contain more than ${MAX_ANNOUNCED_GATEWAYS} gateways`,
+		);
+	}
+
+	const result: AnnouncedGateway[] = [];
+	for (const entry of gateways) {
+		if (entry == null || typeof entry !== "object") {
+			return invalid("Every gateway must be an object");
+		}
+		const { gatewayId, connect, freeSlots, slotLimit } = entry as Record<
+			string,
+			unknown
+		>;
+		if (
+			typeof gatewayId !== "string" ||
+			!GATEWAY_ID_REGEX.test(gatewayId)
+		) {
+			return invalid(
+				`"gatewayId" must consist of 1 to 64 letters, digits, "_", "-" or "."`,
+			);
+		}
+		if (typeof connect !== "boolean") {
+			return invalid(`"connect" of ${gatewayId} must be true or false`);
+		}
+		if (!isCount(freeSlots) || !isCount(slotLimit)) {
+			return invalid(
+				`"freeSlots" and "slotLimit" of ${gatewayId} must be whole numbers from 0`,
+			);
+		}
+		result.push({
+			id: `${sender}:${gatewayId}`,
+			connect,
+			freeSlots: freeSlots as number | undefined,
+			slotLimit: slotLimit as number | undefined,
+		});
+	}
+	return { gateways: result };
 }
 
 /**
@@ -108,7 +190,11 @@ function parseItem(
  * Each sender can deliver for several gateways, e.g. one per ESPHome Bluetooth proxy.
  */
 export class RemoteGatewayTransport implements Transport {
-	public constructor(private readonly ctx: TransportContext) {}
+	public constructor(
+		private readonly ctx: TransportContext,
+		/** When this adapter was started, see GatewayAnnounceResult.epoch */
+		private readonly epoch: number,
+	) {}
 
 	private readonly senders = new Set<string>();
 
@@ -146,6 +232,30 @@ export class RemoteGatewayTransport implements Transport {
 				accepted: parsed.peripherals.length,
 				rejected: parsed.rejected,
 			},
+		};
+	}
+
+	/**
+	 * Handles a "gateway:announce" message
+	 * @param sender The instance that sent the message, e.g. "esphome.0"
+	 */
+	public handleAnnounce(
+		sender: string,
+		payload: unknown,
+	): GatewayResponse<GatewayAnnounceResult> {
+		const parsed = parseAnnounceMessage(sender, payload);
+		if ("error" in parsed) return parsed;
+
+		this.watchSender(sender);
+		for (const { id, ...capabilities } of parsed.gateways) {
+			this.ctx.gateways.announce(
+				{ id, type: "remote", sender },
+				capabilities,
+			);
+		}
+		return {
+			error: null,
+			result: { protocol: GATEWAY_PROTOCOL, epoch: this.epoch },
 		};
 	}
 

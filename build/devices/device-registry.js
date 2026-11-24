@@ -34,8 +34,8 @@ class DeviceRegistry {
   options;
   devices = /* @__PURE__ */ new Map();
   lastPrune = 0;
-  observe(peripheral, now = Date.now()) {
-    var _a;
+  track(peripheral, now = Date.now()) {
+    var _a, _b;
     const gatewayId = (_a = peripheral.gatewayId) != null ? _a : UNKNOWN_GATEWAY;
     let device = this.devices.get(peripheral.address);
     if (!device) {
@@ -48,13 +48,24 @@ class DeviceRegistry {
       this.devices.set(peripheral.address, device);
     }
     device.lastSeen = now;
-    if (peripheral.advertisement.localName) {
+    if ((_b = peripheral.advertisement) == null ? void 0 : _b.localName) {
       device.name = peripheral.advertisement.localName;
+    }
+    if (peripheral.addressType === "public" || peripheral.addressType === "random") {
+      device.addressType = peripheral.addressType;
     }
     device.gateways.set(gatewayId, {
       rssi: peripheral.rssi,
       lastSeen: now
     });
+    if (now - this.lastPrune > 6e4)
+      this.prune(now);
+  }
+  observe(peripheral, now = Date.now()) {
+    var _a;
+    const gatewayId = (_a = peripheral.gatewayId) != null ? _a : UNKNOWN_GATEWAY;
+    this.track(peripheral, now);
+    const device = this.devices.get(peripheral.address);
     const fingerprint = getFingerprint(peripheral);
     const duplicate = device.processedFingerprint === fingerprint && device.processedGateway !== gatewayId && now - device.processedAt < this.options.dedupeWindowMs;
     if (!duplicate) {
@@ -70,9 +81,19 @@ class DeviceRegistry {
         bestGateway = id;
       }
     }
-    if (now - this.lastPrune > 6e4)
-      this.prune(now);
     return { duplicate, bestRssi, bestGateway };
+  }
+  getReceivers(address, now = Date.now()) {
+    const device = this.devices.get(address);
+    if (!device)
+      return [];
+    return [...device.gateways].filter(
+      ([, reception]) => now - reception.lastSeen <= this.options.rssiMaxAgeMs
+    ).map(([gatewayId, { rssi }]) => ({ gatewayId, rssi })).sort((a, b) => b.rssi - a.rssi);
+  }
+  getAddressType(address) {
+    var _a, _b;
+    return (_b = (_a = this.devices.get(address)) == null ? void 0 : _a.addressType) != null ? _b : "public";
   }
   getDevices(now = Date.now()) {
     this.prune(now);

@@ -59,6 +59,12 @@ export function createMessageHandler(
 				return;
 			}
 
+			case GatewayCommands.announce: {
+				const sender = obj.from.replace(/^system\.adapter\./, "");
+				respond(ctx.remoteGateway.handleAnnounce(sender, obj.message));
+				return;
+			}
+
 			case GatewayCommands.getGateways:
 				respond({ error: null, result: ctx.gateways.list() });
 				return;

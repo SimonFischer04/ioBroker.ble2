@@ -18,7 +18,9 @@ var __copyProps = (to, from, except, desc) => {
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 var remote_gateway_exports = {};
 __export(remote_gateway_exports, {
+  BASE64_REGEX: () => BASE64_REGEX,
   RemoteGatewayTransport: () => RemoteGatewayTransport,
+  parseAnnounceMessage: () => parseAnnounceMessage,
   parseGatewayMessage: () => parseGatewayMessage
 });
 module.exports = __toCommonJS(remote_gateway_exports);
@@ -27,10 +29,63 @@ var import_advertisement = require("../lib/advertisement");
 var import_gateway_protocol = require("../lib/gateway-protocol");
 const GATEWAY_ID_REGEX = /^[A-Za-z0-9_.-]{1,64}$/;
 const BASE64_REGEX = /^[A-Za-z0-9+/]*={0,2}$/;
+const MAX_ANNOUNCED_GATEWAYS = 100;
 const MAX_DATA_LENGTH = 1650;
 const ALIVE_REGEX = /^system\.adapter\.(.+)\.alive$/;
 function invalid(message) {
   return { error: { code: "INVALID_PAYLOAD", message } };
+}
+function isCount(value) {
+  return value === void 0 || Number.isInteger(value) && value >= 0;
+}
+function parseAnnounceMessage(sender, payload) {
+  if (payload == null || typeof payload !== "object") {
+    return invalid("The message must be an object");
+  }
+  const { protocol, gateways } = payload;
+  if (protocol !== import_gateway_protocol.GATEWAY_PROTOCOL) {
+    return {
+      error: {
+        code: "UNSUPPORTED_PROTOCOL",
+        message: `Only the protocol "${import_gateway_protocol.GATEWAY_PROTOCOL}" is supported`
+      }
+    };
+  }
+  if (!Array.isArray(gateways)) {
+    return invalid(`"gateways" must be an array`);
+  }
+  if (gateways.length > MAX_ANNOUNCED_GATEWAYS) {
+    return invalid(
+      `"gateways" must not contain more than ${MAX_ANNOUNCED_GATEWAYS} gateways`
+    );
+  }
+  const result = [];
+  for (const entry of gateways) {
+    if (entry == null || typeof entry !== "object") {
+      return invalid("Every gateway must be an object");
+    }
+    const { gatewayId, connect, freeSlots, slotLimit } = entry;
+    if (typeof gatewayId !== "string" || !GATEWAY_ID_REGEX.test(gatewayId)) {
+      return invalid(
+        `"gatewayId" must consist of 1 to 64 letters, digits, "_", "-" or "."`
+      );
+    }
+    if (typeof connect !== "boolean") {
+      return invalid(`"connect" of ${gatewayId} must be true or false`);
+    }
+    if (!isCount(freeSlots) || !isCount(slotLimit)) {
+      return invalid(
+        `"freeSlots" and "slotLimit" of ${gatewayId} must be whole numbers from 0`
+      );
+    }
+    result.push({
+      id: `${sender}:${gatewayId}`,
+      connect,
+      freeSlots,
+      slotLimit
+    });
+  }
+  return { gateways: result };
 }
 function parseGatewayMessage(sender, payload) {
   if (payload == null || typeof payload !== "object") {
@@ -88,8 +143,9 @@ function parseItem(item, gatewayId) {
   };
 }
 class RemoteGatewayTransport {
-  constructor(ctx) {
+  constructor(ctx, epoch) {
     this.ctx = ctx;
+    this.epoch = epoch;
   }
   senders = /* @__PURE__ */ new Set();
   start() {
@@ -116,6 +172,22 @@ class RemoteGatewayTransport {
       }
     };
   }
+  handleAnnounce(sender, payload) {
+    const parsed = parseAnnounceMessage(sender, payload);
+    if ("error" in parsed)
+      return parsed;
+    this.watchSender(sender);
+    for (const { id, ...capabilities } of parsed.gateways) {
+      this.ctx.gateways.announce(
+        { id, type: "remote", sender },
+        capabilities
+      );
+    }
+    return {
+      error: null,
+      result: { protocol: import_gateway_protocol.GATEWAY_PROTOCOL, epoch: this.epoch }
+    };
+  }
   watchSender(sender) {
     if (this.senders.has(sender))
       return;
@@ -139,7 +211,9 @@ class RemoteGatewayTransport {
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
+  BASE64_REGEX,
   RemoteGatewayTransport,
+  parseAnnounceMessage,
   parseGatewayMessage
 });
 //# sourceMappingURL=remote-gateway.js.map
