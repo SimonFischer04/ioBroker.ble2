@@ -1,146 +1,169 @@
 {
-    "type": "panel",
+    "type": "tabs",
     "i18n": true,
     "items": {
-        "server": {
-            "type": "text",
-            "label": "Use remote server:",
-            "placeholder": "address:port",
-            "help": "when configured, the local bluetooth adapter is not used",
-            "trim": false,
-            "xs": 12,
-            "sm": 6,
-            "md": 4,
-            "lg": 4,
-            "xl": 4
-        },
-        "hciDevice": {
-            "type": "number",
-            "label": "Select device:",
-            "help": "On linux this can be determined with `hciconfig`:",
-            "min": 0,
-            "step": 1,
-            "xs": 12,
-            "sm": 6,
-            "md": 4,
-            "lg": 4,
-            "xl": 4
-        },
-        "rssiThrottle": {
-            "type": "number",
-            "label": "RSSI update interval [ms]:",
-            "help": "Too frequent updates can slow down the admin.",
-            "min": 0,
-            "max": 10000,
-            "step": 1,
-            "xs": 12,
-            "sm": 6,
-            "md": 4,
-            "lg": 4,
-            "xl": 4
-        },
-        "services": {
-            "type": "text",
-            "label": "Monitored services, * for all services:",
-            "help": "Service characteristics as HEX codes or UUID, comma separated.",
-            "minRows": 3,
-            "trim": false,
-            "xs": 12,
-            "sm": 6,
-            "md": 6,
-            "lg": 6,
-            "xl": 6
-        },
-        "plugins": {
-            "type": "text",
-            "hidden": true,
-            "onChange": {
-                "alsoDependsOn": [
-                    "_pluginSelection"
-                ],
-                "calculateFunc": "(data._pluginSelection || []).join(',')"
-            },
-            "xs": 12,
-            "sm": 12,
-            "md": 12,
-            "lg": 12,
-            "xl": 12
-        },
-        "_pluginSelection": {
-            "type": "select",
-            "multiple": true,
-            "label": "Active plugins:",
-            "help": "Select the plugins for your sensors. Basic advertisement data is always available.",
-            "doNotSave": true,
-            "defaultFunc": "[...new Set((Array.isArray(data.plugins) ? data.plugins : String(data.plugins || '').split(',')).map(p => p.trim().toLowerCase()).filter(p => ['xiaomi', 'mi-flora', 'ruuvi-tag', 'bthome', 'mopeka'].includes(p)))]",
-            "options": [
-                {
-                    "label": "Xiaomi",
-                    "value": "xiaomi"
-                },
-                {
-                    "label": "Mi Flora",
-                    "value": "mi-flora"
-                },
-                {
-                    "label": "Ruuvi Tag",
-                    "value": "ruuvi-tag"
-                },
-                {
-                    "label": "BTHome",
-                    "value": "bthome"
-                },
-                {
-                    "label": "Mopeka Pro Check",
-                    "value": "mopeka"
-                }
-            ],
-            "xs": 12,
-            "sm": 6,
-            "md": 6,
-            "lg": 6,
-            "xl": 6
-        },
-        "allowEmptyDevices": {
-            "type": "checkbox",
-            "label": "Allow creation of devices without advertised data",
-            "xs": 12,
-            "sm": 6,
-            "md": 6,
-            "lg": 6,
-            "xl": 6
-        },
-        "_discovery": {
+        "_settings": {
             "type": "panel",
-            "xs": 12,
-            "sm": 6,
-            "md": 6,
-            "lg": 6,
-            "xl": 6,
+            "label": "Settings",
             "items": {
-                "_allowNewDevices": {
-                    "type": "state",
-                    "label": "Accept new devices",
-                    "oid": "options.allowNewDevices",
-                    "control": "switch",
-                    "foreign": false,
+                "server": {
+                    "type": "text",
+                    "label": "Use remote server:",
+                    "placeholder": "address:port",
+                    "help": "when configured, the local bluetooth adapter is not used",
+                    "trim": false,
+                    "xs": 12,
+                    "sm": 6,
+                    "md": 4,
+                    "lg": 4,
+                    "xl": 4
+                },
+                "hciDevice": {
+                    "type": "number",
+                    "label": "Select device:",
+                    "help": "On linux this can be determined with `hciconfig`:",
+                    "min": 0,
+                    "step": 1,
+                    "xs": 12,
+                    "sm": 6,
+                    "md": 4,
+                    "lg": 4,
+                    "xl": 4
+                },
+                "rssiThrottle": {
+                    "type": "number",
+                    "label": "RSSI update interval [ms]:",
+                    "help": "Too frequent updates can slow down the admin.",
+                    "min": 0,
+                    "max": 10000,
+                    "step": 1,
+                    "xs": 12,
+                    "sm": 6,
+                    "md": 4,
+                    "lg": 4,
+                    "xl": 4
+                },
+                "services": {
+                    "type": "text",
+                    "label": "Monitored services, * for all services:",
+                    "help": "Service characteristics as HEX codes or UUID, comma separated.",
+                    "minRows": 3,
+                    "trim": false,
+                    "xs": 12,
+                    "sm": 6,
+                    "md": 6,
+                    "lg": 6,
+                    "xl": 6
+                },
+                "plugins": {
+                    "type": "text",
+                    "hidden": true,
+                    "onChange": {
+                        "alsoDependsOn": [
+                            "_pluginSelection"
+                        ],
+                        "calculateFunc": "(data._pluginSelection || []).join(',')"
+                    },
                     "xs": 12,
                     "sm": 12,
                     "md": 12,
                     "lg": 12,
                     "xl": 12
                 },
-                "_discoveryHelp": {
-                    "type": "staticText",
-                    "text": "This will be automatically disabled after 5 minutes.",
+                "_pluginSelection": {
+                    "type": "select",
+                    "multiple": true,
+                    "label": "Active plugins:",
+                    "help": "Select the plugins for your sensors. Basic advertisement data is always available.",
+                    "doNotSave": true,
+                    "defaultFunc": "[...new Set((Array.isArray(data.plugins) ? data.plugins : String(data.plugins || '').split(',')).map(p => p.trim().toLowerCase()).filter(p => ['xiaomi', 'mi-flora', 'ruuvi-tag', 'bthome', 'mopeka'].includes(p)))]",
+                    "options": [
+                        {
+                            "label": "Xiaomi",
+                            "value": "xiaomi"
+                        },
+                        {
+                            "label": "Mi Flora",
+                            "value": "mi-flora"
+                        },
+                        {
+                            "label": "Ruuvi Tag",
+                            "value": "ruuvi-tag"
+                        },
+                        {
+                            "label": "BTHome",
+                            "value": "bthome"
+                        },
+                        {
+                            "label": "Mopeka Pro Check",
+                            "value": "mopeka"
+                        }
+                    ],
                     "xs": 12,
+                    "sm": 6,
+                    "md": 6,
+                    "lg": 6,
+                    "xl": 6
+                },
+                "allowEmptyDevices": {
+                    "type": "checkbox",
+                    "label": "Allow creation of devices without advertised data",
+                    "xs": 12,
+                    "sm": 6,
+                    "md": 6,
+                    "lg": 6,
+                    "xl": 6
+                },
+                "_discovery": {
+                    "type": "panel",
+                    "xs": 12,
+                    "sm": 6,
+                    "md": 6,
+                    "lg": 6,
+                    "xl": 6,
+                    "items": {
+                        "_allowNewDevices": {
+                            "type": "state",
+                            "label": "Accept new devices",
+                            "oid": "options.allowNewDevices",
+                            "control": "switch",
+                            "foreign": false,
+                            "xs": 12,
+                            "sm": 12,
+                            "md": 12,
+                            "lg": 12,
+                            "xl": 12
+                        },
+                        "_discoveryHelp": {
+                            "type": "staticText",
+                            "text": "This will be automatically disabled after 5 minutes.",
+                            "xs": 12,
+                            "style": {
+                                "fontSize": 12
+                            },
+                            "sm": 12,
+                            "md": 12,
+                            "lg": 12,
+                            "xl": 12
+                        }
+                    }
+                }
+            }
+        },
+        "_bluetooth": {
+            "type": "panel",
+            "label": "Bluetooth device map",
+            "items": {
+                "_bluetoothMap": {
+                    "type": "custom",
+                    "name": "Ble2AdminComponents/Components/BluetoothMap",
+                    "url": "build/customComponents.js",
+                    "bundlerType": "module",
+                    "guiApi": 2,
+                    "doNotSave": true,
                     "style": {
-                        "fontSize": 12
-                    },
-                    "sm": 12,
-                    "md": 12,
-                    "lg": 12,
-                    "xl": 12
+                        "width": "100%"
+                    }
                 }
             }
         }
