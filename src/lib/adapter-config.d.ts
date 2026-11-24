@@ -25,6 +25,13 @@ declare global {
 			localScanner?: boolean;
 			/** After how many seconds without advertisements an external gateway is offline */
 			gatewayTimeout?: number;
+			/**
+			 * MAC addresses of pvvx thermometers whose clock is set, separated by commas, semicolons,
+			 * spaces or line breaks. Missing in old configurations.
+			 */
+			pvvxDevices?: string;
+			/** Hours between two time syncs of a pvvx device, 0 = no periodic sync. Missing in old configurations = 24. */
+			pvvxSyncInterval?: number;
 		}
 	}
 }

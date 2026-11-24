@@ -2,6 +2,8 @@ import * as utils from "@iobroker/adapter-core";
 import { createMessageHandler } from "./api/message-handler";
 import { ConnectionManager } from "./connections/connection-manager";
 import { DeviceRegistry } from "./devices/device-registry";
+import { parseDeviceList, PvvxDriver } from "./drivers/pvvx/pvvx-driver";
+import { systemClock } from "./drivers/pvvx/time-sync";
 import { GatewayRegistry } from "./gateways/gateway-registry";
 import type { PeripheralInfo } from "./lib/advertisement";
 import { Global as _ } from "./lib/global";
@@ -23,6 +25,7 @@ let processor: AdvertisementProcessor | undefined;
 let gateways: GatewayRegistry | undefined;
 let remoteGateway: RemoteGatewayTransport | undefined;
 let connections: ConnectionManager | undefined;
+let pvvx: PvvxDriver | undefined;
 let handleMessage: ((obj: ioBroker.Message) => void) | undefined;
 /** The sources of advertisements that are in use */
 const transports: Transport[] = [];
@@ -182,6 +185,35 @@ const adapter = utils.adapter({
 			setTimeout: (callback, ms) => adapter.setTimeout(callback, ms),
 			clearTimeout: (timer) => adapter.clearTimeout(timer),
 		});
+
+		// Sets the clock of pvvx thermometers through the gateways
+		const pvvxList = parseDeviceList(adapter.config.pvvxDevices);
+		for (const entry of pvvxList.invalid) {
+			adapter.log.warn(
+				`Ignoring the invalid pvvx device address "${entry}"`,
+			);
+		}
+		const pvvxInterval = adapter.config.pvvxSyncInterval;
+		pvvx = new PvvxDriver(
+			{
+				adapter,
+				connections,
+				clock: systemClock,
+				setTimeout: (callback, ms) => adapter.setTimeout(callback, ms),
+				clearTimeout: (timer) => adapter.clearTimeout(timer),
+				setInterval: (callback, ms) =>
+					adapter.setInterval(callback, ms),
+				clearInterval: (timer) => adapter.clearInterval(timer),
+			},
+			{
+				addresses: pvvxList.addresses,
+				syncIntervalHours:
+					typeof pvvxInterval === "number" && pvvxInterval >= 0
+						? pvvxInterval
+						: 24,
+			},
+		);
+
 		handleMessage = createMessageHandler({
 			adapter,
 			gateways,
@@ -224,11 +256,15 @@ const adapter = utils.adapter({
 			);
 		}
 		for (const transport of transports) transport.start();
+
+		await pvvx.start();
 	},
 
 	// is called when adapter shuts down - callback has to be called under any circumstances!
 	unload: (callback) => {
 		try {
+			// No new jobs for the connections
+			pvvx?.dispose();
 			// Before the transports, so the sessions can still say goodbye to their gateways
 			connections?.dispose();
 			for (const transport of transports) transport.stop();
@@ -264,6 +300,9 @@ const adapter = utils.adapter({
 			}
 			return;
 		}
+
+		// The button pvvx.syncTime
+		if (pvvx?.handleStateChange(id, state)) return;
 
 		// When an instance that delivers advertisements stops, its gateways are offline
 		remoteGateway?.handleStateChange(id, state);

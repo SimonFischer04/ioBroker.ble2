@@ -15,5 +15,9 @@
 	"Use the Bluetooth adapter of this host": "使用此主机的蓝牙适配器",
 	"When disabled, only advertisements from remote scan servers and other adapters are handled. No Bluetooth hardware is needed then.": "禁用后，仅处理来自远程扫描服务器和其他适配器的广播数据，此时不需要蓝牙硬件。",
 	"Remote scan servers:": "远程扫描服务器：",
-	"One per line, as host or host:port (default port 8734). Each runs bin/blerp.js. They are used together with the local Bluetooth adapter.": "每行一个，格式为主机或主机:端口（默认端口 8734）。每台主机上运行 bin/blerp.js。它们与本地蓝牙适配器一起使用。"
+	"One per line, as host or host:port (default port 8734). Each runs bin/blerp.js. They are used together with the local Bluetooth adapter.": "每行一个，格式为主机或主机:端口（默认端口 8734）。每台主机上运行 bin/blerp.js。它们与本地蓝牙适配器一起使用。",
+	"pvvx thermometers (MAC addresses):": "pvvx 温度计（MAC 地址）：",
+	"The clock of these devices is set to the local time: at start, in this interval, after each change between summer and winter time, and with the button pvvx.syncTime. Needs a gateway that can connect, e.g. an ESPHome Bluetooth proxy.": "这些设备的时钟会被设置为本地时间：在启动时、按此间隔、每次夏令时与冬令时切换之后，以及通过按钮 pvvx.syncTime。需要一个可以建立连接的网关，例如 ESPHome 蓝牙代理。",
+	"Time sync interval [h]:": "时间同步间隔 [小时]：",
+	"0 = only at start, after a time change and with the button.": "0 = 仅在启动时、时间切换后以及通过按钮。"
 }

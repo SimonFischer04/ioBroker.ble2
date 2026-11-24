@@ -16,5 +16,9 @@
 	"Use the Bluetooth adapter of this host": "Usa l'adattatore Bluetooth di questo host",
 	"When disabled, only advertisements from remote scan servers and other adapters are handled. No Bluetooth hardware is needed then.": "Se disattivato, vengono elaborati solo gli annunci dei server di scansione remoti e di altri adattatori. In tal caso non è necessario alcun hardware Bluetooth.",
 	"Remote scan servers:": "Server di scansione remoti:",
-	"One per line, as host or host:port (default port 8734). Each runs bin/blerp.js. They are used together with the local Bluetooth adapter.": "Uno per riga, come host o host:porta (porta predefinita 8734). Su ognuno gira bin/blerp.js. Vengono usati insieme all'adattatore Bluetooth locale."
+	"One per line, as host or host:port (default port 8734). Each runs bin/blerp.js. They are used together with the local Bluetooth adapter.": "Uno per riga, come host o host:porta (porta predefinita 8734). Su ognuno gira bin/blerp.js. Vengono usati insieme all'adattatore Bluetooth locale.",
+	"pvvx thermometers (MAC addresses):": "Termometri pvvx (indirizzi MAC):",
+	"The clock of these devices is set to the local time: at start, in this interval, after each change between summer and winter time, and with the button pvvx.syncTime. Needs a gateway that can connect, e.g. an ESPHome Bluetooth proxy.": "L'orologio di questi dispositivi viene impostato sull'ora locale: all'avvio, a questo intervallo, dopo ogni passaggio tra ora legale e ora solare e con il pulsante pvvx.syncTime. Richiede un gateway in grado di connettersi, ad es. un proxy Bluetooth ESPHome.",
+	"Time sync interval [h]:": "Intervallo di sincronizzazione dell'ora [h]:",
+	"0 = only at start, after a time change and with the button.": "0 = solo all'avvio, dopo un cambio d'ora e con il pulsante."
 }

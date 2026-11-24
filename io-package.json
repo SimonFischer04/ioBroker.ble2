@@ -157,7 +157,9 @@
 		"allowEmptyDevices": false,
 		"rssiThrottle": 0,
 		"localScanner": true,
-		"gatewayTimeout": 60
+		"gatewayTimeout": 60,
+		"pvvxDevices": "",
+		"pvvxSyncInterval": 24
 	},
 	"objects": [],
 	"instanceObjects": [

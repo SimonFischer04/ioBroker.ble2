@@ -167,6 +167,54 @@ const SettingsPageContent: React.FC = React.memo(() => {
 				</Grid>
 
 				<Grid item xs={6}>
+					<TextField
+						label={_("pvvx thermometers (MAC addresses):")}
+						multiline={true}
+						minRows={3}
+						variant="outlined"
+						fullWidth={true}
+						placeholder="a4:c1:38:12:34:56"
+						value={settings.pvvxDevices ?? ""}
+						onChange={(event) =>
+							handleChange("pvvxDevices", event.target.value)
+						}
+					/>
+					<Typography variant="body2">
+						{_(
+							"The clock of these devices is set to the local time: at start, in this interval, after each change between summer and winter time, and with the button pvvx.syncTime. Needs a gateway that can connect, e.g. an ESPHome Bluetooth proxy.",
+						)}
+					</Typography>
+				</Grid>
+
+				<Grid item xs={6}>
+					<TextField
+						label={_("Time sync interval [h]:")}
+						inputProps={{
+							type: "number",
+							min: 0,
+						}}
+						fullWidth={true}
+						InputLabelProps={{
+							// Avoid overlapping the text if it was filled out
+							shrink: true,
+						}}
+						// Old configurations do not have this option
+						value={settings.pvvxSyncInterval ?? 24}
+						onChange={(event) =>
+							handleChange(
+								"pvvxSyncInterval",
+								parseInt(event.target.value),
+							)
+						}
+					/>
+					<Typography variant="body2">
+						{_(
+							"0 = only at start, after a time change and with the button.",
+						)}
+					</Typography>
+				</Grid>
+
+				<Grid item xs={6}>
 					<FormControlLabel
 						label={_(
 							"Allow creation of devices without advertised data",

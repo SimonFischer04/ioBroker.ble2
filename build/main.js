@@ -21,6 +21,8 @@ var utils = __toESM(require("@iobroker/adapter-core"));
 var import_message_handler = require("./api/message-handler");
 var import_connection_manager = require("./connections/connection-manager");
 var import_device_registry = require("./devices/device-registry");
+var import_pvvx_driver = require("./drivers/pvvx/pvvx-driver");
+var import_time_sync = require("./drivers/pvvx/time-sync");
 var import_gateway_registry = require("./gateways/gateway-registry");
 var import_global = require("./lib/global");
 var import_object_cache = require("./lib/object-cache");
@@ -35,6 +37,7 @@ let processor;
 let gateways;
 let remoteGateway;
 let connections;
+let pvvx;
 let handleMessage;
 const transports = [];
 const adapter = utils.adapter({
@@ -139,6 +142,28 @@ const adapter = utils.adapter({
       setTimeout: (callback, ms) => adapter.setTimeout(callback, ms),
       clearTimeout: (timer) => adapter.clearTimeout(timer)
     });
+    const pvvxList = (0, import_pvvx_driver.parseDeviceList)(adapter.config.pvvxDevices);
+    for (const entry of pvvxList.invalid) {
+      adapter.log.warn(
+        `Ignoring the invalid pvvx device address "${entry}"`
+      );
+    }
+    const pvvxInterval = adapter.config.pvvxSyncInterval;
+    pvvx = new import_pvvx_driver.PvvxDriver(
+      {
+        adapter,
+        connections,
+        clock: import_time_sync.systemClock,
+        setTimeout: (callback, ms) => adapter.setTimeout(callback, ms),
+        clearTimeout: (timer) => adapter.clearTimeout(timer),
+        setInterval: (callback, ms) => adapter.setInterval(callback, ms),
+        clearInterval: (timer) => adapter.clearInterval(timer)
+      },
+      {
+        addresses: pvvxList.addresses,
+        syncIntervalHours: typeof pvvxInterval === "number" && pvvxInterval >= 0 ? pvvxInterval : 24
+      }
+    );
     handleMessage = (0, import_message_handler.createMessageHandler)({
       adapter,
       gateways,
@@ -177,9 +202,11 @@ const adapter = utils.adapter({
     }
     for (const transport of transports)
       transport.start();
+    await pvvx.start();
   },
   unload: (callback) => {
     try {
+      pvvx == null ? void 0 : pvvx.dispose();
       connections == null ? void 0 : connections.dispose();
       for (const transport of transports)
         transport.stop();
@@ -204,6 +231,8 @@ const adapter = utils.adapter({
       }
       return;
     }
+    if (pvvx == null ? void 0 : pvvx.handleStateChange(id, state))
+      return;
     remoteGateway == null ? void 0 : remoteGateway.handleStateChange(id, state);
   },
   message: (obj) => {
