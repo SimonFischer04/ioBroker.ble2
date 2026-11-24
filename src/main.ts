@@ -168,6 +168,9 @@ const adapter = utils.adapter({
 		// Other adapters can always deliver advertisements
 		remoteGateway = new RemoteGatewayTransport(filteredContext, epoch);
 		transports.push(remoteGateway);
+		// Connections through a gateway that went offline have ended
+		gateways.onGatewayOffline = (gatewayId) =>
+			remoteGateway?.gatewayOffline(gatewayId);
 		handleMessage = createMessageHandler({
 			adapter,
 			gateways,

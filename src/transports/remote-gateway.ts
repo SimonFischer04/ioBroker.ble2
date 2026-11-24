@@ -1,12 +1,18 @@
+import type { GattLinkProvider } from "../connections/gatt-link";
 import { parseAdvertisementData } from "../lib/ad-parser";
 import { normalizeAddress, type PeripheralInfo } from "../lib/advertisement";
+import { GatewayError } from "../lib/gateway-error";
 import {
 	GATEWAY_PROTOCOL,
+	GattCommands,
 	MAX_ADVERTISEMENTS_PER_MESSAGE,
+	type GattConnectResult,
 	type GatewayAdvertisementsResult,
 	type GatewayAnnounceResult,
 	type GatewayResponse,
 } from "../lib/gateway-protocol";
+import { sendRequest, type RequestSender } from "../lib/send-request";
+import { GATT_TIMEOUTS_MS, RemoteGattLink } from "./remote-gatt-link";
 import type { Transport, TransportContext } from "./transport";
 
 const GATEWAY_ID_REGEX = /^[A-Za-z0-9_.-]{1,64}$/;
@@ -189,21 +195,153 @@ function parseItem(
  * Receives advertisements other adapters deliver via sendTo ("gateway:advertisements").
  * Each sender can deliver for several gateways, e.g. one per ESPHome Bluetooth proxy.
  */
-export class RemoteGatewayTransport implements Transport {
+export class RemoteGatewayTransport implements Transport, GattLinkProvider {
 	public constructor(
 		private readonly ctx: TransportContext,
 		/** When this adapter was started, see GatewayAnnounceResult.epoch */
 		private readonly epoch: number,
-	) {}
+	) {
+		const adapter = ctx.adapter;
+		this.requestSender = {
+			sendTo: (instance, command, message, callback) =>
+				adapter.sendTo(
+					instance,
+					command,
+					message as ioBroker.MessagePayload,
+					callback as ioBroker.MessageCallback,
+				),
+			setTimeout: (callback, ms) => adapter.setTimeout(callback, ms),
+			clearTimeout: (timer) => adapter.clearTimeout(timer),
+		};
+	}
 
 	private readonly senders = new Set<string>();
+	private readonly requestSender: RequestSender;
+	/** Open links by "<full gateway ID>|<address>" */
+	private readonly links = new Map<string, RemoteGattLink>();
 
 	public start(): void {
 		// Nothing to do, the advertisements are pushed to us
 	}
 
 	public stop(): void {
-		// Nothing to do
+		for (const link of [...this.links.values()]) link.handleEnded();
+	}
+
+	/**
+	 * Opens a connection to a device through a gateway another adapter provides
+	 * @param gatewayId Full ID of the gateway, e.g. "esphome.0:proxy-og"
+	 */
+	public async connect(
+		gatewayId: string,
+		address: string,
+		addressType: "public" | "random",
+	): Promise<RemoteGattLink> {
+		const separator = gatewayId.indexOf(":");
+		if (separator < 1) {
+			throw new GatewayError(
+				"UNKNOWN_GATEWAY",
+				`${gatewayId} is not a gateway of another adapter`,
+			);
+		}
+		const instance = gatewayId.slice(0, separator);
+		const localGatewayId = gatewayId.slice(separator + 1);
+
+		const result = await sendRequest<GattConnectResult>(
+			this.requestSender,
+			instance,
+			GattCommands.connect,
+			{
+				gatewayId: localGatewayId,
+				address,
+				addressType,
+				epoch: this.epoch,
+			},
+			GATT_TIMEOUTS_MS.connect,
+		);
+		const mtu =
+			Number.isInteger(result?.mtu) && result.mtu >= 23 ? result.mtu : 23;
+
+		const key = `${gatewayId}|${address}`;
+		// A link that is still known is stale: the gateway opened a new connection
+		this.links.get(key)?.handleEnded();
+		const link = new RemoteGattLink(
+			this.requestSender,
+			this.ctx.adapter.log,
+			gatewayId,
+			instance,
+			localGatewayId,
+			address,
+			mtu,
+			() => {
+				if (this.links.get(key) === link) this.links.delete(key);
+			},
+		);
+		this.links.set(key, link);
+		return link;
+	}
+
+	/**
+	 * Handles a "gateway:connectionState" message: a connection ended without being asked to
+	 * @param sender The instance that sent the message, e.g. "esphome.0"
+	 */
+	public handleConnectionState(sender: string, payload: unknown): void {
+		const target = this.parseTarget(sender, payload);
+		if (!target) {
+			this.ctx.adapter.log.debug(
+				`Ignoring an invalid gateway:connectionState from ${sender}`,
+			);
+			return;
+		}
+		const link = this.links.get(target);
+		if (!link) return;
+		this.ctx.adapter.log.debug(
+			`The connection ${target} was ended by the gateway`,
+		);
+		link.handleEnded();
+	}
+
+	/**
+	 * Handles a "gateway:notification" message
+	 * @param sender The instance that sent the message, e.g. "esphome.0"
+	 */
+	public handleNotification(sender: string, payload: unknown): void {
+		const target = this.parseTarget(sender, payload);
+		if (!target) return;
+		const { handle, data } = payload as Record<string, unknown>;
+		if (
+			!Number.isInteger(handle) ||
+			(handle as number) < 0 ||
+			typeof data !== "string" ||
+			!BASE64_REGEX.test(data)
+		) {
+			return;
+		}
+		this.links
+			.get(target)
+			?.handleNotification(handle as number, Buffer.from(data, "base64"));
+	}
+
+	/** Ends all links of a gateway that went offline, without telling the gateway */
+	public gatewayOffline(gatewayId: string): void {
+		for (const [key, link] of [...this.links]) {
+			if (key.startsWith(`${gatewayId}|`)) link.handleEnded();
+		}
+	}
+
+	/** The key of the link a message is about, undefined if the message is invalid */
+	private parseTarget(sender: string, payload: unknown): string | undefined {
+		if (payload == null || typeof payload !== "object") return undefined;
+		const { gatewayId, address } = payload as Record<string, unknown>;
+		if (
+			typeof gatewayId !== "string" ||
+			!GATEWAY_ID_REGEX.test(gatewayId)
+		) {
+			return undefined;
+		}
+		const normalized = normalizeAddress(address);
+		if (!normalized) return undefined;
+		return `${sender}:${gatewayId}|${normalized}`;
 	}
 
 	/**

@@ -65,6 +65,20 @@ export function createMessageHandler(
 				return;
 			}
 
+			case GatewayCommands.connectionState: {
+				const sender = obj.from.replace(/^system\.adapter\./, "");
+				ctx.remoteGateway.handleConnectionState(sender, obj.message);
+				respond({ error: null, result: {} });
+				return;
+			}
+
+			case GatewayCommands.notification: {
+				const sender = obj.from.replace(/^system\.adapter\./, "");
+				ctx.remoteGateway.handleNotification(sender, obj.message);
+				respond({ error: null, result: {} });
+				return;
+			}
+
 			case GatewayCommands.getGateways:
 				respond({ error: null, result: ctx.gateways.list() });
 				return;
