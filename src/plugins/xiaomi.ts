@@ -39,12 +39,9 @@ function parseAdvertisementEvent(data: Buffer): XiaomiEvent | undefined {
 	return advertisement.event;
 }
 
-// remember tested peripherals by their MAC address for 1h
+// Remember devices that sent a valid event for 1h.
 const testValidity = 1000 * 3600;
-const testedPeripherals = new Map<
-	string,
-	{ timestamp: number; result: boolean }
->();
+const recognizedPeripherals = new Map<string, number>();
 
 const plugin: Plugin<XiaomiContext> = {
 	name: "Xiaomi",
@@ -52,36 +49,24 @@ const plugin: Plugin<XiaomiContext> = {
 
 	advertisedServices: ["fe95"],
 	isHandling: (p) => {
-		// If the peripheral has no serviceData with UUID fe95, this is not for us
-		if (
-			!p.advertisement ||
-			!p.advertisement.serviceData ||
-			!p.advertisement.serviceData.some((entry) => entry.uuid === "fe95")
-		) {
+		const data = getServiceData(p, "fe95");
+		if (data == undefined) {
 			return false;
 		}
 
 		const mac = p.address.toLowerCase();
-		const cached = testedPeripherals.get(mac);
-		if (cached && cached.timestamp >= Date.now() - testValidity) {
-			// we have a recent test result, return it
-			return cached.result;
+		const cached = recognizedPeripherals.get(mac);
+		if (cached != undefined && cached >= Date.now() - testValidity) {
+			return true;
 		}
 
-		// Try to parse advertisement data as a XiaomiEvent to see if this
-		// is for us
-		let ret = false;
-		const data = getServiceData(p, "fe95");
-		if (data != undefined) {
-			const event = parseAdvertisementEvent(data);
-			ret = event != undefined;
+		// A status or incomplete frame can precede an event from the same device.
+		if (parseAdvertisementEvent(data) == undefined) {
+			recognizedPeripherals.delete(mac);
+			return false;
 		}
-		// store the test result
-		testedPeripherals.set(mac, {
-			timestamp: Date.now(),
-			result: ret,
-		});
-		return ret;
+		recognizedPeripherals.set(mac, Date.now());
+		return true;
 	},
 
 	createContext: (peripheral: PeripheralInfo) => {
