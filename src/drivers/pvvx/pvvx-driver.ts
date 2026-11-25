@@ -43,6 +43,8 @@ export interface PvvxDriverContext {
 	clearTimeout(timer: any): void;
 	setInterval(callback: () => void, ms: number): unknown;
 	clearInterval(timer: any): void;
+	/** Whether a firmware update of the device is queued or running, PvvxUpdater.isBusy() */
+	isBusy?(address: string): boolean;
 }
 
 export interface PvvxDriverOptions {
@@ -205,6 +207,11 @@ export class PvvxDriver {
 			// One after the other: the gateways have few connection slots
 			for (const device of due) {
 				if (this.disposed) break;
+				if (this.ctx.isBusy?.(device.address)) {
+					// A firmware update would block the queue of the device, try again later
+					device.nextDue = now + RETRY_DELAYS_MS[0];
+					continue;
+				}
 				await this.sync(device);
 			}
 		} finally {
@@ -314,6 +321,16 @@ export class PvvxDriver {
 		// While a tick runs, the device comes next time
 		void this.tick();
 		return true;
+	}
+
+	/** Sets the clock of the device soon, like the button, e.g. after a firmware update */
+	public requestSync(address: string): void {
+		const device = this.devices.get(address);
+		if (!device || this.disposed) return;
+		device.nextDue = 0;
+		device.failures = 0;
+		// While a tick runs, the device comes next time
+		void this.tick();
 	}
 
 	public dispose(): void {

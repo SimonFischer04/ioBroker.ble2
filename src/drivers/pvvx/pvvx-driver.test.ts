@@ -520,5 +520,46 @@ describe("drivers/pvvx/pvvx-driver", () => {
 			expect(adapter.states.size).to.equal(0);
 			expect(cleared).to.deep.equal([1]);
 		});
+
+		it("requestSync() sets the clock right away", async () => {
+			await createDriver([FIRST]).start();
+
+			driver.requestSync(FIRST);
+			driver.requestSync("a4:c1:38:00:00:99");
+			await new Promise((resolve) => setTimeout(resolve, 10));
+
+			expect(connections.calls).to.deep.equal([FIRST]);
+			expect(adapter.val(`${FIRST}.pvvx.lastError`)).to.equal("");
+		});
+
+		it("skips a device during a firmware update and tries again later", async () => {
+			let busy = true;
+			driver = new PvvxDriver(
+				{
+					adapter: adapter as unknown as PvvxDriverContext["adapter"],
+					connections,
+					clock,
+					setTimeout: (callback, ms) => setTimeout(callback, ms),
+					clearTimeout: (timer) => clearTimeout(timer),
+					setInterval: () => 1,
+					clearInterval: () => {},
+					isBusy: (address) => busy && address === FIRST,
+				},
+				{ addresses: [FIRST, SECOND], syncIntervalHours: 24 },
+			);
+			await driver.start();
+
+			await advance(START_DELAY_MS);
+			expect(connections.calls).to.deep.equal([SECOND]);
+
+			busy = false;
+			await advance(RETRY_DELAYS_MS[0] - 1);
+			expect(connections.calls).to.deep.equal([SECOND]);
+			await advance(1);
+			expect(connections.calls).to.deep.equal([SECOND, FIRST]);
+			// Not counted as an error
+			expect(adapter.warnings).to.deep.equal([]);
+			expect(adapter.val(`${FIRST}.pvvx.lastError`)).to.equal("");
+		});
 	});
 });

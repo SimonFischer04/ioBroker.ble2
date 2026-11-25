@@ -141,7 +141,11 @@ export class FakePvvxDevice implements GattLink {
 			if (ota.status === 0) ota.status = status;
 		};
 		if (data.length === 2 && data[0] === 0x01 && data[1] === 0xff) {
+			// A new update starts from the beginning
 			ota.started = true;
+			ota.finished = false;
+			ota.received = [];
+			ota.status = 0;
 		} else if (data.length === 20) {
 			ota.dataPackets++;
 			const index = data.readUInt16LE(0);
