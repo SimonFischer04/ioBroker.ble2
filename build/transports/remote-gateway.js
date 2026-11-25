@@ -67,7 +67,7 @@ function parseAnnounceMessage(sender, payload) {
     if (entry == null || typeof entry !== "object") {
       return invalid("Every gateway must be an object");
     }
-    const { gatewayId, connect, freeSlots, slotLimit } = entry;
+    const { gatewayId, connect, freeSlots, slotLimit, features } = entry;
     if (typeof gatewayId !== "string" || !GATEWAY_ID_REGEX.test(gatewayId)) {
       return invalid(
         `"gatewayId" must consist of 1 to 64 letters, digits, "_", "-" or "."`
@@ -81,11 +81,19 @@ function parseAnnounceMessage(sender, payload) {
         `"freeSlots" and "slotLimit" of ${gatewayId} must be whole numbers from 0`
       );
     }
+    if (features !== void 0 && (!Array.isArray(features) || features.some((f) => typeof f !== "string"))) {
+      return invalid(
+        `"features" of ${gatewayId} must be an array of strings`
+      );
+    }
     result.push({
       id: `${sender}:${gatewayId}`,
       connect,
       freeSlots,
-      slotLimit
+      slotLimit,
+      features: connect ? import_gateway_protocol.GATEWAY_FEATURES.filter(
+        (known) => features == null ? void 0 : features.includes(known)
+      ) : []
     });
   }
   return { gateways: result };

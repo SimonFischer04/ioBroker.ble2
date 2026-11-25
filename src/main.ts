@@ -2,7 +2,13 @@ import * as utils from "@iobroker/adapter-core";
 import { createMessageHandler } from "./api/message-handler";
 import { ConnectionManager } from "./connections/connection-manager";
 import { DeviceRegistry } from "./devices/device-registry";
+import {
+	createHttpFirmwareSource,
+	DEFAULT_FIRMWARE_URL,
+	FirmwareCatalog,
+} from "./drivers/pvvx/firmware-catalog";
 import { parseDeviceList, PvvxDriver } from "./drivers/pvvx/pvvx-driver";
+import { PvvxUpdater } from "./drivers/pvvx/pvvx-updater";
 import { systemClock } from "./drivers/pvvx/time-sync";
 import { GatewayRegistry } from "./gateways/gateway-registry";
 import type { PeripheralInfo } from "./lib/advertisement";
@@ -26,6 +32,7 @@ let gateways: GatewayRegistry | undefined;
 let remoteGateway: RemoteGatewayTransport | undefined;
 let connections: ConnectionManager | undefined;
 let pvvx: PvvxDriver | undefined;
+let pvvxUpdater: PvvxUpdater | undefined;
 let handleMessage: ((obj: ioBroker.Message) => void) | undefined;
 /** The sources of advertisements that are in use */
 const transports: Transport[] = [];
@@ -204,6 +211,7 @@ const adapter = utils.adapter({
 				setInterval: (callback, ms) =>
 					adapter.setInterval(callback, ms),
 				clearInterval: (timer) => adapter.clearInterval(timer),
+				isBusy: (address) => pvvxUpdater?.isBusy(address) ?? false,
 			},
 			{
 				addresses: pvvxList.addresses,
@@ -211,6 +219,34 @@ const adapter = utils.adapter({
 					typeof pvvxInterval === "number" && pvvxInterval >= 0
 						? pvvxInterval
 						: 24,
+			},
+		);
+
+		// Installs newer firmware on the pvvx thermometers
+		const firmwareUrl = adapter.config.pvvxFirmwareUrl;
+		pvvxUpdater = new PvvxUpdater(
+			{
+				adapter,
+				connections,
+				catalog: new FirmwareCatalog(
+					createHttpFirmwareSource(
+						typeof firmwareUrl === "string" && firmwareUrl !== ""
+							? firmwareUrl
+							: DEFAULT_FIRMWARE_URL,
+					),
+					systemClock,
+				),
+				clock: systemClock,
+				setTimeout: (callback, ms) => adapter.setTimeout(callback, ms),
+				clearTimeout: (timer) => adapter.clearTimeout(timer),
+				setInterval: (callback, ms) =>
+					adapter.setInterval(callback, ms),
+				clearInterval: (timer) => adapter.clearInterval(timer),
+				requestTimeSync: (address) => pvvx?.requestSync(address),
+			},
+			{
+				addresses: pvvxList.addresses,
+				dailyCheck: adapter.config.pvvxFirmwareCheck !== false,
 			},
 		);
 
@@ -258,12 +294,14 @@ const adapter = utils.adapter({
 		for (const transport of transports) transport.start();
 
 		await pvvx.start();
+		await pvvxUpdater.start();
 	},
 
 	// is called when adapter shuts down - callback has to be called under any circumstances!
 	unload: (callback) => {
 		try {
 			// No new jobs for the connections
+			pvvxUpdater?.dispose();
 			pvvx?.dispose();
 			// Before the transports, so the sessions can still say goodbye to their gateways
 			connections?.dispose();
@@ -303,6 +341,8 @@ const adapter = utils.adapter({
 
 		// The button pvvx.syncTime
 		if (pvvx?.handleStateChange(id, state)) return;
+		// The buttons of the firmware update
+		if (pvvxUpdater?.handleStateChange(id, state)) return;
 
 		// When an instance that delivers advertisements stops, its gateways are offline
 		remoteGateway?.handleStateChange(id, state);

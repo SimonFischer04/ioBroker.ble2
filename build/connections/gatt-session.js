@@ -103,6 +103,14 @@ class GattSession {
     this.ensureOpen();
     return this.link.write(handle, data, withResponse);
   }
+  async writeSequence(service, characteristic, data, withResponse, readAfter) {
+    const { handle } = await this.findCharacteristic(
+      service,
+      characteristic
+    );
+    this.ensureOpen();
+    return this.link.writeSequence(handle, data, withResponse, readAfter);
+  }
   async subscribe(service, characteristic, listener) {
     const { handle } = await this.findCharacteristic(
       service,

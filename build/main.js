@@ -21,7 +21,9 @@ var utils = __toESM(require("@iobroker/adapter-core"));
 var import_message_handler = require("./api/message-handler");
 var import_connection_manager = require("./connections/connection-manager");
 var import_device_registry = require("./devices/device-registry");
+var import_firmware_catalog = require("./drivers/pvvx/firmware-catalog");
 var import_pvvx_driver = require("./drivers/pvvx/pvvx-driver");
+var import_pvvx_updater = require("./drivers/pvvx/pvvx-updater");
 var import_time_sync = require("./drivers/pvvx/time-sync");
 var import_gateway_registry = require("./gateways/gateway-registry");
 var import_global = require("./lib/global");
@@ -38,6 +40,7 @@ let gateways;
 let remoteGateway;
 let connections;
 let pvvx;
+let pvvxUpdater;
 let handleMessage;
 const transports = [];
 const adapter = utils.adapter({
@@ -157,11 +160,38 @@ const adapter = utils.adapter({
         setTimeout: (callback, ms) => adapter.setTimeout(callback, ms),
         clearTimeout: (timer) => adapter.clearTimeout(timer),
         setInterval: (callback, ms) => adapter.setInterval(callback, ms),
-        clearInterval: (timer) => adapter.clearInterval(timer)
+        clearInterval: (timer) => adapter.clearInterval(timer),
+        isBusy: (address) => {
+          var _a;
+          return (_a = pvvxUpdater == null ? void 0 : pvvxUpdater.isBusy(address)) != null ? _a : false;
+        }
       },
       {
         addresses: pvvxList.addresses,
         syncIntervalHours: typeof pvvxInterval === "number" && pvvxInterval >= 0 ? pvvxInterval : 24
+      }
+    );
+    const firmwareUrl = adapter.config.pvvxFirmwareUrl;
+    pvvxUpdater = new import_pvvx_updater.PvvxUpdater(
+      {
+        adapter,
+        connections,
+        catalog: new import_firmware_catalog.FirmwareCatalog(
+          (0, import_firmware_catalog.createHttpFirmwareSource)(
+            typeof firmwareUrl === "string" && firmwareUrl !== "" ? firmwareUrl : import_firmware_catalog.DEFAULT_FIRMWARE_URL
+          ),
+          import_time_sync.systemClock
+        ),
+        clock: import_time_sync.systemClock,
+        setTimeout: (callback, ms) => adapter.setTimeout(callback, ms),
+        clearTimeout: (timer) => adapter.clearTimeout(timer),
+        setInterval: (callback, ms) => adapter.setInterval(callback, ms),
+        clearInterval: (timer) => adapter.clearInterval(timer),
+        requestTimeSync: (address) => pvvx == null ? void 0 : pvvx.requestSync(address)
+      },
+      {
+        addresses: pvvxList.addresses,
+        dailyCheck: adapter.config.pvvxFirmwareCheck !== false
       }
     );
     handleMessage = (0, import_message_handler.createMessageHandler)({
@@ -203,9 +233,11 @@ const adapter = utils.adapter({
     for (const transport of transports)
       transport.start();
     await pvvx.start();
+    await pvvxUpdater.start();
   },
   unload: (callback) => {
     try {
+      pvvxUpdater == null ? void 0 : pvvxUpdater.dispose();
       pvvx == null ? void 0 : pvvx.dispose();
       connections == null ? void 0 : connections.dispose();
       for (const transport of transports)
@@ -232,6 +264,8 @@ const adapter = utils.adapter({
       return;
     }
     if (pvvx == null ? void 0 : pvvx.handleStateChange(id, state))
+      return;
+    if (pvvxUpdater == null ? void 0 : pvvxUpdater.handleStateChange(id, state))
       return;
     remoteGateway == null ? void 0 : remoteGateway.handleStateChange(id, state);
   },

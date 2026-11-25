@@ -18,10 +18,12 @@ var __copyProps = (to, from, except, desc) => {
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 var gateway_protocol_exports = {};
 __export(gateway_protocol_exports, {
+  GATEWAY_FEATURES: () => GATEWAY_FEATURES,
   GATEWAY_PROTOCOL: () => GATEWAY_PROTOCOL,
   GatewayCommands: () => GatewayCommands,
   GattCommands: () => GattCommands,
-  MAX_ADVERTISEMENTS_PER_MESSAGE: () => MAX_ADVERTISEMENTS_PER_MESSAGE
+  MAX_ADVERTISEMENTS_PER_MESSAGE: () => MAX_ADVERTISEMENTS_PER_MESSAGE,
+  MAX_WRITE_SEQUENCE_LENGTH: () => MAX_WRITE_SEQUENCE_LENGTH
 });
 module.exports = __toCommonJS(gateway_protocol_exports);
 const GATEWAY_PROTOCOL = "ble-gateway/1";
@@ -42,14 +44,19 @@ const GattCommands = {
   getServices: "gatt:getServices",
   read: "gatt:read",
   write: "gatt:write",
-  subscribe: "gatt:subscribe"
+  subscribe: "gatt:subscribe",
+  writeSequence: "gatt:writeSequence"
 };
+const GATEWAY_FEATURES = ["writeSequence"];
+const MAX_WRITE_SEQUENCE_LENGTH = 64;
 const MAX_ADVERTISEMENTS_PER_MESSAGE = 500;
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
+  GATEWAY_FEATURES,
   GATEWAY_PROTOCOL,
   GatewayCommands,
   GattCommands,
-  MAX_ADVERTISEMENTS_PER_MESSAGE
+  MAX_ADVERTISEMENTS_PER_MESSAGE,
+  MAX_WRITE_SEQUENCE_LENGTH
 });
 //# sourceMappingURL=gateway-protocol.js.map

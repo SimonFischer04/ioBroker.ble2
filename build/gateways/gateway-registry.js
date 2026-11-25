@@ -76,13 +76,15 @@ class GatewayRegistry {
     freeSlotsWritten,
     ...info
   }) {
-    return info;
+    return { ...info, features: [...info.features] };
   }
   announce(description, capabilities, now = Date.now()) {
+    var _a;
     const gateway = this.getOrCreate(description);
     gateway.connect = capabilities.connect;
     gateway.freeSlots = capabilities.freeSlots;
     gateway.slotLimit = capabilities.slotLimit;
+    gateway.features = capabilities.connect ? [...(_a = capabilities.features) != null ? _a : []] : [];
     gateway.lastMessage = now;
     this.updateConnected(gateway, true);
     const freeSlots = capabilities.freeSlots;
@@ -170,6 +172,7 @@ class GatewayRegistry {
         advertisements: 0,
         duplicates: 0,
         connect: false,
+        features: [],
         objectId: `gateways.${this.toObjectId(description.id)}`,
         queue: Promise.resolve(),
         lastAdvertisementWritten: 0,

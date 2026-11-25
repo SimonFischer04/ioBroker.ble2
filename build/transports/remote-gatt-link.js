@@ -31,8 +31,10 @@ const GATT_TIMEOUTS_MS = {
   getServices: 15e3,
   read: 1e4,
   write: 1e4,
-  subscribe: 1e4
+  subscribe: 1e4,
+  writeSequence: 3e4
 };
+const BASE64_REGEX = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 class RemoteGattLink {
   constructor(sender, log, gatewayId, instance, localGatewayId, address, mtu, onEnd) {
     this.sender = sender;
@@ -116,6 +118,33 @@ class RemoteGattLink {
       { handle, data: data.toString("base64"), withResponse },
       GATT_TIMEOUTS_MS.write
     );
+  }
+  async writeSequence(handle, data, withResponse, readAfter) {
+    if (data.length === 0 || data.length > import_gateway_protocol.MAX_WRITE_SEQUENCE_LENGTH) {
+      throw new import_gateway_error.GatewayError(
+        "INVALID_PAYLOAD",
+        `A write sequence has 1 to ${import_gateway_protocol.MAX_WRITE_SEQUENCE_LENGTH} entries, not ${data.length}`
+      );
+    }
+    const result = await this.request(
+      import_gateway_protocol.GattCommands.writeSequence,
+      {
+        handle,
+        data: data.map((d) => d.toString("base64")),
+        withResponse,
+        readAfter
+      },
+      GATT_TIMEOUTS_MS.writeSequence
+    );
+    if (!readAfter)
+      return void 0;
+    if (typeof (result == null ? void 0 : result.data) !== "string" || !BASE64_REGEX.test(result.data)) {
+      throw new import_gateway_error.GatewayError(
+        "GATT_ERROR",
+        `Invalid answer to ${import_gateway_protocol.GattCommands.writeSequence}`
+      );
+    }
+    return Buffer.from(result.data, "base64");
   }
   async subscribe(handle, listener) {
     if (this.ended)

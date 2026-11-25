@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../../../src/drivers/pvvx/update-error.ts"],
+  "sourcesContent": ["/** An error of the firmware update, code as in docs/spec-phase-4-pvvx-ota.md section 2 */\nexport class PvvxUpdateError extends Error {\n\tpublic constructor(\n\t\tpublic readonly code: string,\n\t\tmessage: string,\n\t) {\n\t\tsuper(message);\n\t\tthis.name = \"PvvxUpdateError\";\n\t}\n}\n"],
+  "mappings": ";;;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AACO,MAAM,wBAAwB,MAAM;AAAA,EACnC,YACU,MAChB,SACC;AACD,UAAM,OAAO;AAHG;AAIhB,SAAK,OAAO;AAAA,EACb;AACD;",
+  "names": []
+}

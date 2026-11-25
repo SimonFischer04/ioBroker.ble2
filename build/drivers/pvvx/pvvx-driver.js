@@ -166,6 +166,7 @@ class PvvxDriver {
     }
   }
   async tick() {
+    var _a, _b;
     if (this.ticking || this.disposed)
       return;
     this.ticking = true;
@@ -187,6 +188,10 @@ class PvvxDriver {
       for (const device of due) {
         if (this.disposed)
           break;
+        if ((_b = (_a = this.ctx).isBusy) == null ? void 0 : _b.call(_a, device.address)) {
+          device.nextDue = now + RETRY_DELAYS_MS[0];
+          continue;
+        }
         await this.sync(device);
       }
     } finally {
@@ -277,6 +282,14 @@ class PvvxDriver {
     device.failures = 0;
     void this.tick();
     return true;
+  }
+  requestSync(address) {
+    const device = this.devices.get(address);
+    if (!device || this.disposed)
+      return;
+    device.nextDue = 0;
+    device.failures = 0;
+    void this.tick();
   }
   dispose() {
     this.disposed = true;

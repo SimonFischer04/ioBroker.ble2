@@ -74,6 +74,14 @@ class FakeLink {
     this.values.set(handle, data);
     return Promise.resolve();
   }
+  async writeSequence(handle, data, withResponse, readAfter) {
+    this.calls.push(
+      `writeSequence ${handle} ${data.length} ${withResponse} ${readAfter}`
+    );
+    for (const entry of data)
+      await this.write(handle, entry, withResponse);
+    return readAfter ? this.read(handle) : void 0;
+  }
   subscribe(handle, listener) {
     this.calls.push(`subscribe ${handle}`);
     this.listeners.set(handle, listener);

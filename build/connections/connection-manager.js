@@ -84,10 +84,24 @@ class ConnectionManager {
     queue.running = true;
     void this.run(address, queue, job);
   }
-  getCandidates(address, preferGateway) {
+  bestGateway(address, requireFeature) {
+    const normalized = (0, import_advertisement.normalizeAddress)(address);
+    if (!normalized)
+      return void 0;
+    const [gatewayId] = this.getCandidates(
+      normalized,
+      void 0,
+      requireFeature
+    );
+    if (!gatewayId)
+      return void 0;
+    const receiver = this.ctx.devices.getReceivers(normalized).find((r) => r.gatewayId === gatewayId);
+    return receiver && { gatewayId, rssi: receiver.rssi };
+  }
+  getCandidates(address, preferGateway, requireFeature) {
     const candidates = this.ctx.devices.getReceivers(address).map((r) => r.gatewayId).filter((id) => {
       const gateway = this.ctx.gateways.get(id);
-      return (gateway == null ? void 0 : gateway.connected) === true && gateway.connect === true && gateway.freeSlots !== 0;
+      return (gateway == null ? void 0 : gateway.connected) === true && gateway.connect === true && gateway.freeSlots !== 0 && (!requireFeature || gateway.features.includes(requireFeature));
     });
     if (preferGateway && candidates.includes(preferGateway)) {
       candidates.splice(candidates.indexOf(preferGateway), 1);
@@ -97,11 +111,15 @@ class ConnectionManager {
   }
   async connect(address, options) {
     var _a;
-    const candidates = this.getCandidates(address, options.preferGateway);
+    const candidates = this.getCandidates(
+      address,
+      options.preferGateway,
+      options.requireFeature
+    );
     if (candidates.length === 0) {
       throw new import_gateway_error.GatewayError(
         "NO_GATEWAY",
-        `No gateway that can connect receives ${address}`
+        options.requireFeature ? `No gateway with ${options.requireFeature} receives ${address}` : `No gateway that can connect receives ${address}`
       );
     }
     const addressType = this.ctx.devices.getAddressType(address);
