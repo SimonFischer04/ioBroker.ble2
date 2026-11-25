@@ -329,17 +329,21 @@ export class PvvxUpdater {
 		const next = this.queue.shift();
 		if (!next) return;
 		this.running = true;
+		let updated = false;
 		try {
-			await this.run(next.address);
+			updated = await this.run(next.address);
 		} finally {
 			this.running = false;
 			this.busy.delete(next.address);
-			next.finished();
-			void this.pump();
 		}
+		// The clock may be wrong after the restart. Only now: the time sync skips busy devices.
+		if (updated && !this.disposed) this.ctx.requestTimeSync(next.address);
+		next.finished();
+		void this.pump();
 	}
 
-	private async run(address: string): Promise<void> {
+	/** @returns Whether the device runs the new firmware now */
+	private async run(address: string): Promise<boolean> {
 		const { ctx } = this;
 		try {
 			await this.setStates(address, { firmwareStatus: "checking" });
@@ -421,14 +425,13 @@ export class PvvxUpdater {
 				firmwareError: "",
 				firmwareStatus: "done",
 			});
-			if (this.disposed) return;
+			if (this.disposed) return false;
 			ctx.adapter.log.info(
 				`Updated the firmware of ${address} to ${formatVersion(expected)}`,
 			);
-			// The clock may be wrong after the restart
-			ctx.requestTimeSync(address);
+			return true;
 		} catch (e) {
-			if (this.disposed) return;
+			if (this.disposed) return false;
 			const firmwareError = `${errorCode(e)}: ${errorMessage(e)}`;
 			ctx.adapter.log.warn(
 				`The firmware update of ${address} failed: ${firmwareError}`,
@@ -437,6 +440,7 @@ export class PvvxUpdater {
 				firmwareStatus: "failed",
 				firmwareError,
 			});
+			return false;
 		}
 	}
 

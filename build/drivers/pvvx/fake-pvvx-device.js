@@ -115,6 +115,7 @@ class FakePvvxDevice {
       ota.finished = false;
       ota.received = [];
       ota.status = 0;
+      ota.dataPackets = 0;
     } else if (data.length === 20) {
       ota.dataPackets++;
       const index = data.readUInt16LE(0);

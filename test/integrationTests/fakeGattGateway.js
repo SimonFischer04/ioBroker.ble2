@@ -28,6 +28,19 @@ const SERVICES = [
 			},
 		],
 	},
+	// The Telink firmware update (read, write without response)
+	{
+		uuid: "00010203-0405-0607-0809-0a0b0c0d1912",
+		handle: 40,
+		characteristics: [
+			{
+				uuid: "00010203-0405-0607-0809-0a0b0c0d2b12",
+				handle: 42,
+				properties: 0x06,
+				descriptors: [],
+			},
+		],
+	},
 ];
 
 /**
@@ -66,6 +79,12 @@ class FakeGattGateway {
 		 * @type {((address: string, handle: number, dataHex: string) => string[] | undefined) | undefined}
 		 */
 		this.writeHandler = undefined;
+		/**
+		 * Answers reads, see setReadHandler()
+		 *
+		 * @type {((address: string, handle: number) => string | undefined) | undefined}
+		 */
+		this.readHandler = undefined;
 		this.client.onRequest((command, message) =>
 			this.handle(command, message),
 		);
@@ -79,6 +98,87 @@ class FakeGattGateway {
 	 */
 	setWriteHandler(handler) {
 		this.writeHandler = handler;
+	}
+
+	/**
+	 * Sets what the device answers to reads: hex, or undefined for the value in `values`
+	 *
+	 * @param {((address: string, handle: number) => string | undefined) | undefined} handler - The handler
+	 */
+	setReadHandler(handler) {
+		this.readHandler = handler;
+	}
+
+	/**
+	 * The connections to a device end, like when it restarts or is out of range. ble.0 is told.
+	 *
+	 * @param {string} address - The device
+	 */
+	dropConnection(address) {
+		for (const key of [...this.open]) {
+			const [gatewayId, keyAddress] = key.split("|");
+			if (keyAddress !== address) continue;
+			this.open.delete(key);
+			for (const subscription of [...this.subscriptions]) {
+				if (subscription.startsWith(`${key}|`)) {
+					this.subscriptions.delete(subscription);
+				}
+			}
+			this.client.push(`system.adapter.${NAMESPACE}`, {
+				command: "gateway:connectionState",
+				message: { gatewayId, address, connected: false },
+				from: this.client.from,
+			});
+		}
+	}
+
+	/**
+	 * @param {any} message - gatt:read or gatt:writeSequence
+	 * @returns {string} The value of the handle, base64
+	 */
+	readValue(message) {
+		const hex =
+			this.readHandler?.(message.address, message.handle) ??
+			this.values.get(message.handle) ??
+			"";
+		return Buffer.from(hex, "hex").toString("base64");
+	}
+
+	/**
+	 * Writes a value like the device does and sends the notifications the write handler returns
+	 *
+	 * @param {string} key - "<gatewayId>|<address>"
+	 * @param {any} message - gatt:write or gatt:writeSequence
+	 * @param {string} data - The value, base64
+	 */
+	applyWrite(key, message, data) {
+		const dataHex = Buffer.from(data, "base64").toString("hex");
+		this.values.set(message.handle, dataHex);
+		const notifications = this.writeHandler?.(
+			message.address,
+			message.handle,
+			dataHex,
+		);
+		if (
+			notifications &&
+			this.subscriptions.has(`${key}|${message.handle}`)
+		) {
+			// After the answer to the write
+			setTimeout(() => {
+				for (const hex of notifications) {
+					this.client.push(`system.adapter.${NAMESPACE}`, {
+						command: "gateway:notification",
+						message: {
+							gatewayId: message.gatewayId,
+							address: message.address,
+							handle: message.handle,
+							data: Buffer.from(hex, "hex").toString("base64"),
+						},
+						from: this.client.from,
+					});
+				}
+			}, 10);
+		}
 	}
 
 	/** Forgets what happened so far, keeps the open connections */
@@ -160,46 +260,34 @@ class FakeGattGateway {
 			case "gatt:read":
 				return {
 					error: null,
-					result: {
-						data: Buffer.from(
-							this.values.get(message.handle) ?? "",
-							"hex",
-						).toString("base64"),
-					},
+					result: { data: this.readValue(message) },
 				};
-			case "gatt:write": {
-				const dataHex = Buffer.from(message.data, "base64").toString(
-					"hex",
-				);
-				this.values.set(message.handle, dataHex);
-				const notifications = this.writeHandler?.(
-					message.address,
-					message.handle,
-					dataHex,
-				);
-				if (
-					notifications &&
-					this.subscriptions.has(`${key}|${message.handle}`)
-				) {
-					// After the answer to the write
-					setTimeout(() => {
-						for (const hex of notifications) {
-							this.client.push(`system.adapter.${NAMESPACE}`, {
-								command: "gateway:notification",
-								message: {
-									gatewayId: message.gatewayId,
-									address: message.address,
-									handle: message.handle,
-									data: Buffer.from(hex, "hex").toString(
-										"base64",
-									),
-								},
-								from: this.client.from,
-							});
-						}
-					}, 10);
-				}
+			case "gatt:write":
+				this.applyWrite(key, message, message.data);
 				return { error: null, result: {} };
+			case "gatt:writeSequence": {
+				const count = message.data.length;
+				for (const [written, data] of message.data.entries()) {
+					if (!this.open.has(key)) {
+						return FakeGattGateway.error(
+							"NOT_CONNECTED",
+							`The connection ended after ${written} of ${count} writes`,
+						);
+					}
+					this.applyWrite(key, message, data);
+				}
+				if (!this.open.has(key)) {
+					return FakeGattGateway.error(
+						"NOT_CONNECTED",
+						`The connection ended after ${count} of ${count} writes`,
+					);
+				}
+				return {
+					error: null,
+					result: message.readAfter
+						? { written: count, data: this.readValue(message) }
+						: { written: count },
+				};
 			}
 			case "gatt:subscribe":
 				this.subscriptions.add(`${key}|${message.handle}`);

@@ -157,6 +157,7 @@ describe("drivers/pvvx/pvvx-updater => PvvxUpdater", () => {
 	let intervals: { callback: () => void; ms: number }[];
 	let sleeps: number[];
 	let timeSyncs: string[];
+	let busyAtTimeSync: boolean[];
 	let first: FakePvvxDevice;
 	let second: FakePvvxDevice;
 	let updater: PvvxUpdater;
@@ -189,7 +190,11 @@ describe("drivers/pvvx/pvvx-updater => PvvxUpdater", () => {
 				return intervals.length;
 			},
 			clearInterval: () => {},
-			requestTimeSync: (address) => timeSyncs.push(address),
+			requestTimeSync: (address) => {
+				// The time sync skips busy devices, so the device must be free by then
+				busyAtTimeSync.push(updater.isBusy(address));
+				timeSyncs.push(address);
+			},
 		};
 		updater = new PvvxUpdater(ctx, { addresses, dailyCheck });
 		return updater;
@@ -216,6 +221,7 @@ describe("drivers/pvvx/pvvx-updater => PvvxUpdater", () => {
 		intervals = [];
 		sleeps = [];
 		timeSyncs = [];
+		busyAtTimeSync = [];
 		first = new FakePvvxDevice(FIRST);
 		second = new FakePvvxDevice(SECOND);
 		connections.devices.set(FIRST, first);
@@ -372,6 +378,7 @@ describe("drivers/pvvx/pvvx-updater => PvvxUpdater", () => {
 			expect(adapter.val(`${FIRST}.pvvx.firmwareProgress`)).to.equal(100);
 			expect(adapter.val(`${FIRST}.pvvx.firmwareError`)).to.equal("");
 			expect(timeSyncs).to.deep.equal([FIRST]);
+			expect(busyAtTimeSync).to.deep.equal([false]);
 			expect(connections.sessions[0].options).to.deep.equal({
 				priority: "high",
 				timeoutMs: OTA_SESSION_TIMEOUT_MS,

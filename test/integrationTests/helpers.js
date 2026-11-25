@@ -238,6 +238,11 @@ const PACKETS = {
 		[AD.flags, "06"],
 		[AD.serviceData16, "d2fc" + "4000a5016402c40903bf13"],
 	),
+	/** The same thermometer with a low battery: packet 0xa7, battery 20 %, 25.00 °C, 50.55 % */
+	bthomeThermometerLowBattery: buildAdvertisement(
+		[AD.flags, "06"],
+		[AD.serviceData16, "d2fc" + "4000a7011402c40903bf13"],
+	),
 	/** The same thermometer a measurement later: packet 0xa6, battery 100 %, 25.50 °C, 49.00 % */
 	bthomeThermometerNext: buildAdvertisement(
 		[AD.flags, "06"],

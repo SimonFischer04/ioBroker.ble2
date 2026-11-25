@@ -287,14 +287,17 @@ class PvvxUpdater {
     if (!next)
       return;
     this.running = true;
+    let updated = false;
     try {
-      await this.run(next.address);
+      updated = await this.run(next.address);
     } finally {
       this.running = false;
       this.busy.delete(next.address);
-      next.finished();
-      void this.pump();
     }
+    if (updated && !this.disposed)
+      this.ctx.requestTimeSync(next.address);
+    next.finished();
+    void this.pump();
   }
   async run(address) {
     const { ctx } = this;
@@ -376,14 +379,14 @@ class PvvxUpdater {
         firmwareStatus: "done"
       });
       if (this.disposed)
-        return;
+        return false;
       ctx.adapter.log.info(
         `Updated the firmware of ${address} to ${(0, import_protocol.formatVersion)(expected)}`
       );
-      ctx.requestTimeSync(address);
+      return true;
     } catch (e) {
       if (this.disposed)
-        return;
+        return false;
       const firmwareError = `${errorCode(e)}: ${errorMessage(e)}`;
       ctx.adapter.log.warn(
         `The firmware update of ${address} failed: ${firmwareError}`
@@ -392,6 +395,7 @@ class PvvxUpdater {
         firmwareStatus: "failed",
         firmwareError
       });
+      return false;
     }
   }
   async verify(address, expected) {

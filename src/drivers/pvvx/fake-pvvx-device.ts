@@ -36,9 +36,9 @@ export interface FakeOtaState {
 	newVersion: number;
 	/** From this data packet on, the status is set to the value */
 	failStatusAfterPackets?: { after: number; status: number };
-	/** After this many data packets every further write fails with NOT_CONNECTED */
+	/** After this many data packets of an update every further write fails with NOT_CONNECTED */
 	dropAfterPackets?: number;
-	/** Data packets received, also the invalid ones */
+	/** Data packets of the current update, also the invalid ones */
 	dataPackets: number;
 }
 
@@ -146,6 +146,7 @@ export class FakePvvxDevice implements GattLink {
 			ota.finished = false;
 			ota.received = [];
 			ota.status = 0;
+			ota.dataPackets = 0;
 		} else if (data.length === 20) {
 			ota.dataPackets++;
 			const index = data.readUInt16LE(0);
