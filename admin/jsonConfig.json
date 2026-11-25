@@ -41,6 +41,19 @@
             "lg": 4,
             "xl": 4
         },
+        "scannerIdleRestartMinutes": {
+            "type": "number",
+            "label": "Restart idle local scanner [min]",
+            "help": "Restart after this many minutes without advertisements. Set to 0 to disable.",
+            "min": 0,
+            "max": 1440,
+            "step": 1,
+            "xs": 12,
+            "sm": 6,
+            "md": 4,
+            "lg": 4,
+            "xl": 4
+        },
         "services": {
             "type": "text",
             "label": "Monitored services, * for all services:",

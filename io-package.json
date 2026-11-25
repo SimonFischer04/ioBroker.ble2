@@ -108,6 +108,7 @@
 	},
 	"native": {
 		"services": "",
+		"scannerIdleRestartMinutes": 0,
 		"hciDevice": 0,
 		"server": "",
 		"plugins": "",

@@ -9,6 +9,7 @@ declare global {
 			plugins: string;
 			allowEmptyDevices: boolean;
 			rssiThrottle: number;
+			scannerIdleRestartMinutes?: number;
 		}
 	}
 }

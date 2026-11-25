@@ -10,6 +10,7 @@ import {
 	extendState,
 } from "./lib/iobroker-objects";
 import { ObjectCache } from "./lib/object-cache";
+import { ScannerWatchdog } from "./lib/scanner-watchdog";
 import {
 	ScanExitCodes,
 	getMessageReviver,
@@ -56,6 +57,7 @@ let rssiUpdateInterval = 0;
 
 /** A reference to the scanning process */
 let scanProcess: ChildProcess | undefined;
+let unloading = false;
 let socket: Socket | undefined;
 
 // Adapter-Objekt erstellen
@@ -136,6 +138,7 @@ const adapter = utils.adapter({
 
 	// is called when adapter shuts down - callback has to be called under any circumstances!
 	unload: (callback) => {
+		unloading = true;
 		try {
 			_.objectCache?.dispose();
 			scanProcess?.kill();
@@ -257,6 +260,9 @@ const adapter = utils.adapter({
 });
 
 function startScanProcess(): void {
+	if (unloading) {
+		return;
+	}
 	const args: string[] = ["-s", ...services];
 	const manufacturerIds = [
 		...new Set(enabledPlugins.flatMap((p) => p.manufacturerIds ?? [])),
@@ -269,21 +275,55 @@ function startScanProcess(): void {
 		args.push("-d", hciIndex.toString());
 	}
 	adapter.log.info("starting scanner process...");
-	scanProcess = fork(path.join(__dirname, "scanProcess"), args, {
+	const child = fork(path.join(__dirname, "scanProcess"), args, {
 		stdio: ["pipe", "pipe", "pipe", "ipc"],
-	}).on("exit", (code, signal) => {
-		if (
-			!signal &&
-			code !== 0 &&
-			code !== ScanExitCodes.RequireNobleFailed
-		) {
-			adapter.log.warn("scanner process crashed, restarting...");
-			setImmediate(startScanProcess);
-		} else {
-			scanProcess = undefined;
+	});
+	scanProcess = child;
+	const idleMinutes = adapter.config.scannerIdleRestartMinutes ?? 0;
+	const idleTimeout =
+		Number.isInteger(idleMinutes) && idleMinutes > 0 && idleMinutes <= 1440
+			? idleMinutes * 60_000
+			: 0;
+	let restartRequested = false;
+	const watchdog = new ScannerWatchdog(adapter, idleTimeout, () => {
+		if (!unloading && scanProcess === child) {
+			adapter.log.warn(
+				"No BLE advertisements received. Restarting the local scanner.",
+			);
+			restartRequested = child.kill();
 		}
 	});
-	scanProcess.on("message", getMessageReviver(handleMessage));
+	child.on("exit", (code, signal) => {
+		watchdog.stop();
+		scanProcess = undefined;
+		if (unloading) {
+			return;
+		}
+		void adapter.setState("info.connection", false, true);
+		if (
+			restartRequested ||
+			(!signal && code !== 0 && code !== ScanExitCodes.RequireNobleFailed)
+		) {
+			if (!restartRequested) {
+				adapter.log.warn("scanner process crashed, restarting...");
+			}
+			setImmediate(startScanProcess);
+		}
+	});
+	child.on(
+		"message",
+		getMessageReviver<ScanMessage>((message) => {
+			if (unloading || scanProcess !== child) {
+				return;
+			}
+			if (message.type === "connected" || message.type === "discover") {
+				watchdog.activity();
+			} else if (message.type === "disconnected") {
+				watchdog.stop();
+			}
+			handleMessage(message);
+		}),
+	);
 }
 
 function connectToBLEServer(): void {

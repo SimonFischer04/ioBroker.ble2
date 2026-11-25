@@ -17,5 +17,7 @@
     "Mi Flora": "Mi Flora",
     "Ruuvi Tag": "Ruuvi Tag",
     "BTHome": "BTHome",
-    "Mopeka Pro Check": "Mopeka Pro Check"
+    "Mopeka Pro Check": "Mopeka Pro Check",
+    "Restart idle local scanner [min]": "Restart idle local scanner [min]",
+    "Restart after this many minutes without advertisements. Set to 0 to disable.": "Restart after this many minutes without advertisements. Set to 0 to disable."
 }
