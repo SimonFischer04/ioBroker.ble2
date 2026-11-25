@@ -8,6 +8,11 @@ declare global {
 			hciDevice: number | string;
 			plugins: string;
 			allowEmptyDevices: boolean;
+			presenceDevices?: {
+				address: string;
+				packets: number;
+				absenceSeconds: number;
+			}[];
 			rssiThrottle: number;
 		}
 	}

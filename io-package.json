@@ -112,6 +112,7 @@
 		"server": "",
 		"plugins": "",
 		"allowEmptyDevices": false,
+		"presenceDevices": [],
 		"rssiThrottle": 0
 	},
 	"objects": [],

@@ -17,5 +17,11 @@
     "Mi Flora": "Mi Flora",
     "Ruuvi Tag": "Ruuvi Tag",
     "BTHome": "BTHome",
-    "Mopeka Pro Check": "Mopeka Pro Check"
+    "Mopeka Pro Check": "Mopeka Pro Check",
+    "Presence tracking": "Presence tracking",
+    "Add Bluetooth devices that should get a present state.": "Add Bluetooth devices that should get a present state.",
+    "Bluetooth MAC address": "Bluetooth MAC address",
+    "Enter a valid Bluetooth MAC address.": "Enter a valid Bluetooth MAC address.",
+    "Packets to confirm presence": "Packets to confirm presence",
+    "Full score decay time [s]": "Full score decay time [s]"
 }

@@ -2,6 +2,7 @@ import * as utils from "@iobroker/adapter-core";
 import { entries } from "alcalzone-shared/objects";
 import { execFile, fork, type ChildProcess } from "node:child_process";
 import * as path from "node:path";
+import { DevicePresence } from "./lib/device-presence";
 import { Global as _ } from "./lib/global";
 import { getHciOptions, parseHciIndex, parseHciPorts } from "./lib/hci-ports";
 import {
@@ -23,6 +24,7 @@ import type { Plugin } from "./plugins/plugin";
 
 let enabledPlugins: Plugin[];
 let services: string[] = [];
+let devicePresence: DevicePresence | undefined;
 
 /** Whether new devices may be recorded */
 let allowNewDevices = false;
@@ -123,6 +125,42 @@ const adapter = utils.adapter({
 		// Beim Start des Adapters sicher stellen, dass keine neuen Geräte erfasst werden,
 		// bis der User es explizit erlaubt.
 		await adapter.setStateAsync("options.allowNewDevices", false, true);
+		if (
+			Array.isArray(adapter.config.presenceDevices) &&
+			adapter.config.presenceDevices.length > 0
+		) {
+			devicePresence = new DevicePresence(
+				adapter,
+				adapter.config.presenceDevices,
+				async (deviceId, present): Promise<void> => {
+					const stateId = `${deviceId}.present`;
+					await extendState(stateId, {
+						id: "present",
+						common: {
+							name: "Present",
+							type: "boolean",
+							role: "indicator",
+							read: true,
+							write: false,
+						},
+					});
+					await adapter.setStateChangedAsync(stateId, present, true);
+				},
+			);
+			try {
+				const objects = await adapter.getAdapterObjectsAsync();
+				const prefix = `${adapter.namespace}.`;
+				for (const [id, object] of Object.entries(objects)) {
+					if (object.type === "device" && id.startsWith(prefix)) {
+						devicePresence.restore(id.slice(prefix.length));
+					}
+				}
+			} catch (error) {
+				adapter.log.warn(
+					`Could not restore presence states: ${String(error)}`,
+				);
+			}
+		}
 
 		// And start scanning
 		if (!process.env.TESTING) {
@@ -137,6 +175,7 @@ const adapter = utils.adapter({
 	// is called when adapter shuts down - callback has to be called under any circumstances!
 	unload: (callback) => {
 		try {
+			devicePresence?.stop();
 			_.objectCache?.dispose();
 			scanProcess?.kill();
 		} catch {
@@ -153,6 +192,13 @@ const adapter = utils.adapter({
 		} else {
 			// it has been deleted, so delete it from the cache
 			_.objectCache.invalidateObject(id);
+			if (devicePresence && id.startsWith(`${adapter.namespace}.`)) {
+				devicePresence.remove(
+					id
+						.slice(adapter.namespace.length + 1)
+						.replace(/\.present$/, ""),
+				);
+			}
 		}
 	},
 
@@ -495,6 +541,7 @@ async function onDiscover(peripheral: PeripheralInfo): Promise<void> {
 
 	// Ensure the device object exists
 	await extendDevice(deviceId, peripheral, objects.device);
+	devicePresence?.observe(deviceId);
 	// Ensure the channel objects exist (optional)
 	if (objects.channels != null && objects.channels.length > 0) {
 		await Promise.all(
