@@ -109,6 +109,8 @@
 	"native": {
 		"services": "",
 		"hciDevice": 0,
+		"scanIntervalMinutes": 0,
+		"scanWindowSeconds": 10,
 		"server": "",
 		"plugins": "",
 		"allowEmptyDevices": false,
