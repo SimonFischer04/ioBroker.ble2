@@ -17,5 +17,7 @@
     "Mi Flora": "Mi Flora",
     "Ruuvi Tag": "Ruuvi Tag",
     "BTHome": "BTHome",
-    "Mopeka Pro Check": "Mopeka Pro Check"
+    "Mopeka Pro Check": "Mopeka Pro Check",
+    "Reset RSSI after inactivity [s]": "Reset RSSI after inactivity [s]",
+    "Set RSSI to 0 after this many seconds without an advertisement from the device. Set to 0 to disable.": "Set RSSI to 0 after this many seconds without an advertisement from the device. Set to 0 to disable."
 }
