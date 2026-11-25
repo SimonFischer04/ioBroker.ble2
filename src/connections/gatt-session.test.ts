@@ -126,4 +126,36 @@ describe("connections/gatt-session => GattSession", () => {
 		}
 		expect(link.calls).to.deep.equal([]);
 	});
+
+	it("writes a sequence to the characteristic found by its UUIDs", async () => {
+		const value = await session.writeSequence(
+			SERVICE,
+			CHARACTERISTIC,
+			[Buffer.from([1]), Buffer.from([2])],
+			false,
+			true,
+		);
+		expect(link.calls).to.deep.equal([
+			"getServices",
+			"writeSequence 32 2 false true",
+			"write 32 01 false",
+			"write 32 02 false",
+			"read 32",
+		]);
+		expect(value?.toString("hex")).to.equal("02");
+	});
+
+	it("rejects a write sequence after close()", async () => {
+		await session.close();
+		const error = await rejection(
+			session.writeSequence(
+				SERVICE,
+				CHARACTERISTIC,
+				[Buffer.from([1])],
+				false,
+				false,
+			),
+		);
+		expect(error.code).to.equal("NOT_CONNECTED");
+	});
 });

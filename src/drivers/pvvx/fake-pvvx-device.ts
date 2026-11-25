@@ -67,7 +67,7 @@ export class FakePvvxDevice implements GattLink {
 		]);
 	}
 
-	public read(): Promise<Buffer> {
+	public read(_handle?: number): Promise<Buffer> {
 		return Promise.resolve(this.configResponse);
 	}
 
@@ -116,6 +116,16 @@ export class FakePvvxDevice implements GattLink {
 		answer.writeUInt32LE(this.clock >>> 0, 1);
 		if (this.timeAdjust) answer.writeUInt32LE(this.lastSet >>> 0, 5);
 		return answer;
+	}
+
+	public async writeSequence(
+		handle: number,
+		data: Buffer[],
+		withResponse: boolean,
+		readAfter: boolean,
+	): Promise<Buffer | undefined> {
+		for (const entry of data) await this.write(handle, entry, withResponse);
+		return readAfter ? this.read(handle) : undefined;
 	}
 
 	public subscribe(

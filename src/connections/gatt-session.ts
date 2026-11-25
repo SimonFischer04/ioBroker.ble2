@@ -113,6 +113,21 @@ export class GattSession {
 		return this.link.write(handle, data, withResponse);
 	}
 
+	public async writeSequence(
+		service: string,
+		characteristic: string,
+		data: Buffer[],
+		withResponse: boolean,
+		readAfter: boolean,
+	): Promise<Buffer | undefined> {
+		const { handle } = await this.findCharacteristic(
+			service,
+			characteristic,
+		);
+		this.ensureOpen();
+		return this.link.writeSequence(handle, data, withResponse, readAfter);
+	}
+
 	public async subscribe(
 		service: string,
 		characteristic: string,

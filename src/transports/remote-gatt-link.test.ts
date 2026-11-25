@@ -330,4 +330,63 @@ describe("transports/remote-gateway => links through gateways of other adapters"
 		await tick();
 		expect(ended).to.equal(1);
 	});
+
+	it("sends gatt:writeSequence and returns the value read afterwards", async () => {
+		const link = await connect();
+
+		const result = link.writeSequence(
+			42,
+			[Buffer.from("0102", "hex"), Buffer.from("03", "hex")],
+			false,
+			true,
+		);
+		expect(adapter.last("gatt:writeSequence").message).to.deep.equal({
+			gatewayId: "proxy-og",
+			address: DEVICE,
+			handle: 42,
+			data: ["AQI=", "Aw=="],
+			withResponse: false,
+			readAfter: true,
+		});
+		adapter.answer("gatt:writeSequence", { written: 2, data: "AA==" });
+		expect((await result)?.toString("hex")).to.equal("00");
+	});
+
+	it("returns nothing without readAfter", async () => {
+		const link = await connect();
+		const result = link.writeSequence(42, [Buffer.from([1])], true, false);
+		expect(
+			adapter.last("gatt:writeSequence").message.withResponse,
+		).to.equal(true);
+		adapter.answer("gatt:writeSequence", { written: 1 });
+		expect(await result).to.equal(undefined);
+	});
+
+	it("rejects an empty or too long sequence without sending it", async () => {
+		const link = await connect();
+		const sent = adapter.sent.length;
+		expect(
+			(await rejection(link.writeSequence(42, [], false, false))).code,
+		).to.equal("INVALID_PAYLOAD");
+		expect(
+			(
+				await rejection(
+					link.writeSequence(
+						42,
+						new Array(65).fill(Buffer.from([1])),
+						false,
+						false,
+					),
+				)
+			).code,
+		).to.equal("INVALID_PAYLOAD");
+		expect(adapter.sent).to.have.lengthOf(sent);
+	});
+
+	it("rejects an answer without the value read", async () => {
+		const link = await connect();
+		const result = link.writeSequence(42, [Buffer.from([1])], false, true);
+		adapter.answer("gatt:writeSequence", { written: 1 });
+		expect((await rejection(result)).code).to.equal("GATT_ERROR");
+	});
 });

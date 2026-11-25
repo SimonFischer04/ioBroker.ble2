@@ -2,6 +2,7 @@ import type { DeviceRegistry } from "../devices/device-registry";
 import type { GatewayRegistry } from "../gateways/gateway-registry";
 import { normalizeAddress } from "../lib/advertisement";
 import { GatewayError } from "../lib/gateway-error";
+import type { GatewayFeature } from "../lib/gateway-protocol";
 import type { GattLink, GattLinkProvider } from "./gatt-link";
 import { GattSession } from "./gatt-session";
 
@@ -12,6 +13,8 @@ export interface SessionOptions {
 	timeoutMs?: number;
 	/** Full ID of the gateway to try first */
 	preferGateway?: string;
+	/** Only gateways with this feature are used */
+	requireFeature?: GatewayFeature;
 }
 
 export interface ConnectionManagerContext {
@@ -110,8 +113,31 @@ export class ConnectionManager {
 		void this.run(address, queue, job);
 	}
 
+	/** The gateway a session would try first, with the signal strength it receives the device with */
+	public bestGateway(
+		address: string,
+		requireFeature?: GatewayFeature,
+	): { gatewayId: string; rssi: number } | undefined {
+		const normalized = normalizeAddress(address);
+		if (!normalized) return undefined;
+		const [gatewayId] = this.getCandidates(
+			normalized,
+			undefined,
+			requireFeature,
+		);
+		if (!gatewayId) return undefined;
+		const receiver = this.ctx.devices
+			.getReceivers(normalized)
+			.find((r) => r.gatewayId === gatewayId);
+		return receiver && { gatewayId, rssi: receiver.rssi };
+	}
+
 	/** The gateways to try, best first */
-	private getCandidates(address: string, preferGateway?: string): string[] {
+	private getCandidates(
+		address: string,
+		preferGateway?: string,
+		requireFeature?: GatewayFeature,
+	): string[] {
 		const candidates = this.ctx.devices
 			.getReceivers(address)
 			.map((r) => r.gatewayId)
@@ -120,7 +146,9 @@ export class ConnectionManager {
 				return (
 					gateway?.connected === true &&
 					gateway.connect === true &&
-					gateway.freeSlots !== 0
+					gateway.freeSlots !== 0 &&
+					(!requireFeature ||
+						gateway.features.includes(requireFeature))
 				);
 			});
 		if (preferGateway && candidates.includes(preferGateway)) {
@@ -134,11 +162,17 @@ export class ConnectionManager {
 		address: string,
 		options: SessionOptions,
 	): Promise<GattLink> {
-		const candidates = this.getCandidates(address, options.preferGateway);
+		const candidates = this.getCandidates(
+			address,
+			options.preferGateway,
+			options.requireFeature,
+		);
 		if (candidates.length === 0) {
 			throw new GatewayError(
 				"NO_GATEWAY",
-				`No gateway that can connect receives ${address}`,
+				options.requireFeature
+					? `No gateway with ${options.requireFeature} receives ${address}`
+					: `No gateway that can connect receives ${address}`,
 			);
 		}
 		const addressType = this.ctx.devices.getAddressType(address);

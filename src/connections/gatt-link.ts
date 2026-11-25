@@ -11,6 +11,17 @@ export interface GattLink {
 	write(handle: number, data: Buffer, withResponse: boolean): Promise<void>;
 	/** Enables notifications of a characteristic. The listener is called for every notification. */
 	subscribe(handle: number, listener: (data: Buffer) => void): Promise<void>;
+	/**
+	 * Writes the values to the handle in this order and reads it afterwards if readAfter is set.
+	 * Only for gateways with the feature "writeSequence", the ConnectionManager makes sure of that.
+	 * @returns The value read, undefined without readAfter
+	 */
+	writeSequence(
+		handle: number,
+		data: Buffer[],
+		withResponse: boolean,
+		readAfter: boolean,
+	): Promise<Buffer | undefined>;
 	/** Ends the connection. Never rejects. */
 	disconnect(): Promise<void>;
 	/** The listener is called once when the connection ended without disconnect() being called */

@@ -291,4 +291,53 @@ describe("connections/connection-manager => ConnectionManager", () => {
 			).message,
 		).to.equal("The adapter is stopping");
 	});
+
+	describe("gateways with a feature", () => {
+		function announceWithFeature(id: string): void {
+			gateways.announce(
+				{ id, type: "remote", sender: "esphome.0" },
+				{ connect: true, features: ["writeSequence"] },
+			);
+		}
+
+		it("skips gateways without the required feature", async () => {
+			// KELLER receives the device worse, but can write sequences
+			announceWithFeature(KELLER);
+			await manager.withSession(DEVICE, async () => {}, {
+				requireFeature: "writeSequence",
+			});
+			expect(provider.connects).to.deep.equal([
+				`${KELLER} ${DEVICE} public`,
+			]);
+		});
+
+		it("fails with NO_GATEWAY when no gateway has the feature", async () => {
+			const error = await rejection(
+				manager.withSession(DEVICE, async () => {}, {
+					requireFeature: "writeSequence",
+				}),
+			);
+			expect(error.code).to.equal("NO_GATEWAY");
+			expect(error.message).to.equal(
+				`No gateway with writeSequence receives ${DEVICE}`,
+			);
+			expect(provider.connects).to.deep.equal([]);
+		});
+
+		it("bestGateway() tells the first candidate and its signal", () => {
+			expect(manager.bestGateway(DEVICE)).to.deep.equal({
+				gatewayId: OG,
+				rssi: -55,
+			});
+			expect(manager.bestGateway(DEVICE, "writeSequence")).to.equal(
+				undefined,
+			);
+			announceWithFeature(KELLER);
+			expect(manager.bestGateway(DEVICE, "writeSequence")).to.deep.equal({
+				gatewayId: KELLER,
+				rssi: -85,
+			});
+			expect(manager.bestGateway(OTHER)).to.equal(undefined);
+		});
+	});
 });

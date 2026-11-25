@@ -67,6 +67,19 @@ export class FakeLink implements GattLink {
 		return Promise.resolve();
 	}
 
+	public async writeSequence(
+		handle: number,
+		data: Buffer[],
+		withResponse: boolean,
+		readAfter: boolean,
+	): Promise<Buffer | undefined> {
+		this.calls.push(
+			`writeSequence ${handle} ${data.length} ${withResponse} ${readAfter}`,
+		);
+		for (const entry of data) await this.write(handle, entry, withResponse);
+		return readAfter ? this.read(handle) : undefined;
+	}
+
 	public subscribe(
 		handle: number,
 		listener: (data: Buffer) => void,

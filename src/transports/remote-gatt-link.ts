@@ -2,9 +2,11 @@ import type { GattLink } from "../connections/gatt-link";
 import { GatewayError } from "../lib/gateway-error";
 import {
 	GattCommands,
+	MAX_WRITE_SEQUENCE_LENGTH,
 	type GattGetServicesResult,
 	type GattReadResult,
 	type GattServiceInfo,
+	type GattWriteSequenceResult,
 } from "../lib/gateway-protocol";
 import { sendRequest, type RequestSender } from "../lib/send-request";
 
@@ -16,7 +18,11 @@ export const GATT_TIMEOUTS_MS = {
 	read: 10000,
 	write: 10000,
 	subscribe: 10000,
+	writeSequence: 30000,
 } as const;
+
+const BASE64_REGEX =
+	/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 
 /**
  * A connection to a device through a gateway another adapter provides. The commands go to that
@@ -121,6 +127,41 @@ export class RemoteGattLink implements GattLink {
 			{ handle, data: data.toString("base64"), withResponse },
 			GATT_TIMEOUTS_MS.write,
 		);
+	}
+
+	public async writeSequence(
+		handle: number,
+		data: Buffer[],
+		withResponse: boolean,
+		readAfter: boolean,
+	): Promise<Buffer | undefined> {
+		if (data.length === 0 || data.length > MAX_WRITE_SEQUENCE_LENGTH) {
+			throw new GatewayError(
+				"INVALID_PAYLOAD",
+				`A write sequence has 1 to ${MAX_WRITE_SEQUENCE_LENGTH} entries, not ${data.length}`,
+			);
+		}
+		const result = await this.request<GattWriteSequenceResult>(
+			GattCommands.writeSequence,
+			{
+				handle,
+				data: data.map((d) => d.toString("base64")),
+				withResponse,
+				readAfter,
+			},
+			GATT_TIMEOUTS_MS.writeSequence,
+		);
+		if (!readAfter) return undefined;
+		if (
+			typeof result?.data !== "string" ||
+			!BASE64_REGEX.test(result.data)
+		) {
+			throw new GatewayError(
+				"GATT_ERROR",
+				`Invalid answer to ${GattCommands.writeSequence}`,
+			);
+		}
+		return Buffer.from(result.data, "base64");
 	}
 
 	public async subscribe(
