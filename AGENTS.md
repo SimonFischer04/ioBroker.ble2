@@ -53,7 +53,11 @@ src/lib/send-request.ts               sendTo with timeout and the answer format 
 src/drivers/pvvx/                     time sync of pvvx thermometers: protocol.ts (pure functions), command-channel.ts
                                       (command -> notification with the same first byte), time-sync.ts, pvvx-driver.ts
                                       (settings pvvxDevices / pvvxSyncInterval, timers, states <mac>.pvvx.*).
-                                      fake-pvvx-device.ts is for the unit tests only
+                                      fake-pvvx-device.ts is for the unit tests only.
+                                      Firmware update (phase 4): ota-protocol.ts (Telink OTA, pure functions),
+                                      firmware-catalog.ts (firmware.json, images), ota-checks.ts, ota-transfer.ts,
+                                      pvvx-updater.ts (queue, states <mac>.pvvx.firmware*, pvvx.updateAll,
+                                      pvvx.checkFirmware), update-error.ts. test-image.ts is for the tests only
 src/api/message-handler.ts            all sendTo commands the adapter accepts
 src/plugins/                          decoder plugins. Do not change them unless the task is about a decoder.
 admin/src/                            settings UI (React, iobroker-react), translations in admin/src/i18n

@@ -83,7 +83,7 @@ The types of the interface are defined in [`src/lib/gateway-protocol.ts`](src/li
 |---|---|
 | `gateway:advertisements` | Delivers advertisements, see above |
 | `gateway:announce` | Announces gateways that can connect to devices, see below |
-| `getGateways` | All sources of advertisements: `[{ id, type, sender, connected, lastAdvertisement, advertisements, duplicates, connect, freeSlots, slotLimit }]` |
+| `getGateways` | All sources of advertisements: `[{ id, type, sender, connected, lastAdvertisement, advertisements, duplicates, connect, freeSlots, slotLimit, features }]` |
 | `getDevices` | The devices received in the last 10 minutes: `[{ address, name, gateways: [{ id, rssi, lastSeen }] }]`, strongest gateway first |
 | `discoverServices` | `{ address }` → `{ services: [{ uuid, handle, characteristics: [{ uuid, handle, properties, descriptors }] }] }` |
 | `readCharacteristic` | `{ address, service, characteristic }` → `{ data }` (base64) |
@@ -96,7 +96,7 @@ For every gateway the states `gateways.<id>.connected` and `gateways.<id>.lastAd
 
 So far, only gateways of other adapters can connect, e.g. ESPHome Bluetooth proxies through ioBroker.esphome, not the Bluetooth adapter of the host or the remote scan servers.
 
-An adapter that provides such gateways announces them with `gateway:announce` (`{ protocol: "ble-gateway/1", gateways: [{ gatewayId, connect: true, freeSlots, slotLimit }] }`), answers the `gatt:*` commands this adapter sends to it and reports ended connections and notifications with `gateway:connectionState` and `gateway:notification`. The details are in [`docs/spec-phase-2-gatt.md`](docs/spec-phase-2-gatt.md), part A, and the types in `src/lib/gateway-protocol.ts`.
+An adapter that provides such gateways announces them with `gateway:announce` (`{ protocol: "ble-gateway/1", gateways: [{ gatewayId, connect: true, freeSlots, slotLimit, features }] }`). `features` lists optional commands, so far `"writeSequence"`: `gatt:writeSequence` writes up to 64 values to one handle and reads it afterwards, the firmware update needs it. The providing adapter answers the `gatt:*` commands this adapter sends to it and reports ended connections and notifications with `gateway:connectionState` and `gateway:notification`. The details are in [`docs/spec-phase-2-gatt.md`](docs/spec-phase-2-gatt.md), part A, for `gatt:writeSequence` in [`docs/spec-phase-4-pvvx-ota.md`](docs/spec-phase-4-pvvx-ota.md), part A, and the types in `src/lib/gateway-protocol.ts`.
 
 ## Setting the clock of pvvx thermometers
 Thermometers with the [pvvx firmware](https://github.com/pvvx/ATC_MiThermometer) (e.g. Xiaomi LYWSD03MMC) have a clock that drifts and does not know summer time. The adapter can set it to the local time of the ioBroker host, through a gateway that can connect, e.g. an ESPHome Bluetooth proxy with `bluetooth_proxy: active: true` and ioBroker.esphome.
@@ -118,6 +118,31 @@ For every device these states are created below `<mac>.pvvx`:
 | `lastError` | Empty after a successful sync, otherwise `<CODE>: <message>`, e.g. `NO_GATEWAY: ...` |
 
 The device must be received by a gateway that can connect. Devices protected with a PIN code are not supported.
+
+## Updating the firmware of pvvx thermometers
+The adapter can also install a newer [pvvx firmware](https://github.com/pvvx/ATC_MiThermometer) on the thermometers configured above, through a gateway. **A firmware update is done at your own risk.** According to pvvx, an interrupted update leaves the old firmware in place, but nobody can guarantee that for every device.
+
+* Once a day (setting **Check daily for new pvvx firmware**, on by default) and with the button `pvvx.checkFirmware`, the adapter looks up the newest firmware in [`firmware.json`](https://github.com/pvvx/ATC_MiThermometer/blob/master/firmware.json) of the pvvx repository on GitHub and shows it in `<mac>.pvvx.firmwareAvailable`. This needs the version and hardware ID from a time sync. Nothing is installed by this check.
+* `<mac>.pvvx.firmwareUpdate` installs it on one device, `pvvx.updateAll` on all devices with a newer firmware, one after the other.
+* Only the BLE firmware of pvvx for the hardware ID the device reports is installed, never the original firmware of the manufacturer, never an older or the same version, and no image over 128 KiB.
+
+Before an update the adapter checks:
+
+* a gateway that supports firmware updates receives the device (`features: ["writeSequence"]`, e.g. ESPHome Bluetooth proxies with a current ioBroker.esphome),
+* with at least −80 dBm,
+* the battery is at 40 % or more, read from `<mac>.battery`. The device must send its battery level, e.g. in the BTHome format.
+
+An update takes a few minutes. The states below `<mac>.pvvx`:
+
+| State | Content |
+|---|---|
+| `firmwareAvailable` | Newer version that can be installed, e.g. `6.0`. Empty if there is none |
+| `firmwareUpdate` | Button: installs it |
+| `firmwareProgress` | Progress in % |
+| `firmwareStatus` | `idle`, `queued`, `checking`, `transferring`, `verifying`, `done` or `failed` |
+| `firmwareError` | Empty after a successful update, otherwise `<CODE>: <message>`, e.g. `BATTERY_LOW: ...` |
+
+After the update the adapter connects again, checks the new version and sets the clock. A failed update is not repeated automatically. Devices with a PIN code are not supported.
 
 ## Plugin system
 The adapter supports extension via plugins. Those define which advertised services should be listened to and how to translate the data. The plugin structure is defined in https://github.com/AlCalzone/ioBroker.ble/blob/master/src/plugins/plugin.ts and an example of a working plugin is defined here https://github.com/AlCalzone/ioBroker.ble/blob/master/src/plugins/_default.ts
@@ -147,6 +172,7 @@ If you have any device transmitting specially encoded information via advertisem
 * The monitored services also apply to the advertisements of remote scan servers
 * Connections to devices through gateways of other adapters, e.g. ESPHome Bluetooth proxies: `discoverServices`, `readCharacteristic` and `writeCharacteristic`
 * The clock of pvvx thermometers can be set automatically through such gateways: at start, in an interval, after each change between summer and winter time and with a button. Firmware version, hardware ID and the deviation of the clock are shown
+* Newer pvvx firmware can be installed on the thermometers through gateways that support it (`gatt:writeSequence`), after checks of battery and signal. The newest version is looked up once a day
 
 ### 0.14.1 (2025-02-09)
 * Fixed compatibility issues with newer OS and Node.js versions (#874)

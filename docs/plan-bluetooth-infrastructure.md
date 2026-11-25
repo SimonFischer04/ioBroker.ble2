@@ -1,6 +1,6 @@
 # Plan: zentrale Bluetooth-Infrastruktur in `ioBroker.ble`
 
-Status: Phase 0, 1a, 1b, 2 und 3 umgesetzt, mehrere Remote-Scanner umgesetzt, Phase 4 spezifiziert · Stand 2026-11-25
+Status: Phase 0 bis 4 umgesetzt, mehrere Remote-Scanner umgesetzt, alles nur gegen Fakes getestet · Stand 2026-11-25
 
 ## Wie dieses Dokument zu lesen ist
 
@@ -21,7 +21,7 @@ Dieses Dokument beschreibt **Architektur und Entscheidungen**. Es ist keine Arbe
 | 1b | umgesetzt (`DrozmotiX/ioBroker.esphome`, Branch `ccr-ble-gateway-forwarding`) | – |
 | 2 | umgesetzt (dieses Repo, Teil A/B; `DrozmotiX/ioBroker.esphome`, Branch `ccr-ble-gateway-gatt` auf `main`, Teil C). Nicht an Hardware geprüft: Verbindungen über einen echten ESP32, CCCD-Schreiben nach Notify | `docs/spec-phase-2-gatt.md` |
 | 3 | umgesetzt (dieses Repo, `src/drivers/pvvx/`). Nicht an Hardware geprüft: ganzer Ablauf mit echtem Thermometer über echten Proxy, Schreibart `withResponse: false` | `docs/spec-phase-3-pvvx-time.md` |
-| 4 | spezifiziert, vor dem Hardware-Test. Die vom Test abhängigen Werte sind dort in Abschnitt 0 als Konstanten festgelegt. | `docs/spec-phase-4-pvvx-ota.md` |
+| 4 | umgesetzt (dieses Repo, `src/drivers/pvvx/`; `ioBroker.esphome`, Branch `ccr-ble-gateway-gatt`: `gatt:writeSequence`). Vor dem Hardware-Test umgesetzt: H1 bis H5 haben die Annahmen aus der Spezifikation, Abschnitt 0. Nicht an Hardware geprüft | `docs/spec-phase-4-pvvx-ota.md` |
 | 5, 6 | offen | fehlt |
 
 Eine Phase ohne Spezifikation wird nicht umgesetzt.
@@ -340,7 +340,7 @@ Jede Phase ist für sich releasefähig.
 | **1b: `esphome` liefert Pakete** (PR in `ioBroker.esphome`) | Spike in `@2colors/esphome-native-api` (E7), Advertisement-Abo am ESP, sobald die Weiterleitung konfiguriert ist, Bündelung, Konfigurationsoption. | pvvx-/BTHome-Sensoren aus drei Stockwerken erscheinen in `ble`. Ohne konfigurierte Weiterleitung verhält sich `esphome` wie bisher. | S–M |
 | **2: GATT-Kern** | Spezifikation: `docs/spec-phase-2-gatt.md`. `ble`: `gateway:announce`, `connections/` mit Link, Session und Connection Manager (ein Auftrag pro Gerät, Gateway-Auswahl, Timeouts, nächstes Gateway bei Fehler), drei Einzelbefehle über `sendTo`. `esphome`: `gateway:announce` mit freien Plätzen, die `gatt:*`-Befehle, Meldung von Verbindungsenden und Notifications, Aufräumen, wenn `ble` stoppt oder neu startet. | Eine Characteristic eines Thermometers wird über einen entfernten Proxy gelesen und geschrieben. Zwei Anfragen an dasselbe Gerät laufen nacheinander. Stirbt `ble`, baut `esphome` die Verbindungen ab. | L |
 | **3: pvvx-Zeitsync** (umgesetzt) | Spezifikation: `docs/spec-phase-3-pvvx-time.md`. `drivers/pvvx`: Geräte aus einer Liste in den Einstellungen, Zeit lesen und setzen, Version und Hardware-ID lesen, Auslöser Start, Intervall, Zeitumstellung und Knopf, Wiederholungen nach Fehlern. | Eine simulierte Zeitumstellung (Offset gemockt) stellt alle Geräte nacheinander neu, und `pvvx.timeDeviation` zeigt die Abweichung vor dem Stellen. | M |
-| **4: pvvx-OTA** | `esphome`: `gatt:writeSequence`. `ble`: Firmware-Verwaltung, Vorab-Prüfungen, serieller Rollout, Fortschritt. | Ein Testgerät wird über einen Proxy erfolgreich geflasht, und ein absichtlicher Abbruch lässt das Gerät funktionsfähig. | L |
+| **4: pvvx-OTA** (umgesetzt) | `esphome`: `gatt:writeSequence`. `ble`: Firmware-Verwaltung, Vorab-Prüfungen, serieller Rollout, Fortschritt. | Ein Testgerät wird über einen Proxy erfolgreich geflasht, und ein absichtlicher Abbruch lässt das Gerät funktionsfähig. | L |
 | **5: Externe API** | Vollständige `sendTo`-API (Abschnitt 4) mit Leases, Advertisement-Abos und Doku. | Ein Beispieladapter oder -skript liest per API ein Characteristic und erhält Notifications. | M |
 | **6 (optional): Lokales GATT und Weiterleitung** | BlueZ über D-Bus oder noble als Connect-fähiger Transport. Dazu der Weiterleitungsmodus (E9): Eine Instanz liefert ihre Advertisements an eine andere `ble`-Instanz und beantwortet deren `gatt:*`-Befehle mit dem lokalen Stick. | Der lokale Dongle kann als Gateway für Sessions dienen. Ein Raspberry Pi mit `ble.1` im ioBroker-Multihost ist für `ble.0` ein Gateway mit Verbindungen, wie ein ESPHome-Proxy. | L |
 | **später** | Verschlüsselte BTHome-Pakete (Bindkey pro Gerät), Identitätsauflösung für rotierende Adressen (IRK). | n/a | n/a |
@@ -446,9 +446,9 @@ Noch nicht getestet ist der Weg mit einem echten ESP32 und mit beiden Adaptern i
 
 ## 9. Nächste konkrete Schritte
 
-Phase 2 und 3 sind umgesetzt und nur gegen Fakes getestet. Offen, in dieser Reihenfolge:
+Phase 2 bis 4 sind umgesetzt und nur gegen Fakes getestet. Offen, in dieser Reihenfolge:
 
 1. **Hardware-Test** mit einem ESP32-Proxy (`bluetooth_proxy: active: true`), einem pvvx-Thermometer und beiden Adaptern (Branches `ccr-526ea66e-ih5nlm` und `ccr-ble-gateway-gatt`) in einer Installation: Weiterleitung, Anmeldung des Proxys mit freien Plätzen, `discoverServices`/`readCharacteristic`, Zeitsync per Knopf `pvvx.syncTime`. Zu klären: CCCD-Schreiben nach Notify (Phase 2) und die offenen Punkte aus `docs/pvvx-protocol.md`, Abschnitt 9, vor allem die Schreibart (`PVVX_WRITE_WITH_RESPONSE`).
 2. Gefundene Fehler beheben, Ergebnisse in `docs/pvvx-protocol.md`, Abschnitt 9, eintragen.
 3. Den Branch `ccr-ble-gateway-gatt` in `ioBroker.esphome` als PR gegen `main` stellen und mit den Maintainern abstimmen. Für `ioBroker.ble` klären, ob der PR an das Original-Repo geht.
-4. Phase 4 nach `docs/spec-phase-4-pvvx-ota.md` umsetzen. Liegen dann Ergebnisse aus Punkt 1 vor, gelten sie für die Konstanten H1 bis H5 (dort Abschnitt 0).
+4. Mit den Ergebnissen aus Punkt 1 die Konstanten H1 bis H5 aus `docs/spec-phase-4-pvvx-ota.md`, Abschnitt 0, prüfen und anpassen, dann ein echtes Firmware-Update über einen Proxy, auch mit absichtlichem Abbruch.
