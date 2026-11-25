@@ -1,4 +1,4 @@
-import type { GatewayInfo } from "../lib/gateway-protocol";
+import type { GatewayFeature, GatewayInfo } from "../lib/gateway-protocol";
 
 export interface GatewayRegistryOptions {
 	/** A remote gateway is offline when it delivered nothing for this long */
@@ -98,7 +98,7 @@ export class GatewayRegistry {
 		freeSlotsWritten,
 		...info
 	}: GatewayEntry): GatewayInfo {
-		return info;
+		return { ...info, features: [...info.features] };
 	}
 
 	/** Reports what a gateway can do. This also marks it as active. */
@@ -108,6 +108,8 @@ export class GatewayRegistry {
 			connect: boolean;
 			freeSlots?: number;
 			slotLimit?: number;
+			/** Missing = none */
+			features?: GatewayFeature[];
 		},
 		now: number = Date.now(),
 	): void {
@@ -115,6 +117,9 @@ export class GatewayRegistry {
 		gateway.connect = capabilities.connect;
 		gateway.freeSlots = capabilities.freeSlots;
 		gateway.slotLimit = capabilities.slotLimit;
+		gateway.features = capabilities.connect
+			? [...(capabilities.features ?? [])]
+			: [];
 		gateway.lastMessage = now;
 		this.updateConnected(gateway, true);
 
@@ -226,6 +231,7 @@ export class GatewayRegistry {
 				advertisements: 0,
 				duplicates: 0,
 				connect: false,
+				features: [],
 				objectId: `gateways.${this.toObjectId(description.id)}`,
 				queue: Promise.resolve(),
 				lastAdvertisementWritten: 0,

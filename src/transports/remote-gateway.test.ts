@@ -147,15 +147,60 @@ describe("transports/remote-gateway => parseAnnounceMessage()", () => {
 					connect: true,
 					freeSlots: 3,
 					slotLimit: 3,
+					features: [],
 				},
 				{
 					id: "esphome.0:proxy-eg",
 					connect: false,
 					freeSlots: undefined,
 					slotLimit: undefined,
+					features: [],
 				},
 			],
 		});
+	});
+
+	it("takes the known features, without duplicates", () => {
+		const result = parseAnnounceMessage("esphome.0", {
+			protocol: "ble-gateway/1",
+			gateways: [
+				{
+					gatewayId: "proxy-og",
+					connect: true,
+					features: ["writeSequence", "other", "writeSequence"],
+				},
+			],
+		}) as any;
+		expect(result.gateways[0].features).to.deep.equal(["writeSequence"]);
+	});
+
+	it("a gateway that cannot connect has no features", () => {
+		const result = parseAnnounceMessage("esphome.0", {
+			protocol: "ble-gateway/1",
+			gateways: [
+				{
+					gatewayId: "proxy-og",
+					connect: false,
+					features: ["writeSequence"],
+				},
+			],
+		}) as any;
+		expect(result.gateways[0].features).to.deep.equal([]);
+	});
+
+	it("rejects features that are not a list of strings", () => {
+		for (const features of ["writeSequence", [1], {}]) {
+			expectError(
+				{
+					protocol: "ble-gateway/1",
+					gateways: [
+						{ gatewayId: "proxy-og", connect: true, features },
+					],
+				},
+				"INVALID_PAYLOAD",
+				/features/,
+			);
+		}
 	});
 
 	it("accepts an empty list", () => {

@@ -3,12 +3,14 @@ import { parseAdvertisementData } from "../lib/ad-parser";
 import { normalizeAddress, type PeripheralInfo } from "../lib/advertisement";
 import { GatewayError } from "../lib/gateway-error";
 import {
+	GATEWAY_FEATURES,
 	GATEWAY_PROTOCOL,
 	GattCommands,
 	MAX_ADVERTISEMENTS_PER_MESSAGE,
 	type GattConnectResult,
 	type GatewayAdvertisementsResult,
 	type GatewayAnnounceResult,
+	type GatewayFeature,
 	type GatewayResponse,
 } from "../lib/gateway-protocol";
 import { sendRequest, type RequestSender } from "../lib/send-request";
@@ -43,6 +45,7 @@ export interface AnnouncedGateway {
 	connect: boolean;
 	freeSlots?: number;
 	slotLimit?: number;
+	features: GatewayFeature[];
 }
 
 function isCount(value: unknown): boolean {
@@ -83,10 +86,8 @@ export function parseAnnounceMessage(
 		if (entry == null || typeof entry !== "object") {
 			return invalid("Every gateway must be an object");
 		}
-		const { gatewayId, connect, freeSlots, slotLimit } = entry as Record<
-			string,
-			unknown
-		>;
+		const { gatewayId, connect, freeSlots, slotLimit, features } =
+			entry as Record<string, unknown>;
 		if (
 			typeof gatewayId !== "string" ||
 			!GATEWAY_ID_REGEX.test(gatewayId)
@@ -103,11 +104,26 @@ export function parseAnnounceMessage(
 				`"freeSlots" and "slotLimit" of ${gatewayId} must be whole numbers from 0`,
 			);
 		}
+		if (
+			features !== undefined &&
+			(!Array.isArray(features) ||
+				features.some((f) => typeof f !== "string"))
+		) {
+			return invalid(
+				`"features" of ${gatewayId} must be an array of strings`,
+			);
+		}
 		result.push({
 			id: `${sender}:${gatewayId}`,
 			connect,
 			freeSlots: freeSlots as number | undefined,
 			slotLimit: slotLimit as number | undefined,
+			// Only known features, without duplicates. A gateway that cannot connect has none.
+			features: connect
+				? GATEWAY_FEATURES.filter((known) =>
+						(features as string[] | undefined)?.includes(known),
+					)
+				: [],
 		});
 	}
 	return { gateways: result };

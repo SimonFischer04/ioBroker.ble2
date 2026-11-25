@@ -49,7 +49,16 @@ export const GattCommands = {
 	read: "gatt:read",
 	write: "gatt:write",
 	subscribe: "gatt:subscribe",
+	/** Only for gateways with the feature "writeSequence" */
+	writeSequence: "gatt:writeSequence",
 } as const;
+
+/** Optional commands a gateway can support */
+export const GATEWAY_FEATURES = ["writeSequence"] as const;
+export type GatewayFeature = (typeof GATEWAY_FEATURES)[number];
+
+/** Most entries in one "gatt:writeSequence" */
+export const MAX_WRITE_SEQUENCE_LENGTH = 64;
 
 export interface GatewayAdvertisement {
 	/** MAC address of the sending device, e.g. "a4:c1:38:12:34:56". Upper case and "-" are accepted. */
@@ -104,6 +113,8 @@ export interface GatewayInfo {
 	freeSlots?: number;
 	/** Maximum number of connections, if the gateway reported it */
 	slotLimit?: number;
+	/** Optional commands the gateway supports */
+	features: GatewayFeature[];
 }
 
 /** An entry of the result of "getDevices" */
@@ -140,6 +151,8 @@ export interface GatewayAnnouncement {
 	freeSlots?: number;
 	/** How many connections the gateway can have at the same time. Omit if unknown. */
 	slotLimit?: number;
+	/** Optional commands the gateway supports, see GATEWAY_FEATURES. Unknown values are ignored. */
+	features?: string[];
 }
 
 /** Payload of "gateway:announce" */
@@ -240,6 +253,24 @@ export interface GattWriteRequest extends GattTarget {
 	data: string;
 	/** true = wait for the device to confirm the write */
 	withResponse: boolean;
+}
+
+/** Payload of "gatt:writeSequence" */
+export interface GattWriteSequenceRequest extends GattTarget {
+	handle: number;
+	/** The values to write, in this order, base64 encoded */
+	data: string[];
+	withResponse: boolean;
+	/** Read the handle after the last write */
+	readAfter: boolean;
+}
+
+/** Result of "gatt:writeSequence" */
+export interface GattWriteSequenceResult {
+	/** How many entries were written, always data.length */
+	written: number;
+	/** The value read after the last write, base64. Only with readAfter. */
+	data?: string;
 }
 
 /** Payload of "discoverServices" */
