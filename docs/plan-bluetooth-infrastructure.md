@@ -1,6 +1,6 @@
 # Plan: zentrale Bluetooth-Infrastruktur in `ioBroker.ble`
 
-Status: Phase 0, 1a, 1b und 2 umgesetzt, mehrere Remote-Scanner umgesetzt, Phase 3 spezifiziert · Stand 2026-11-24
+Status: Phase 0, 1a, 1b, 2 und 3 umgesetzt, mehrere Remote-Scanner umgesetzt · Stand 2026-11-24
 
 ## Wie dieses Dokument zu lesen ist
 
@@ -19,7 +19,7 @@ Dieses Dokument beschreibt **Architektur und Entscheidungen**. Es ist keine Arbe
 | 0, 1a | umgesetzt (dieses Repo) | – |
 | 1b | umgesetzt (`DrozmotiX/ioBroker.esphome`, Branch `ccr-ble-gateway-forwarding`) | – |
 | 2 | umgesetzt (dieses Repo, Teil A/B; `DrozmotiX/ioBroker.esphome`, Branch `ccr-ble-gateway-gatt` auf `main`, Teil C). Nicht an Hardware geprüft: Verbindungen über einen echten ESP32, CCCD-Schreiben nach Notify | `docs/spec-phase-2-gatt.md` |
-| 3 | offen, kann nach Phase 2 beginnen | `docs/spec-phase-3-pvvx-time.md` |
+| 3 | umgesetzt (dieses Repo, `src/drivers/pvvx/`). Nicht an Hardware geprüft: ganzer Ablauf mit echtem Thermometer über echten Proxy, Schreibart `withResponse: false` | `docs/spec-phase-3-pvvx-time.md` |
 | 4 | offen. Das Protokoll steht in `docs/pvvx-protocol.md`. Hängt von Phase 2 ab und braucht zusätzlich `gatt:writeSequence`. | fehlt |
 | 5, 6 | offen | fehlt |
 
@@ -336,7 +336,7 @@ Jede Phase ist für sich releasefähig.
 | **1a: Gateway-Schnittstelle in `ble` (Empfang)** | `gateway-protocol.ts`, Befehl `gateway:advertisements`, Transport `remote-gateway`, AD-Parser (mit Unit-Tests gegen echte Pakete), Registry mit Gateway pro Gerät, Dedupe, Offline-Erkennung. Dazu der Hub-Betrieb ohne lokalen Stick (E8). | Ein Testskript schickt aufgezeichnete Pakete per `sendTo` an `ble.0`. Die Sensoren landen mit korrekter MAC in den bestehenden Objekten, ohne doppelte Dekodierung. Das funktioniert auch auf einem Host ohne Bluetooth-Hardware und ohne `noble`. | L |
 | **1b: `esphome` liefert Pakete** (PR in `ioBroker.esphome`) | Spike in `@2colors/esphome-native-api` (E7), Advertisement-Abo am ESP, sobald die Weiterleitung konfiguriert ist, Bündelung, Konfigurationsoption. | pvvx-/BTHome-Sensoren aus drei Stockwerken erscheinen in `ble`. Ohne konfigurierte Weiterleitung verhält sich `esphome` wie bisher. | S–M |
 | **2: GATT-Kern** | Spezifikation: `docs/spec-phase-2-gatt.md`. `ble`: `gateway:announce`, `connections/` mit Link, Session und Connection Manager (ein Auftrag pro Gerät, Gateway-Auswahl, Timeouts, nächstes Gateway bei Fehler), drei Einzelbefehle über `sendTo`. `esphome`: `gateway:announce` mit freien Plätzen, die `gatt:*`-Befehle, Meldung von Verbindungsenden und Notifications, Aufräumen, wenn `ble` stoppt oder neu startet. | Eine Characteristic eines Thermometers wird über einen entfernten Proxy gelesen und geschrieben. Zwei Anfragen an dasselbe Gerät laufen nacheinander. Stirbt `ble`, baut `esphome` die Verbindungen ab. | L |
-| **3: pvvx-Zeitsync** | Spezifikation: `docs/spec-phase-3-pvvx-time.md`. `drivers/pvvx`: Geräte aus einer Liste in den Einstellungen, Zeit lesen und setzen, Version und Hardware-ID lesen, Auslöser Start, Intervall, Zeitumstellung und Knopf, Wiederholungen nach Fehlern. | Eine simulierte Zeitumstellung (Offset gemockt) stellt alle Geräte nacheinander neu, und `pvvx.timeDeviation` zeigt die Abweichung vor dem Stellen. | M |
+| **3: pvvx-Zeitsync** (umgesetzt) | Spezifikation: `docs/spec-phase-3-pvvx-time.md`. `drivers/pvvx`: Geräte aus einer Liste in den Einstellungen, Zeit lesen und setzen, Version und Hardware-ID lesen, Auslöser Start, Intervall, Zeitumstellung und Knopf, Wiederholungen nach Fehlern. | Eine simulierte Zeitumstellung (Offset gemockt) stellt alle Geräte nacheinander neu, und `pvvx.timeDeviation` zeigt die Abweichung vor dem Stellen. | M |
 | **4: pvvx-OTA** | `esphome`: `gatt:writeSequence`. `ble`: Firmware-Verwaltung, Vorab-Prüfungen, serieller Rollout, Fortschritt. | Ein Testgerät wird über einen Proxy erfolgreich geflasht, und ein absichtlicher Abbruch lässt das Gerät funktionsfähig. | L |
 | **5: Externe API** | Vollständige `sendTo`-API (Abschnitt 4) mit Leases, Advertisement-Abos und Doku. | Ein Beispieladapter oder -skript liest per API ein Characteristic und erhält Notifications. | M |
 | **6 (optional): Lokales GATT und Weiterleitung** | BlueZ über D-Bus oder noble als Connect-fähiger Transport. Dazu der Weiterleitungsmodus (E9): Eine Instanz liefert ihre Advertisements an eine andere `ble`-Instanz und beantwortet deren `gatt:*`-Befehle mit dem lokalen Stick. | Der lokale Dongle kann als Gateway für Sessions dienen. Ein Raspberry Pi mit `ble.1` im ioBroker-Multihost ist für `ble.0` ein Gateway mit Verbindungen, wie ein ESPHome-Proxy. | L |

@@ -49,6 +49,10 @@ src/connections/test-fakes.ts         FakeLink, FakeProvider for the unit tests 
 src/transports/remote-gatt-link.ts    a link through a gateway of another adapter (gatt:* commands)
 src/lib/uuid.ts, gateway-error.ts     normalizeUuid(), GatewayError / toErrorResponse()
 src/lib/send-request.ts               sendTo with timeout and the answer format of the gateway interface
+src/drivers/pvvx/                     time sync of pvvx thermometers: protocol.ts (pure functions), command-channel.ts
+                                      (command -> notification with the same first byte), time-sync.ts, pvvx-driver.ts
+                                      (settings pvvxDevices / pvvxSyncInterval, timers, states <mac>.pvvx.*).
+                                      fake-pvvx-device.ts is for the unit tests only
 src/api/message-handler.ts            all sendTo commands the adapter accepts
 src/plugins/                          decoder plugins. Do not change them unless the task is about a decoder.
 admin/src/                            settings UI (React, iobroker-react), translations in admin/src/i18n

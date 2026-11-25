@@ -98,6 +98,27 @@ So far, only gateways of other adapters can connect, e.g. ESPHome Bluetooth prox
 
 An adapter that provides such gateways announces them with `gateway:announce` (`{ protocol: "ble-gateway/1", gateways: [{ gatewayId, connect: true, freeSlots, slotLimit }] }`), answers the `gatt:*` commands this adapter sends to it and reports ended connections and notifications with `gateway:connectionState` and `gateway:notification`. The details are in [`docs/spec-phase-2-gatt.md`](docs/spec-phase-2-gatt.md), part A, and the types in `src/lib/gateway-protocol.ts`.
 
+## Setting the clock of pvvx thermometers
+Thermometers with the [pvvx firmware](https://github.com/pvvx/ATC_MiThermometer) (e.g. Xiaomi LYWSD03MMC) have a clock that drifts and does not know summer time. The adapter can set it to the local time of the ioBroker host, through a gateway that can connect, e.g. an ESPHome Bluetooth proxy with `bluetooth_proxy: active: true` and ioBroker.esphome.
+
+* **pvvx thermometers (MAC addresses):** the devices whose clock is set, separated by commas, spaces or line breaks.
+* **Time sync interval [h]:** hours between two syncs of a device, default 24. `0` = only at start, after a change between summer and winter time and with the button.
+
+The clock is set one minute after the start, in the interval, within two minutes after each change between summer and winter time and with the button. When a device cannot be reached, it is tried again after 5, 15 and 60 minutes, then in the normal interval. One device is synced at a time.
+
+For every device these states are created below `<mac>.pvvx`:
+
+| State | Content |
+|---|---|
+| `syncTime` | Button: sets the clock now |
+| `lastTimeSync` | When the clock was set last |
+| `timeDeviation` | How far the clock was off before it was set, in seconds. Positive = it was ahead |
+| `firmwareVersion` | Version of the firmware, e.g. `5.9` |
+| `hardwareId` | Hardware ID the firmware reports |
+| `lastError` | Empty after a successful sync, otherwise `<CODE>: <message>`, e.g. `NO_GATEWAY: ...` |
+
+The device must be received by a gateway that can connect. Devices protected with a PIN code are not supported.
+
 ## Plugin system
 The adapter supports extension via plugins. Those define which advertised services should be listened to and how to translate the data. The plugin structure is defined in https://github.com/AlCalzone/ioBroker.ble/blob/master/src/plugins/plugin.ts and an example of a working plugin is defined here https://github.com/AlCalzone/ioBroker.ble/blob/master/src/plugins/_default.ts
 
@@ -125,6 +146,7 @@ If you have any device transmitting specially encoded information via advertisem
 * The connection to a remote scan server is re-established when it was lost, a server that is down is reported once instead of every 10 seconds
 * The monitored services also apply to the advertisements of remote scan servers
 * Connections to devices through gateways of other adapters, e.g. ESPHome Bluetooth proxies: `discoverServices`, `readCharacteristic` and `writeCharacteristic`
+* The clock of pvvx thermometers can be set automatically through such gateways: at start, in an interval, after each change between summer and winter time and with a button. Firmware version, hardware ID and the deviation of the clock are shown
 
 ### 0.14.1 (2025-02-09)
 * Fixed compatibility issues with newer OS and Node.js versions (#874)
