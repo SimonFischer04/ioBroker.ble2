@@ -69,6 +69,17 @@ The plugin creates `mopeka_level_raw` (uncalibrated ultrasonic reading), `mopeka
 
 The standard Pro Check layout is verified against [ESPHome](https://github.com/esphome/esphome/blob/dev/esphome/components/mopeka_pro_check/mopeka_pro_check.cpp) and [mopeka-iot-ble](https://github.com/Bluetooth-Devices/mopeka-iot-ble/blob/main/src/mopeka_iot_ble/parser.py). Other Mopeka sensor types are not handled by this plugin.
 
+#### Xiaomi LYWSD03MMC temperature and humidity monitor
+
+The stock firmware can send encrypted Xiaomi measurements. For passive readings with ble2, use compatible custom firmware configured for unencrypted BTHome v2.
+
+1. Check the sensor's hardware revision against the [pvvx ATC_MiThermometer device list](https://github.com/pvvx/ATC_MiThermometer). Follow the firmware project's instructions for that revision, including any special steps for the first update.
+2. On a device with Bluetooth, open [TelinkMiFlasher](https://pvvx.github.io/ATC_MiThermometer/TelinkMiFlasher.html) in a Web Bluetooth browser. Connect to the thermometer and follow the [firmware update instructions](https://github.com/pvvx/ATC_MiThermometer#flashing-or-updating-the-firmware-ota).
+3. Reconnect in the flasher after the sensor restarts. Set the advertising type to **BTHome v2**, leave advertising encryption disabled, and save the settings.
+4. In the ble2 instance settings, enable **BTHome** under **Active plugins** and save. Turn on **Accept new devices** and wait for the sensor's next advertisement. ble2 creates the temperature, humidity, and battery states under the device's Bluetooth address as the readings arrive.
+
+Keep the sensor near the scanner during discovery. If you run a remote scanner with an explicit service filter, include `fcd2` so BTHome advertisements reach the adapter.
+
 ## Publishing releases
 
 The npm package is `iobroker.ble2`; its ioBroker adapter name is `ble2`. The GitHub repository is `SimonFischer04/ioBroker.ble2`.
