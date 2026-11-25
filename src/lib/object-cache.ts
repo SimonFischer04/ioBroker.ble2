@@ -48,9 +48,7 @@ export class ObjectCache {
 		if (this.cache.has(id)) {
 			return true;
 		}
-		// Try to retrieve the original object from the DB
-		const ret = await _.adapter.getForeignObjectAsync(id);
-		return ret != undefined;
+		return (await this.getObject(id)) != undefined;
 	}
 
 	private storeObject(obj: ioBroker.Object): void {
