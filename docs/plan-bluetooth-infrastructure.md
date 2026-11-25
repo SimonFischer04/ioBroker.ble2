@@ -1,6 +1,6 @@
 # Plan: zentrale Bluetooth-Infrastruktur in `ioBroker.ble`
 
-Status: Phase 0, 1a, 1b, 2 und 3 umgesetzt, mehrere Remote-Scanner umgesetzt · Stand 2026-11-24
+Status: Phase 0, 1a, 1b, 2 und 3 umgesetzt, mehrere Remote-Scanner umgesetzt, Phase 4 spezifiziert · Stand 2026-11-25
 
 ## Wie dieses Dokument zu lesen ist
 
@@ -13,6 +13,7 @@ Dieses Dokument beschreibt **Architektur und Entscheidungen**. Es ist keine Arbe
 | `docs/spec-phase-2-gatt.md` | Verbindliche Umsetzung von Phase 2, für beide Repos |
 | `docs/pvvx-protocol.md` | Protokoll der pvvx-Firmware für Zeit, Version und Firmware-Update, mit Testvektoren. Grundlage für Phase 3 und 4 |
 | `docs/spec-phase-3-pvvx-time.md` | Verbindliche Umsetzung von Phase 3 |
+| `docs/spec-phase-4-pvvx-ota.md` | Verbindliche Umsetzung von Phase 4, für beide Repos |
 
 | Phase | Stand | Spezifikation |
 |---|---|---|
@@ -20,7 +21,7 @@ Dieses Dokument beschreibt **Architektur und Entscheidungen**. Es ist keine Arbe
 | 1b | umgesetzt (`DrozmotiX/ioBroker.esphome`, Branch `ccr-ble-gateway-forwarding`) | – |
 | 2 | umgesetzt (dieses Repo, Teil A/B; `DrozmotiX/ioBroker.esphome`, Branch `ccr-ble-gateway-gatt` auf `main`, Teil C). Nicht an Hardware geprüft: Verbindungen über einen echten ESP32, CCCD-Schreiben nach Notify | `docs/spec-phase-2-gatt.md` |
 | 3 | umgesetzt (dieses Repo, `src/drivers/pvvx/`). Nicht an Hardware geprüft: ganzer Ablauf mit echtem Thermometer über echten Proxy, Schreibart `withResponse: false` | `docs/spec-phase-3-pvvx-time.md` |
-| 4 | offen. Das Protokoll steht in `docs/pvvx-protocol.md`. Hängt von Phase 2 ab und braucht zusätzlich `gatt:writeSequence`. | fehlt |
+| 4 | spezifiziert, vor dem Hardware-Test. Die vom Test abhängigen Werte sind dort in Abschnitt 0 als Konstanten festgelegt. | `docs/spec-phase-4-pvvx-ota.md` |
 | 5, 6 | offen | fehlt |
 
 Eine Phase ohne Spezifikation wird nicht umgesetzt.
@@ -232,7 +233,7 @@ Ein Gateway, das GATT-Verbindungen aufbauen kann, meldet das mit `gateway:announ
 
 - `gatt:subscribe` statt `gatt:setNotify`. Ausschalten gibt es nicht, das Abo endet mit der Verbindung. Um den CCCD-Descriptor kümmert sich der Lieferant.
 - Keine eigenen Befehle für Descriptors.
-- `gatt:writeSequence` kommt erst mit Phase 4.
+- `gatt:writeSequence` kommt mit Phase 4, verbindlich in `docs/spec-phase-4-pvvx-ota.md`, Teil A. Gateways melden es als Feature (`features: ["writeSequence"]`) in `gateway:announce`.
 - `gateway:connectionState` meldet nur unverlangte Verbindungsenden. Das Ergebnis eines Verbindungsaufbaus ist die Antwort auf `gatt:connect`.
 - `gatt:connect` trägt den `epoch` von `ble`, damit der Lieferant einen Neustart von `ble` erkennt.
 
@@ -280,6 +281,8 @@ Auslöser:
 Alles läuft als `withSession(address, …, { priority: low })`. Ein laufendes OTA-Update blockiert, ein Sync wartet.
 
 ### 5.2 Firmware-Updates (OTA)
+
+> Die Umsetzung legt `docs/spec-phase-4-pvvx-ota.md` fest und weicht hier ab: Die States liegen unter `<mac>.pvvx.firmware*` (`firmwareAvailable`, `firmwareUpdate`, `firmwareProgress`, `firmwareStatus`, `firmwareError`), die Version bleibt `pvvx.firmwareVersion` aus Phase 3. Instanzweit gibt es `pvvx.updateAll` und `pvvx.checkFirmware`. Eigene Images aus dem Dateispeicher kommen später. Der Akku wird aus `<mac>.battery` gelesen, ohne aktuellen Wert gibt es kein Update. Fehlgeschlagene Updates werden nicht automatisch wiederholt.
 
 States:
 - `firmware.version` (read, über `0x55`)
@@ -448,4 +451,4 @@ Phase 2 und 3 sind umgesetzt und nur gegen Fakes getestet. Offen, in dieser Reih
 1. **Hardware-Test** mit einem ESP32-Proxy (`bluetooth_proxy: active: true`), einem pvvx-Thermometer und beiden Adaptern (Branches `ccr-526ea66e-ih5nlm` und `ccr-ble-gateway-gatt`) in einer Installation: Weiterleitung, Anmeldung des Proxys mit freien Plätzen, `discoverServices`/`readCharacteristic`, Zeitsync per Knopf `pvvx.syncTime`. Zu klären: CCCD-Schreiben nach Notify (Phase 2) und die offenen Punkte aus `docs/pvvx-protocol.md`, Abschnitt 9, vor allem die Schreibart (`PVVX_WRITE_WITH_RESPONSE`).
 2. Gefundene Fehler beheben, Ergebnisse in `docs/pvvx-protocol.md`, Abschnitt 9, eintragen.
 3. Den Branch `ccr-ble-gateway-gatt` in `ioBroker.esphome` als PR gegen `main` stellen und mit den Maintainern abstimmen. Für `ioBroker.ble` klären, ob der PR an das Original-Repo geht.
-4. Die Spezifikation für Phase 4 (Firmware-Update) schreiben, inklusive `gatt:writeSequence`, erst nach Punkt 1.
+4. Phase 4 nach `docs/spec-phase-4-pvvx-ota.md` umsetzen. Liegen dann Ergebnisse aus Punkt 1 vor, gelten sie für die Konstanten H1 bis H5 (dort Abschnitt 0).

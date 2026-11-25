@@ -18,6 +18,7 @@ That work is planned in `docs/`:
 | `docs/spec-phase-2-gatt.md`             | Implementation specification of phase 2 (GATT connections). German. Follow it literally. |
 | `docs/pvvx-protocol.md`                 | GATT protocol of the pvvx thermometer firmware (time, version, firmware update), with test vectors. German. |
 | `docs/spec-phase-3-pvvx-time.md`        | Implementation specification of phase 3 (time sync of pvvx thermometers). German. Follow it literally. |
+| `docs/spec-phase-4-pvvx-ota.md`          | Implementation specification of phase 4 (firmware update of pvvx thermometers, `gatt:writeSequence`), both repos. German. Follow it literally. |
 
 **If you implement a phase, the specification of that phase is binding.** Where it does not answer a question, stop
 and ask instead of guessing. Do not implement a phase that has no specification.
