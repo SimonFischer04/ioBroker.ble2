@@ -443,9 +443,9 @@ Noch nicht getestet ist der Weg mit einem echten ESP32 und mit beiden Adaptern i
 
 ## 9. Nächste konkrete Schritte
 
-1. Die Weiterleitung (Phase 1b) mit einem echten ESP32-Proxy und beiden Adaptern in einer Installation ausprobieren.
-2. Den Branch in `ioBroker.esphome` als PR gegen `v2` stellen und mit den Maintainern abstimmen.
-3. Phase 2 nach `docs/spec-phase-2-gatt.md` umsetzen.
-4. Mit Phase 2 und einem echten Thermometer die offenen Punkte aus `docs/pvvx-protocol.md`, Abschnitt 9, klären. Vor allem: welche Schreibart über einen ESPHome-Proxy funktioniert.
-5. Phase 3 nach `docs/spec-phase-3-pvvx-time.md` umsetzen, nach Phase 2.
-6. Die Spezifikation für Phase 4 (Firmware-Update) schreiben, inklusive `gatt:writeSequence`, erst nach Punkt 4.
+Phase 2 und 3 sind umgesetzt und nur gegen Fakes getestet. Offen, in dieser Reihenfolge:
+
+1. **Hardware-Test** mit einem ESP32-Proxy (`bluetooth_proxy: active: true`), einem pvvx-Thermometer und beiden Adaptern (Branches `ccr-526ea66e-ih5nlm` und `ccr-ble-gateway-gatt`) in einer Installation: Weiterleitung, Anmeldung des Proxys mit freien Plätzen, `discoverServices`/`readCharacteristic`, Zeitsync per Knopf `pvvx.syncTime`. Zu klären: CCCD-Schreiben nach Notify (Phase 2) und die offenen Punkte aus `docs/pvvx-protocol.md`, Abschnitt 9, vor allem die Schreibart (`PVVX_WRITE_WITH_RESPONSE`).
+2. Gefundene Fehler beheben, Ergebnisse in `docs/pvvx-protocol.md`, Abschnitt 9, eintragen.
+3. Den Branch `ccr-ble-gateway-gatt` in `ioBroker.esphome` als PR gegen `main` stellen und mit den Maintainern abstimmen. Für `ioBroker.ble` klären, ob der PR an das Original-Repo geht.
+4. Die Spezifikation für Phase 4 (Firmware-Update) schreiben, inklusive `gatt:writeSequence`, erst nach Punkt 1.
