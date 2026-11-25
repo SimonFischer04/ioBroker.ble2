@@ -32,6 +32,13 @@ declare global {
 			pvvxDevices?: string;
 			/** Hours between two time syncs of a pvvx device, 0 = no periodic sync. Missing in old configurations = 24. */
 			pvvxSyncInterval?: number;
+			/** Whether the newest pvvx firmware is looked up once a day. Missing in old configurations = true. */
+			pvvxFirmwareCheck?: boolean;
+			/**
+			 * Base URL of firmware.json and the images of the pvvx firmware. Not in the admin, for
+			 * tests and mirrors. Missing or empty = GitHub.
+			 */
+			pvvxFirmwareUrl?: string;
 		}
 	}
 }

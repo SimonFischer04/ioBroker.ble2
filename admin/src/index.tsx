@@ -216,6 +216,26 @@ const SettingsPageContent: React.FC = React.memo(() => {
 
 				<Grid item xs={6}>
 					<FormControlLabel
+						label={_("Check daily for new pvvx firmware")}
+						control={
+							<Checkbox
+								// Old configurations do not have this option
+								checked={settings.pvvxFirmwareCheck !== false}
+								onChange={(event, checked) =>
+									handleChange("pvvxFirmwareCheck", checked)
+								}
+							/>
+						}
+					/>
+					<Typography variant="body2">
+						{_(
+							"Once a day, the adapter looks up the newest firmware for the pvvx thermometers on GitHub (pvvx/ATC_MiThermometer) and shows it in pvvx.firmwareAvailable. Nothing is installed without pressing a button.",
+						)}
+					</Typography>
+				</Grid>
+
+				<Grid item xs={6}>
+					<FormControlLabel
 						label={_(
 							"Allow creation of devices without advertised data",
 						)}

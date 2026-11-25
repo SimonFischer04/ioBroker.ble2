@@ -19,5 +19,7 @@
 	"pvvx thermometers (MAC addresses):": "pvvx-thermometers (MAC-adressen):",
 	"The clock of these devices is set to the local time: at start, in this interval, after each change between summer and winter time, and with the button pvvx.syncTime. Needs a gateway that can connect, e.g. an ESPHome Bluetooth proxy.": "De klok van deze apparaten wordt op de lokale tijd gezet: bij het starten, met dit interval, na elke overgang tussen zomer- en wintertijd en met de knop pvvx.syncTime. Vereist een gateway die verbindingen kan maken, bijv. een ESPHome Bluetooth-proxy.",
 	"Time sync interval [h]:": "Interval van de tijdsynchronisatie [u]:",
-	"0 = only at start, after a time change and with the button.": "0 = alleen bij het starten, na een tijdwijziging en met de knop."
+	"0 = only at start, after a time change and with the button.": "0 = alleen bij het starten, na een tijdwijziging en met de knop.",
+	"Check daily for new pvvx firmware": "Dagelijks zoeken naar nieuwe pvvx-firmware",
+	"Once a day, the adapter looks up the newest firmware for the pvvx thermometers on GitHub (pvvx/ATC_MiThermometer) and shows it in pvvx.firmwareAvailable. Nothing is installed without pressing a button.": "Eén keer per dag zoekt de adapter op GitHub (pvvx/ATC_MiThermometer) naar de nieuwste firmware voor de pvvx-thermometers en toont die in pvvx.firmwareAvailable. Er wordt niets geïnstalleerd zonder op een knop te drukken."
 }
