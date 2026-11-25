@@ -10,6 +10,7 @@ import {
 	extendState,
 } from "./lib/iobroker-objects";
 import { ObjectCache } from "./lib/object-cache";
+import { StaleDeviceCleanup } from "./lib/stale-device-cleanup";
 import {
 	ScanExitCodes,
 	getMessageReviver,
@@ -26,6 +27,7 @@ let services: string[] = [];
 
 /** Whether new devices may be recorded */
 let allowNewDevices = false;
+let staleDeviceCleanup: StaleDeviceCleanup | undefined;
 let resetAllowNewDevicesTimeout: ioBroker.Timeout | undefined;
 
 function autoResetAllowNewDevices(): void {
@@ -66,6 +68,7 @@ const adapter = utils.adapter({
 	ready: async () => {
 		// Adapter-Instanz global machen
 		_.adapter = adapter;
+		staleDeviceCleanup = new StaleDeviceCleanup(adapter);
 
 		// Cache objects for 1 minute
 		_.objectCache = new ObjectCache(60000);
@@ -137,6 +140,7 @@ const adapter = utils.adapter({
 	// is called when adapter shuts down - callback has to be called under any circumstances!
 	unload: (callback) => {
 		try {
+			staleDeviceCleanup?.stop();
 			_.objectCache?.dispose();
 			scanProcess?.kill();
 		} catch {
@@ -187,8 +191,6 @@ const adapter = utils.adapter({
 		}
 	},
 
-	// Keep the adapter callback promise-based even when no command awaits work.
-	// eslint-disable-next-line @typescript-eslint/require-await
 	message: async (obj) => {
 		// responds to the adapter that sent the original message
 		function respond(response: any): void {
@@ -221,6 +223,47 @@ const adapter = utils.adapter({
 		// handle the message
 		if (obj) {
 			switch (obj.command) {
+				case "previewStaleDeviceCleanup":
+				case "startStaleDeviceCleanup": {
+					if (!obj.callback || !staleDeviceCleanup) {
+						return;
+					}
+					const request = obj.message as
+						{ days?: unknown; token?: unknown } | undefined;
+					try {
+						if (obj.command === "previewStaleDeviceCleanup") {
+							const { token, count } =
+								await staleDeviceCleanup.prepare(
+									obj.from,
+									request?.days,
+								);
+							respond({
+								result: "preview",
+								args: [String(count)],
+								native: {
+									_staleCleanupToken: count ? token : "",
+								},
+							});
+						} else {
+							staleDeviceCleanup.start(
+								obj.from,
+								request?.token,
+								request?.days,
+							);
+							respond({
+								result: "Cleanup started. See the adapter log for the result.",
+							});
+						}
+					} catch (error) {
+						respond({
+							error:
+								error instanceof Error
+									? error.message
+									: String(error),
+						});
+					}
+					return;
+				}
 				case "getHCIOptions":
 				case "getHCIPorts":
 					if (!obj.callback) {
@@ -423,6 +466,7 @@ async function onDiscover(peripheral: PeripheralInfo): Promise<void> {
 	}
 
 	const deviceId = peripheral.address;
+	staleDeviceCleanup?.recordActivity(deviceId);
 
 	// find out which plugin is handling this
 	let plugin: Plugin | undefined;

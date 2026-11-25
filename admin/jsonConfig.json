@@ -112,6 +112,63 @@
             "lg": 6,
             "xl": 6
         },
+        "_staleDeviceCleanup": {
+            "type": "panel",
+            "label": "Remove stale devices",
+            "xs": 12,
+            "sm": 12,
+            "items": {
+                "_staleCleanupDays": {
+                    "type": "number",
+                    "label": "Days since last RSSI update",
+                    "default": 56,
+                    "min": 1,
+                    "max": 3650,
+                    "step": 1,
+                    "doNotSave": true,
+                    "xs": 12,
+                    "sm": 4
+                },
+                "_staleCleanupToken": {
+                    "type": "text",
+                    "default": "",
+                    "hidden": true,
+                    "doNotSave": true
+                },
+                "_previewStaleDeviceCleanup": {
+                    "type": "sendTo",
+                    "label": "Preview stale devices",
+                    "command": "previewStaleDeviceCleanup",
+                    "jsonData": "{\"days\":${data._staleCleanupDays}}",
+                    "useNative": true,
+                    "showProcess": true,
+                    "result": {
+                        "preview": {
+                            "en": "%s stale devices are eligible for deletion. Devices assigned to an enum or with custom states are excluded.",
+                            "de": "%s inaktive Geräte können gelöscht werden. Geräte mit Aufzählungszuordnung oder benutzerdefinierten Datenpunkteinstellungen sind ausgenommen."
+                        }
+                    },
+                    "doNotSave": true,
+                    "xs": 12,
+                    "sm": 4
+                },
+                "_startStaleDeviceCleanup": {
+                    "type": "sendTo",
+                    "label": "Delete previewed devices",
+                    "command": "startStaleDeviceCleanup",
+                    "jsonData": "{\"days\":${data._staleCleanupDays},\"token\":\"${data._staleCleanupToken}\"}",
+                    "disabled": "!data._staleCleanupToken",
+                    "confirm": {
+                        "type": "warning",
+                        "title": "Delete previewed devices",
+                        "text": "Permanently delete the previewed devices and their states?"
+                    },
+                    "doNotSave": true,
+                    "xs": 12,
+                    "sm": 4
+                }
+            }
+        },
         "_discovery": {
             "type": "panel",
             "xs": 12,

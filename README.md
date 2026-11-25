@@ -36,6 +36,10 @@ The new adapter creates its own objects and states under `ble2.<instance>.*`. Ex
 
 Remote scanner command-line flags and the TCP protocol are unchanged. For scanner configuration supplied through environment variables, rename the `IOB_BLE_` prefix to `IOB_BLE2_`.
 
+### Remove stale devices
+
+Enter an age in days, then use **Preview stale devices** in the instance settings. **Delete previewed devices** removes the eligible device objects and their states after confirmation. The preview expires after five minutes. Devices assigned to an enum, such as a room or function, and devices whose states have custom settings are excluded. The adapter rechecks activity before deletion and reports the result in its log.
+
 ## Plugin system
 Build the adapter from source with `npm ci` followed by `npm run build`. The generated backend `build/` directory is not tracked in Git. Published npm packages include the generated files; installation directly from Git is disabled with `common.nogit`.
 

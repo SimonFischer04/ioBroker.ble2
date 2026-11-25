@@ -17,5 +17,10 @@
     "Mi Flora": "Mi Flora",
     "Ruuvi Tag": "Ruuvi Tag",
     "BTHome": "BTHome",
-    "Mopeka Pro Check": "Mopeka Pro Check"
+    "Mopeka Pro Check": "Mopeka Pro Check",
+    "Remove stale devices": "Inaktive Geräte entfernen",
+    "Days since last RSSI update": "Tage seit letzter RSSI-Aktualisierung",
+    "Preview stale devices": "Inaktive Geräte prüfen",
+    "Delete previewed devices": "Geprüfte Geräte löschen",
+    "Permanently delete the previewed devices and their states?": "Geprüfte Geräte und deren Datenpunkte endgültig löschen?"
 }
