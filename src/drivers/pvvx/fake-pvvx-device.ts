@@ -2,8 +2,14 @@
 
 import type { GattLink } from "../../connections/gatt-link";
 import { GattSession } from "../../connections/gatt-session";
-import type { GatewayError } from "../../lib/gateway-error";
+import { GatewayError } from "../../lib/gateway-error";
 import type { GattServiceInfo } from "../../lib/gateway-protocol";
+import {
+	crc16Modbus,
+	OTA_CHARACTERISTIC,
+	OTA_SERVICE,
+	validateImage,
+} from "./ota-protocol";
 import {
 	CMD_CONFIG,
 	CMD_TIME,
@@ -12,6 +18,29 @@ import {
 } from "./protocol";
 
 export const COMMAND_HANDLE = 32;
+export const OTA_HANDLE = 42;
+
+/** The update receiver of the simulated device */
+export interface FakeOtaState {
+	/** Every write to the update characteristic */
+	writes: { data: Buffer; withResponse: boolean }[];
+	/** 01 ff was received */
+	started: boolean;
+	/** The data of the packets received so far, in order */
+	received: Buffer[];
+	/** Status byte read from the update characteristic */
+	status: number;
+	/** A valid image and end packet were received, the device runs the new version */
+	finished: boolean;
+	/** Version the device reports after a successful update */
+	newVersion: number;
+	/** From this data packet on, the status is set to the value */
+	failStatusAfterPackets?: { after: number; status: number };
+	/** After this many data packets every further write fails with NOT_CONNECTED */
+	dropAfterPackets?: number;
+	/** Data packets received, also the invalid ones */
+	dataPackets: number;
+}
 
 /** Answer of a pvvx firmware 5.9 with hardware ID 0, docs/pvvx-protocol.md 7.3 */
 export const DEFAULT_CONFIG_RESPONSE = "5559000000000a048b003700";
@@ -41,6 +70,15 @@ export class FakePvvxDevice implements GattLink {
 	public failWrite: GatewayError | undefined;
 
 	public readonly writes: { data: Buffer; withResponse: boolean }[] = [];
+	public readonly ota: FakeOtaState = {
+		writes: [],
+		started: false,
+		received: [],
+		status: 0,
+		finished: false,
+		newVersion: 0x60,
+		dataPackets: 0,
+	};
 	public disconnects = 0;
 	private listener: ((data: Buffer) => void) | undefined;
 
@@ -64,11 +102,74 @@ export class FakePvvxDevice implements GattLink {
 					},
 				],
 			},
+			{
+				uuid: OTA_SERVICE,
+				handle: 40,
+				characteristics: [
+					{
+						uuid: OTA_CHARACTERISTIC,
+						handle: OTA_HANDLE,
+						// Read, write without response
+						properties: 0x06,
+						descriptors: [],
+					},
+				],
+			},
 		]);
 	}
 
-	public read(_handle?: number): Promise<Buffer> {
+	public read(handle?: number): Promise<Buffer> {
+		if (handle === OTA_HANDLE) {
+			return Promise.resolve(Buffer.from([this.ota.status]));
+		}
 		return Promise.resolve(this.configResponse);
+	}
+
+	/** Handles a write to the update characteristic like the Telink firmware */
+	private writeOta(data: Buffer, withResponse: boolean): Promise<void> {
+		const ota = this.ota;
+		const dropped =
+			ota.dropAfterPackets !== undefined &&
+			ota.dataPackets >= ota.dropAfterPackets;
+		if (dropped) {
+			return Promise.reject(
+				new GatewayError("NOT_CONNECTED", "The device is gone"),
+			);
+		}
+		ota.writes.push({ data: Buffer.from(data), withResponse });
+		const setStatus = (status: number): void => {
+			if (ota.status === 0) ota.status = status;
+		};
+		if (data.length === 2 && data[0] === 0x01 && data[1] === 0xff) {
+			ota.started = true;
+		} else if (data.length === 20) {
+			ota.dataPackets++;
+			const index = data.readUInt16LE(0);
+			if (index !== ota.received.length) {
+				setStatus(1);
+			} else if (
+				crc16Modbus(data.subarray(0, 18)) !== data.readUInt16LE(18)
+			) {
+				setStatus(2);
+			} else {
+				ota.received.push(Buffer.from(data.subarray(2, 18)));
+			}
+			const fail = ota.failStatusAfterPackets;
+			if (fail && ota.dataPackets >= fail.after) ota.status = fail.status;
+		} else if (data.length === 6 && data[0] === 0x02 && data[1] === 0xff) {
+			if (data.readUInt16LE(2) !== ota.received.length - 1) {
+				setStatus(4);
+			} else if (
+				"problem" in validateImage(Buffer.concat(ota.received))
+			) {
+				setStatus(6);
+			} else if (ota.status === 0) {
+				ota.finished = true;
+				this.configResponse = Buffer.from(this.configResponse);
+				this.configResponse[1] = ota.newVersion;
+			}
+		}
+		return Promise.resolve();
 	}
 
 	public write(
@@ -77,6 +178,7 @@ export class FakePvvxDevice implements GattLink {
 		withResponse: boolean,
 	): Promise<void> {
 		if (this.failWrite) return Promise.reject(this.failWrite);
+		if (handle === OTA_HANDLE) return this.writeOta(data, withResponse);
 		this.writes.push({ data: Buffer.from(data), withResponse });
 		const listener = this.listener;
 		const command = data[0];
