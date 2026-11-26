@@ -31,6 +31,7 @@ export enum XiaomiEventIDs_Internal {
 	TemperatureAndHumidity = 0x100d, // 2 byte temperature / 10, 2 byte humidity / 10
 	PowerState = 0x1012, // 0 = off, 1 = on
 	ConsumableRemaining = 0x1013, // remaining amount in percent
+	DoorWindowStatus = 0x1019,
 }
 
 export type XiaomiEventIDs =
@@ -44,10 +45,14 @@ export type XiaomiEventIDs =
 	| "powerState"
 	| "consumableRemaining";
 
-export type XiaomiEvent = Partial<Record<XiaomiEventIDs, number>>;
+export type XiaomiEvent = Partial<Record<XiaomiEventIDs, number>> & {
+	contactOpen?: boolean;
+	doorLeftOpen?: boolean;
+};
 type ValueTransform = (
 	val: number,
 	eventID?: XiaomiEventIDs_Internal,
+	length?: number,
 ) => XiaomiEvent;
 
 // value transforms translate the internal data structure to the external one
@@ -80,6 +85,21 @@ const valueTransforms: Partial<
 	}),
 	PowerState: (val) => ({ powerState: val }),
 	ConsumableRemaining: (val) => ({ consumableRemaining: val }),
+	DoorWindowStatus: (val, _id, length) => {
+		if (length !== 1) {
+			return {};
+		}
+		switch (val) {
+			case 0:
+				return { contactOpen: true };
+			case 1:
+				return { contactOpen: false, doorLeftOpen: false };
+			case 2:
+				return { contactOpen: true, doorLeftOpen: true };
+			default:
+				return {};
+		}
+	},
 };
 
 export class XiaomiAdvertisement {
@@ -273,12 +293,17 @@ function readEvent(
 	if (end > data.length) {
 		throw new Error("Truncated MiBeacon event");
 	}
-	const value = parseNumberLE(data.subarray(offset + 3, end));
+	const bytes = data.subarray(offset + 3, end);
+	const value = parseNumberLE(bytes);
 	const name = XiaomiEventIDs_Internal[
 		id
 	] as keyof typeof XiaomiEventIDs_Internal;
 	return {
-		event: (valueTransforms[name] ?? valueTransforms.default)(value, id),
+		event: (valueTransforms[name] ?? valueTransforms.default)(
+			value,
+			id,
+			bytes.length,
+		),
 		end,
 	};
 }
