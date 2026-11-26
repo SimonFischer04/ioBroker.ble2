@@ -63,5 +63,7 @@
     "Full score decay time [s]": "Abbauzeit bei vollem Punktestand [s]",
     "BTHome bindkeys": "BTHome-Bindkeys",
     "Enter the Bluetooth MAC address and bindkey for each encrypted BTHome device.": "Gib für jedes verschlüsselte BTHome-Gerät die Bluetooth-MAC-Adresse und den Bindkey ein.",
-    "Pause local Bluetooth scanning": "Lokalen Bluetooth-Scan pausieren"
+    "Pause local Bluetooth scanning": "Lokalen Bluetooth-Scan pausieren",
+    "Enter the MAC address and bindkey for each encrypted Xiaomi MiBeacon device.": "MAC-Adresse und Bindkey für jedes verschlüsselte Xiaomi-MiBeacon-Gerät eingeben.",
+    "Enter a 24- or 32-digit hexadecimal Xiaomi bindkey.": "Einen 24- oder 32-stelligen hexadezimalen Xiaomi-Bindkey eingeben."
 }
