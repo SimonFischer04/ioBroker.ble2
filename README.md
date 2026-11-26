@@ -24,6 +24,8 @@ sudo setcap cap_net_raw+eip $(eval readlink -f `which node`)
 ```
 which requires `libcap2-bin` to be installed.
 
+If `info.driverState` is `driverError`, check the instance log for the scanner's Node.js version, OS, architecture, and load error. A missing native file or a `NODE_MODULE_VERSION` mismatch indicates a driver built for a different environment or an incomplete installation. On Linux, install the packages above and reinstall the `ble2` adapter through ioBroker using the Node.js installation that runs js-controller. A standalone scanner prints the same diagnosis to stderr.
+
 ## Configuration
 Select the local Bluetooth adapter by its HCI name and bus type, such as `hci0 (USB)`. If the list is unavailable, enter the index manually using the number after `hci`.
 In the textbox below, enter all UUIDs of the advertised services you want to record (as found in the nRF Connect app).
