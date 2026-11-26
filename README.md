@@ -118,6 +118,10 @@ So far, only gateways of other adapters can connect, e.g. ESPHome Bluetooth prox
 
 An adapter that provides such gateways announces them with `gateway:announce` (`{ protocol: "ble-gateway/1", gateways: [{ gatewayId, connect: true, freeSlots, slotLimit, features }] }`). `features` lists optional commands, so far `"writeSequence"`: `gatt:writeSequence` writes up to 64 values to one handle and reads it afterwards, the firmware update needs it. The providing adapter answers the `gatt:*` commands this adapter sends to it and reports ended connections and notifications with `gateway:connectionState` and `gateway:notification`. The details are in [`docs/spec-phase-2-gatt.md`](docs/spec-phase-2-gatt.md), part A, for `gatt:writeSequence` in [`docs/spec-phase-4-pvvx-ota.md`](docs/spec-phase-4-pvvx-ota.md), part A, and the types in `src/lib/gateway-protocol.ts`.
 
+## Reading a Comet Blue thermostat
+
+Use `sendToAsync("ble2.0", "readCometBlue", { address, pin })` with the thermostat's Bluetooth MAC address and its PIN as a string. A connecting gateway must be in range. The command returns the ambient temperature, manual, eco and comfort setpoints in °C, and a battery percentage when the device provides it. It authenticates using the supplied PIN for the current session.
+
 ## Setting the clock of pvvx thermometers
 Thermometers with the [pvvx firmware](https://github.com/pvvx/ATC_MiThermometer) (e.g. Xiaomi LYWSD03MMC) have a clock that drifts and does not know summer time. The adapter can set it to the local time of the ioBroker host, through a gateway that can connect, e.g. an ESPHome Bluetooth proxy with `bluetooth_proxy: active: true` and ioBroker.esphome.
 
@@ -270,6 +274,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * **BREAKING:** Require js-controller 7.2.2 or newer; update adapter-core and release tools, repository metadata, and Dependabot configuration.
 -->
 ### __WORK IN PROGRESS__
+* Read protected temperature and battery data from Comet Blue thermostats.
 * Other adapters can deliver BLE advertisements they received, e.g. from ESPHome Bluetooth proxies (`gateway:advertisements`). Several receivers can be used at the same time.
 * The adapter can run without Bluetooth hardware: the Bluetooth adapter of the host can be disabled in the settings, and the Bluetooth driver is an optional dependency now
 * A problem with the Bluetooth adapter of the host no longer terminates the adapter

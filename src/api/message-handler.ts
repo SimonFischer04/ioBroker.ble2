@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import type { ConnectionManager } from "../connections/connection-manager";
 import type { DeviceRegistry } from "../devices/device-registry";
+import { readCometBlue } from "../drivers/comet-blue";
 import type { GatewayRegistry } from "../gateways/gateway-registry";
 import { normalizeAddress } from "../lib/advertisement";
 import { GatewayError, toErrorResponse } from "../lib/gateway-error";
@@ -228,6 +229,17 @@ export function createMessageHandler(
 						),
 					);
 					return {};
+				}).then(respond);
+				return;
+
+			case "readCometBlue":
+				void runGattCommand(async () => {
+					const { address } = parseGattRequest(obj.message, {
+						characteristic: false,
+						data: false,
+					});
+					const { pin } = obj.message as { pin?: unknown };
+					return readCometBlue(ctx.connections, address, pin);
 				}).then(respond);
 				return;
 
