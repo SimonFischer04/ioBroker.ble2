@@ -113,91 +113,57 @@ export class AdvertisementProcessor {
 			return;
 		}
 
-		let serviceDataIsNotEmpty = false;
-		let manufacturerDataIsNotEmpty = false;
-
-		_.adapter.log.debug(
-			`discovered peripheral ${peripheral.address}${
-				peripheral.gatewayId ? ` via ${peripheral.gatewayId}` : ""
-			}`,
-		);
-		_.adapter.log.debug(
-			`  has advertisement: ${peripheral.advertisement != null}`,
-		);
-		if (peripheral.advertisement != null) {
-			_.adapter.log.debug(
-				`  has serviceData: ${
-					peripheral.advertisement.serviceData != null
-				}`,
+		const { log } = _.adapter;
+		const debugTraffic = log.level === "debug" || log.level === "silly";
+		const { advertisement } = peripheral;
+		if (debugTraffic) {
+			log.debug(
+				`discovered peripheral ${peripheral.address}${peripheral.gatewayId ? ` via ${peripheral.gatewayId}` : ""}`,
 			);
-			if (peripheral.advertisement.serviceData != null) {
-				_.adapter.log.debug(
-					`  serviceData = ${JSON.stringify(
-						peripheral.advertisement.serviceData,
-					)}`,
-				);
-				serviceDataIsNotEmpty =
-					peripheral.advertisement.serviceData.length > 0;
-			}
-			_.adapter.log.debug(
-				`  has manufacturerData: ${
-					peripheral.advertisement.manufacturerData != null
-				}`,
-			);
-			if (peripheral.advertisement.manufacturerData != null) {
-				_.adapter.log.debug(
-					`  manufacturerData = ${peripheral.advertisement.manufacturerData.toString(
-						"hex",
-					)}`,
-				);
-				manufacturerDataIsNotEmpty =
-					peripheral.advertisement.manufacturerData.length > 0;
-			}
-		} else {
-			// don't create devices for peripherals without advertised data
+			log.debug(`  has advertisement: ${advertisement != null}`);
+		}
+		if (!advertisement) {
 			return;
+		}
+
+		const { serviceData, manufacturerData } = advertisement;
+		if (debugTraffic) {
+			log.debug(`  has serviceData: ${serviceData != null}`);
+			if (serviceData != null) {
+				log.debug(`  serviceData = ${JSON.stringify(serviceData)}`);
+			}
+			log.debug(`  has manufacturerData: ${manufacturerData != null}`);
+			if (manufacturerData != null) {
+				log.debug(
+					`  manufacturerData = ${manufacturerData.toString("hex")}`,
+				);
+			}
 		}
 
 		// Remember which gateway receives the device how well. When several gateways
 		// receive the same packet, only the first copy is handled.
 		const observation = this.devices.observe(peripheral);
 		if (observation.duplicate) {
-			_.adapter.log.debug(
-				`  skipped, another gateway already delivered this packet`,
-			);
+			if (debugTraffic) {
+				log.debug(
+					"  skipped, another gateway already delivered this packet",
+				);
+			}
 			if (peripheral.gatewayId) {
 				this.gateways.recordDuplicate(peripheral.gatewayId);
 			}
 			return;
 		}
 
-		// create devices if we selected to allow empty devices
-		// or the peripheral transmits serviceData or manufacturerData
 		if (
 			!this.options.allowEmptyDevices &&
-			!serviceDataIsNotEmpty &&
-			!manufacturerDataIsNotEmpty
+			!serviceData?.length &&
+			!manufacturerData?.length
 		) {
 			return;
 		}
 
 		const deviceId = peripheral.address;
-
-		// find out which plugin is handling this
-		let plugin: Plugin | undefined;
-		for (const p of this.options.plugins) {
-			if (p.isHandling(peripheral)) {
-				_.adapter.log.debug(`plugin ${p.name} is handling ${deviceId}`);
-				plugin = p;
-				break;
-			}
-		}
-		if (!plugin) {
-			_.adapter.log.warn(
-				`no handling plugin found for peripheral ${peripheral.id}`,
-			);
-			return;
-		}
 
 		// Test if we may record this device
 		if (!this.allowNewDevices) {
@@ -216,6 +182,24 @@ export class AdvertisementProcessor {
 				return;
 			}
 			// This is a known device
+		}
+
+		// find out which plugin is handling this
+		let plugin: Plugin | undefined;
+		for (const p of this.options.plugins) {
+			if (p.isHandling(peripheral)) {
+				if (debugTraffic) {
+					log.debug(`plugin ${p.name} is handling ${deviceId}`);
+				}
+				plugin = p;
+				break;
+			}
+		}
+		if (!plugin) {
+			_.adapter.log.warn(
+				`no handling plugin found for peripheral ${peripheral.id}`,
+			);
+			return;
 		}
 
 		// Always ensure the rssi state exists and gets a value
@@ -265,9 +249,11 @@ export class AdvertisementProcessor {
 
 		// Now fill the states with values
 		if (values != null) {
-			_.adapter.log.debug(
-				`${deviceId} > got values: ${JSON.stringify(values)}`,
-			);
+			if (debugTraffic) {
+				log.debug(
+					`${deviceId} > got values: ${JSON.stringify(values)}`,
+				);
+			}
 			// eslint-disable-next-line prefer-const
 			for (let [stateId, value] of entries(values)) {
 				// Fix special chars
@@ -275,7 +261,9 @@ export class AdvertisementProcessor {
 				// set the value if there's an object for the state
 				const iobStateId = `${_.adapter.namespace}.${deviceId}.${stateId}`;
 				if ((await _.objectCache.getObject(iobStateId)) != null) {
-					_.adapter.log.debug(`setting state ${iobStateId}`);
+					if (debugTraffic) {
+						log.debug(`setting state ${iobStateId}`);
+					}
 					await _.adapter.setStateChangedAsync(
 						iobStateId,
 						value ?? null,
@@ -287,8 +275,8 @@ export class AdvertisementProcessor {
 					);
 				}
 			}
-		} else {
-			_.adapter.log.debug(`${deviceId} > got no values`);
+		} else if (debugTraffic) {
+			log.debug(`${deviceId} > got no values`);
 		}
 	}
 }

@@ -154,3 +154,65 @@ describe("xiaomi plugin => ", () => {
 		}
 	});
 });
+
+describe("Xiaomi Door and Window Sensor 2", () => {
+	const address = "e4:aa:ec:81:21:ae";
+	const mock = createGlobalMock({});
+	mock.Global.adapter.config = {
+		xiaomiBindkeys: JSON.stringify([
+			{ address, key: "017e52d2684779298709b117c0a75a7b" },
+		]),
+	} as ioBroker.AdapterConfig;
+	const plugin = proxyquireModule.noPreserveCache()<typeof XiaomiModule>(
+		"./xiaomi",
+		{ "../lib/global": mock },
+	);
+
+	function advertisement(hex: string): PeripheralInfo {
+		return {
+			address,
+			advertisement: {
+				serviceData: [{ uuid: "fe95", data: Buffer.from(hex, "hex") }],
+			},
+		} as PeripheralInfo;
+	}
+
+	it("authenticates a captured MiBeacon v5 packet and publishes boolean contact states", () => {
+		const packet = advertisement(
+			"58588b09a3ae2181ecaae40e2c553c040000d28a500c",
+		);
+		expect(plugin.isHandling(packet)).to.be.true;
+		const context = plugin.createContext(packet);
+
+		expect(plugin.getValues(context)).to.deep.equal({
+			contactOpen: true,
+			doorLeftOpen: true,
+		});
+		expect(
+			plugin
+				.defineObjects(context)
+				?.states.map(({ id, common }) => [
+					id,
+					common?.type,
+					common?.role,
+				]),
+		).to.deep.equal([
+			["contactOpen", "boolean", "sensor.door"],
+			["doorLeftOpen", "boolean", "indicator.alarm"],
+		]);
+	});
+
+	it("updates the open state on close and leaves unsupported status codes alone", () => {
+		const closed = advertisement("50508b09a4ae2181ecaae419100101");
+		expect(plugin.getValues(plugin.createContext(closed))).to.deep.equal({
+			contactOpen: false,
+			doorLeftOpen: false,
+		});
+		const reset = advertisement("50508b09a5ae2181ecaae419100103");
+		expect(plugin.getValues(plugin.createContext(reset))).to.deep.equal({});
+		const malformed = advertisement("50508b09a6ae2181ecaae4191000");
+		expect(plugin.getValues(plugin.createContext(malformed))).to.deep.equal(
+			{},
+		);
+	});
+});
