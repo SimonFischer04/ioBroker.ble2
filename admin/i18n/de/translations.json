@@ -72,5 +72,7 @@
     "Packets to confirm presence": "Pakete zur Bestätigung der Anwesenheit",
     "Full score decay time [s]": "Abbauzeit bei vollem Punktestand [s]",
     "BTHome bindkeys": "BTHome-Bindkeys",
-    "Enter the Bluetooth MAC address and bindkey for each encrypted BTHome device.": "Gib für jedes verschlüsselte BTHome-Gerät die Bluetooth-MAC-Adresse und den Bindkey ein."
+    "Enter the Bluetooth MAC address and bindkey for each encrypted BTHome device.": "Gib für jedes verschlüsselte BTHome-Gerät die Bluetooth-MAC-Adresse und den Bindkey ein.",
+    "Cycling Power sensors (MAC addresses)": "Radsport-Leistungssensoren (MAC-Adressen)",
+    "Add one cycling power sensor address per line. A gateway that can connect is required.": "Eine Sensoradresse pro Zeile eintragen. Ein verbindungsfähiges Gateway ist erforderlich."
 }

@@ -2,6 +2,7 @@ import * as utils from "@iobroker/adapter-core";
 import { createMessageHandler } from "./api/message-handler";
 import { ConnectionManager } from "./connections/connection-manager";
 import { DeviceRegistry } from "./devices/device-registry";
+import { CyclingPower } from "./drivers/cycling-power";
 import {
 	createHttpFirmwareSource,
 	DEFAULT_FIRMWARE_URL,
@@ -36,6 +37,7 @@ let gateways: GatewayRegistry | undefined;
 let remoteGateway: RemoteGatewayTransport | undefined;
 let connections: ConnectionManager | undefined;
 let pvvx: PvvxDriver | undefined;
+let cyclingPower: CyclingPower | undefined;
 let pvvxUpdater: PvvxUpdater | undefined;
 let handleMessage: ((obj: ioBroker.Message) => void) | undefined;
 /** The sources of advertisements that are in use */
@@ -225,6 +227,7 @@ const adapter = utils.adapter({
 			onAdvertisement: (peripheral) => {
 				// Connections need to know every device in range, also the ones that are not decoded
 				devices.track(peripheral);
+				cyclingPower?.observe(peripheral);
 				if (
 					matchesServiceFilter(peripheral, services, manufacturerIds)
 				) {
@@ -248,6 +251,22 @@ const adapter = utils.adapter({
 			setTimeout: (callback, ms) => adapter.setTimeout(callback, ms),
 			clearTimeout: (timer) => adapter.clearTimeout(timer),
 		});
+
+		const powerSensors = parseDeviceList(
+			adapter.config.cyclingPowerDevices,
+		);
+		for (const address of powerSensors.invalid) {
+			adapter.log.warn(
+				`Ignoring invalid Cycling Power sensor address "${address}"`,
+			);
+		}
+		if (powerSensors.addresses.length > 0) {
+			cyclingPower = new CyclingPower(
+				adapter,
+				connections,
+				powerSensors.addresses,
+			);
+		}
 
 		// Sets the clock of pvvx thermometers through the gateways
 		const pvvxList = parseDeviceList(adapter.config.pvvxDevices);
@@ -362,6 +381,7 @@ const adapter = utils.adapter({
 			// No new jobs for the connections
 			pvvxUpdater?.dispose();
 			pvvx?.dispose();
+			cyclingPower?.dispose();
 			// Before the transports, so the sessions can still say goodbye to their gateways
 			connections?.dispose();
 			for (const transport of transports) {
