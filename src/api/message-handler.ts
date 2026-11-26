@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import type { ConnectionManager } from "../connections/connection-manager";
 import type { DeviceRegistry } from "../devices/device-registry";
 import { syncLywsd02Clock } from "../drivers/lywsd02-clock";
+import { readCometBlue } from "../drivers/comet-blue";
 import { runSwitchBotAction } from "../drivers/switchbot-bot";
 import type { GatewayRegistry } from "../gateways/gateway-registry";
 import { normalizeAddress } from "../lib/advertisement";
@@ -282,6 +283,17 @@ export function createMessageHandler(
 					});
 					const { action } = obj.message as { action?: unknown };
 					return runSwitchBotAction(ctx.connections, address, action);
+				}).then(respond);
+				return;
+
+			case "readCometBlue":
+				void runGattCommand(async () => {
+					const { address } = parseGattRequest(obj.message, {
+						characteristic: false,
+						data: false,
+					});
+					const { pin } = obj.message as { pin?: unknown };
+					return readCometBlue(ctx.connections, address, pin);
 				}).then(respond);
 				return;
 
