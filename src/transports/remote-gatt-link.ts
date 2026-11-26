@@ -1,5 +1,5 @@
 import type { GattLink } from "../connections/gatt-link";
-import { GatewayError } from "../lib/gateway-error";
+import { GatewayError, normalizeError } from "../lib/gateway-error";
 import {
 	GattCommands,
 	MAX_WRITE_SEQUENCE_LENGTH,
@@ -56,13 +56,21 @@ export class RemoteGattLink implements GattLink {
 		);
 	}
 
-	/** Sends a command for this link. Rejects at once when the link ends. */
+	/**
+	 * Sends a command for this link. Rejects at once when the link ends.
+	 *
+	 * @param command
+	 * @param payload
+	 * @param timeoutMs
+	 */
 	private request<T>(
 		command: string,
 		payload: Record<string, unknown>,
 		timeoutMs: number,
 	): Promise<T> {
-		if (this.ended) return Promise.reject(this.notConnected());
+		if (this.ended) {
+			return Promise.reject(this.notConnected());
+		}
 		return new Promise<T>((resolve, reject) => {
 			const abort = (error: GatewayError): void => reject(error);
 			this.pending.add(abort);
@@ -78,10 +86,14 @@ export class RemoteGattLink implements GattLink {
 				timeoutMs,
 			).then(
 				(result) => {
-					if (this.pending.delete(abort)) resolve(result);
+					if (this.pending.delete(abort)) {
+						resolve(result);
+					}
 				},
 				(error) => {
-					if (this.pending.delete(abort)) reject(error);
+					if (this.pending.delete(abort)) {
+						reject(normalizeError(error));
+					}
 				},
 			);
 		});
@@ -151,7 +163,9 @@ export class RemoteGattLink implements GattLink {
 			},
 			GATT_TIMEOUTS_MS.writeSequence,
 		);
-		if (!readAfter) return undefined;
+		if (!readAfter) {
+			return undefined;
+		}
 		if (
 			typeof result?.data !== "string" ||
 			!BASE64_REGEX.test(result.data)
@@ -168,7 +182,9 @@ export class RemoteGattLink implements GattLink {
 		handle: number,
 		listener: (data: Buffer) => void,
 	): Promise<void> {
-		if (this.ended) throw this.notConnected();
+		if (this.ended) {
+			throw this.notConnected();
+		}
 		this.listeners.set(handle, listener);
 		try {
 			await this.request(
@@ -185,7 +201,9 @@ export class RemoteGattLink implements GattLink {
 	}
 
 	public async disconnect(): Promise<void> {
-		if (this.ended) return;
+		if (this.ended) {
+			return;
+		}
 		this.finish();
 		try {
 			await sendRequest(
@@ -208,14 +226,21 @@ export class RemoteGattLink implements GattLink {
 		this.disconnectListeners.push(listener);
 	}
 
-	/** The gateway delivered a notification for this link */
+	/**
+	 * The gateway delivered a notification for this link
+	 *
+	 * @param handle
+	 * @param data
+	 */
 	public handleNotification(handle: number, data: Buffer): void {
 		this.listeners.get(handle)?.(data);
 	}
 
 	/** The connection ended without disconnect() being called: the gateway reported it or went offline */
 	public handleEnded(): void {
-		if (this.ended) return;
+		if (this.ended) {
+			return;
+		}
 		this.finish();
 		for (const listener of this.disconnectListeners.splice(0)) {
 			try {
@@ -230,7 +255,9 @@ export class RemoteGattLink implements GattLink {
 		this.ended = true;
 		this.listeners.clear();
 		const error = this.notConnected();
-		for (const abort of [...this.pending]) abort(error);
+		for (const abort of [...this.pending]) {
+			abort(error);
+		}
 		this.pending.clear();
 		this.onEnd();
 	}

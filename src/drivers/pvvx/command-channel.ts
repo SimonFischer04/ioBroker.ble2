@@ -1,5 +1,5 @@
 import type { GattSession } from "../../connections/gatt-session";
-import { GatewayError } from "../../lib/gateway-error";
+import { GatewayError, normalizeError } from "../../lib/gateway-error";
 import {
 	PVVX_COMMAND_CHARACTERISTIC,
 	PVVX_SERVICE,
@@ -45,6 +45,9 @@ export class PvvxCommandChannel {
 	 * Writes the request and resolves with the first notification whose first byte equals the first byte of the request.
 	 * Other notifications are skipped. Rejects with GatewayError("TIMEOUT") after timeoutMs.
 	 * Only one request at a time: a second call while one is running rejects with GatewayError("GATT_ERROR").
+	 *
+	 * @param data
+	 * @param timeoutMs
 	 */
 	public request(
 		data: Buffer,
@@ -64,7 +67,9 @@ export class PvvxCommandChannel {
 			// Expect the answer before writing: it may arrive before the write is confirmed
 			this.pending = pending;
 			pending.timer = this.timers.setTimeout(() => {
-				if (this.pending !== pending) return;
+				if (this.pending !== pending) {
+					return;
+				}
 				this.pending = undefined;
 				reject(
 					new GatewayError(
@@ -82,10 +87,12 @@ export class PvvxCommandChannel {
 					PVVX_WRITE_WITH_RESPONSE,
 				)
 				.catch((error: unknown) => {
-					if (this.pending !== pending) return;
+					if (this.pending !== pending) {
+						return;
+					}
 					this.pending = undefined;
 					this.timers.clearTimeout(pending.timer);
-					reject(error);
+					reject(normalizeError(error));
 				});
 		});
 	}

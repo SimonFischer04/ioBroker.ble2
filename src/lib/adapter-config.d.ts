@@ -14,8 +14,9 @@ declare global {
 			 * commas, semicolons, spaces or line breaks. Missing in old configurations.
 			 */
 			remoteServers?: string;
-			hciDevice: number;
+			hciDevice: number | string;
 			plugins: string;
+			xiaomiBindkeys?: string;
 			allowEmptyDevices: boolean;
 			rssiThrottle: number;
 			/**

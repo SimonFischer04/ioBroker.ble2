@@ -41,7 +41,6 @@ const FIRMWARE_JSON = JSON.stringify({
  * @returns {Promise<{ url: string, requests: string[], close: () => Promise<void> }>} The server
  */
 async function startFirmwareServer() {
-	/** @type {string[]} */
 	const requests = [];
 	const server = http.createServer((req, res) => {
 		requests.push(req.url ?? "");
@@ -59,9 +58,7 @@ async function startFirmwareServer() {
 	await new Promise((resolve) =>
 		server.listen(0, "127.0.0.1", () => resolve(undefined)),
 	);
-	const address = /** @type {import("node:net").AddressInfo} */ (
-		server.address()
-	);
+	const address = server.address();
 	return {
 		url: `http://127.0.0.1:${address.port}/`,
 		requests,
@@ -177,15 +174,10 @@ async function runUpdate(harness, expected) {
 /** @param {(name: string, fn: (getHarness: () => any) => void) => void} suite */
 exports.runTests = function (suite) {
 	suite("pvvx - firmware update", (getHarness) => {
-		/** @type {any} */
 		let harness;
-		/** @type {FakeGattGateway} */
 		let gateway;
-		/** @type {ReturnType<typeof createPvvxHandler>} */
 		let thermometer;
-		/** @type {Awaited<ReturnType<typeof startFirmwareServer>>} */
 		let server;
-		/** @type {Advertiser} */
 		let advertiser;
 
 		before(async function () {
@@ -370,13 +362,9 @@ exports.runTests = function (suite) {
 	});
 
 	suite("pvvx - firmware update without a capable gateway", (getHarness) => {
-		/** @type {any} */
 		let harness;
-		/** @type {FakeGattGateway} */
 		let gateway;
-		/** @type {Awaited<ReturnType<typeof startFirmwareServer>>} */
 		let server;
-		/** @type {Advertiser} */
 		let advertiser;
 
 		before(async function () {

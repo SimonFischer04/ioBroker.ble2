@@ -13,6 +13,7 @@ import { systemClock } from "./drivers/pvvx/time-sync";
 import { GatewayRegistry } from "./gateways/gateway-registry";
 import type { PeripheralInfo } from "./lib/advertisement";
 import { Global as _ } from "./lib/global";
+import { parseHciIndex } from "./lib/hci-ports";
 import { ObjectCache } from "./lib/object-cache";
 // Load all registered plugins
 import plugins from "./plugins";
@@ -39,7 +40,7 @@ const transports: Transport[] = [];
 
 // Adapter-Objekt erstellen
 const adapter = utils.adapter({
-	name: "ble",
+	name: "ble2",
 	// is called when databases are connected and adapter received configuration.
 	// start here!
 	ready: async () => {
@@ -78,9 +79,7 @@ const adapter = utils.adapter({
 		_.adapter.log.info(
 			`loaded plugins: ${plugins.map((p) => p.name).join(", ")}`,
 		);
-		const enabledPluginNames: string[] = (
-			(adapter.config.plugins as string) || ""
-		)
+		const enabledPluginNames: string[] = (adapter.config.plugins || "")
 			.split(",")
 			.map((p: string) => p.trim().toLowerCase())
 			.concat("_default");
@@ -96,7 +95,7 @@ const adapter = utils.adapter({
 		if (adapter.config.services === "*") {
 			_.adapter.log.info(`monitoring all services`);
 		} else {
-			services = ((adapter.config.services as string) || "")
+			services = (adapter.config.services || "")
 				.split(",") // get manually defined services
 				.concat(...enabledPlugins.map((p) => p.advertisedServices)) // concat with plugin-defined ones
 				.reduce((acc, s) => acc.concat(s), [] as string[]) // flatten the arrays
@@ -104,11 +103,21 @@ const adapter = utils.adapter({
 				.filter((s) => s !== "")
 				.reduce((acc: any[], s) => {
 					// filter out duplicates
-					if (acc.indexOf(s) === -1) acc.push(s);
+					if (acc.indexOf(s) === -1) {
+						acc.push(s);
+					}
 					return acc;
 				}, []);
 			_.adapter.log.info(`monitored services: ${services.join(", ")}`);
 		}
+
+		const manufacturerIds = [
+			...new Set(
+				enabledPlugins.flatMap(
+					(plugin) => plugin.manufacturerIds ?? [],
+				),
+			),
+		];
 
 		// Limit RSSI updates
 		let rssiUpdateInterval = 0;
@@ -171,7 +180,9 @@ const adapter = utils.adapter({
 			onAdvertisement: (peripheral) => {
 				// Connections need to know every device in range, also the ones that are not decoded
 				devices.track(peripheral);
-				if (matchesServiceFilter(peripheral, services)) {
+				if (
+					matchesServiceFilter(peripheral, services, manufacturerIds)
+				) {
 					handleAdvertisement(peripheral);
 				}
 			},
@@ -269,11 +280,12 @@ const adapter = utils.adapter({
 				`Ignoring the invalid remote scan server "${entry}", expected host or host:port`,
 			);
 		}
-		if (useLocalScanner) {
+		if (useLocalScanner && !process.env.TESTING) {
 			transports.push(
 				new NobleLocalTransport(transportContext, {
 					services,
-					hciDevice: adapter.config.hciDevice,
+					manufacturerIds,
+					hciDevice: parseHciIndex(adapter.config.hciDevice),
 				}),
 			);
 		}
@@ -291,7 +303,9 @@ const adapter = utils.adapter({
 				"The local Bluetooth adapter is not used, waiting for advertisements from external gateways",
 			);
 		}
-		for (const transport of transports) transport.start();
+		for (const transport of transports) {
+			transport.start();
+		}
 
 		await pvvx.start();
 		await pvvxUpdater.start();
@@ -305,26 +319,35 @@ const adapter = utils.adapter({
 			pvvx?.dispose();
 			// Before the transports, so the sessions can still say goodbye to their gateways
 			connections?.dispose();
-			for (const transport of transports) transport.stop();
+			for (const transport of transports) {
+				transport.stop();
+			}
 			processor?.dispose();
 			gateways?.dispose();
-		} catch {}
+			_.objectCache?.dispose();
+		} catch (error) {
+			adapter.log.warn(
+				`Could not finish cleanup: ${error instanceof Error ? error.message : "Unknown error"}`,
+			);
+		}
 		callback();
 	},
 
 	// is called if a subscribed object changes
 	objectChange: (id, obj) => {
-		if (!!obj) {
+		if (obj) {
 			// it has just been changed, so update the cached object
 			_.objectCache.updateObject(obj);
 		} else {
 			// it has been deleted, so delete it from the cache
 			_.objectCache.invalidateObject(id);
+			processor?.removeState(id);
 		}
 	},
 
 	// is called if a subscribed state changes
 	stateChange: (id, state) => {
+		processor?.observeState(id, state);
 		if (
 			/options\.allowNewDevices$/.test(id) &&
 			id.startsWith(adapter.namespace) &&
@@ -340,15 +363,20 @@ const adapter = utils.adapter({
 		}
 
 		// The button pvvx.syncTime
-		if (pvvx?.handleStateChange(id, state)) return;
+		if (pvvx?.handleStateChange(id, state)) {
+			return;
+		}
 		// The buttons of the firmware update
-		if (pvvxUpdater?.handleStateChange(id, state)) return;
+		if (pvvxUpdater?.handleStateChange(id, state)) {
+			return;
+		}
 
 		// When an instance that delivers advertisements stops, its gateways are offline
 		remoteGateway?.handleStateChange(id, state);
 	},
 
-	message: (obj) => {
+	// eslint-disable-next-line @typescript-eslint/require-await
+	message: async (obj) => {
 		if (handleMessage) {
 			handleMessage(obj);
 		} else if (obj?.callback) {

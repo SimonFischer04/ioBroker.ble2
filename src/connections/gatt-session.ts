@@ -144,7 +144,9 @@ export class GattSession {
 	/** Ends the connection. Can be called several times. */
 	public async close(): Promise<void> {
 		this._closed = true;
-		if (this.disconnected) return;
+		if (this.disconnected) {
+			return;
+		}
 		this.disconnected = true;
 		await this.link.disconnect();
 	}

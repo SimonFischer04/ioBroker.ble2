@@ -76,7 +76,9 @@ export class FakeLink implements GattLink {
 		this.calls.push(
 			`writeSequence ${handle} ${data.length} ${withResponse} ${readAfter}`,
 		);
-		for (const entry of data) await this.write(handle, entry, withResponse);
+		for (const entry of data) {
+			await this.write(handle, entry, withResponse);
+		}
 		return readAfter ? this.read(handle) : undefined;
 	}
 
@@ -99,22 +101,27 @@ export class FakeLink implements GattLink {
 		this.disconnectListeners.push(listener);
 	}
 
-	/** The device sends a notification */
+	/**
+	 * The device sends a notification
+	 *
+	 * @param handle
+	 * @param data
+	 */
 	public notify(handle: number, data: Buffer): void {
 		this.listeners.get(handle)?.(data);
 	}
 
 	/** The connection ends without disconnect() being called */
 	public simulateDisconnect(): void {
-		for (const listener of this.disconnectListeners.splice(0)) listener();
+		for (const listener of this.disconnectListeners.splice(0)) {
+			listener();
+		}
 	}
 }
 
 /** What a gateway of the FakeProvider does on connect */
 export type FakeConnectBehaviour =
-	| "ok"
-	| GatewayErrorCode
-	| (() => Promise<FakeLink>);
+	"ok" | GatewayErrorCode | (() => Promise<FakeLink>);
 
 /** Opens FakeLinks, as configured per gateway */
 export class FakeProvider implements GattLinkProvider {

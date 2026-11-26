@@ -3,7 +3,7 @@
  * See https://github.com/ruuvi/ruuvi-sensor-protocols for details
  */
 
-import * as nodeUrl from "url";
+import * as nodeUrl from "node:url";
 import { Global as _ } from "../lib/global";
 import type { PeripheralInfo } from "../lib/scanProcessInterface";
 import {
@@ -22,43 +22,26 @@ import {
 const serviceUUID = "feaa";
 const manufacturerId = Buffer.from([0x99, 0x04]);
 
-// remember tested peripherals by their ID for 1h
-const testValidity = 1000 * 3600;
-const testedPeripherals = new Map<
-	string,
-	{ timestamp: number; result: boolean }
->();
-
 const plugin: Plugin<RuuviContext> = {
 	name: "ruuvi-tag",
 	description: "Ruuvi Tag",
 
 	advertisedServices: [serviceUUID],
+	manufacturerIds: [0x0499],
 
 	isHandling: (peripheral: PeripheralInfo) => {
-		const cached = testedPeripherals.get(peripheral.id);
-		if (cached && cached.timestamp >= Date.now() - testValidity) {
-			// we have a recent test result, return it
-			return cached.result;
-		}
-		// we have no quick check, so try to create a context
-		let ret = false;
+		// Check each advertisement: a device may also send unrelated or empty frames.
 		try {
-			const ctx = plugin.createContext(peripheral);
-			ret = ctx != null;
-		} catch (e) {
-			/* all good */
+			return plugin.createContext(peripheral) != null;
+		} catch {
+			return false;
 		}
-		// store the test result
-		testedPeripherals.set(peripheral.id, {
-			timestamp: Date.now(),
-			result: ret,
-		});
-		return ret;
 	},
 
 	createContext: (peripheral: PeripheralInfo) => {
-		if (!peripheral.advertisement) return;
+		if (!peripheral.advertisement) {
+			return;
+		}
 		let data = getServiceData(peripheral, serviceUUID);
 		if (data != undefined) {
 			const url = data.toString("utf8");
@@ -67,7 +50,9 @@ const plugin: Plugin<RuuviContext> = {
 			);
 			// data format 2 or 4 - extract from URL hash
 			const parsedUrl = nodeUrl.parse(url);
-			if (!parsedUrl.hash) return;
+			if (!parsedUrl.hash) {
+				return;
+			}
 			data = Buffer.from(parsedUrl.hash, "base64");
 			return parseDataFormat2or4(data);
 		} else if (
@@ -94,16 +79,17 @@ const plugin: Plugin<RuuviContext> = {
 				return parseDataFormat3(data);
 			} else if (data[0] === 5) {
 				return parseDataFormat5(data);
-			} else {
-				_.adapter.log.debug(
-					`ruuvi-tag >> unsupported data format ${data[0]}`,
-				);
 			}
+			_.adapter.log.debug(
+				`ruuvi-tag >> unsupported data format ${data[0]}`,
+			);
 		}
 	},
 
 	defineObjects: (context) => {
-		if (context == undefined) return;
+		if (context == undefined) {
+			return;
+		}
 
 		const deviceObject: DeviceObjectDefinition = {
 			// no special definitions neccessary
@@ -260,7 +246,9 @@ const plugin: Plugin<RuuviContext> = {
 		return ret;
 	},
 	getValues: (context) => {
-		if (context == null) return;
+		if (context == null) {
+			return;
+		}
 
 		// strip out unnecessary properties
 		const {
@@ -274,9 +262,15 @@ const plugin: Plugin<RuuviContext> = {
 		const { acceleration, ...ret } = remainder;
 		if (acceleration != null) {
 			const { x, y, z } = acceleration;
-			if (x != null) (ret as any).accelerationX = x;
-			if (y != null) (ret as any).accelerationY = y;
-			if (z != null) (ret as any).accelerationZ = z;
+			if (x != null) {
+				(ret as any).accelerationX = x;
+			}
+			if (y != null) {
+				(ret as any).accelerationY = y;
+			}
+			if (z != null) {
+				(ret as any).accelerationZ = z;
+			}
 		}
 		return ret;
 	},

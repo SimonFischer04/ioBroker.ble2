@@ -35,7 +35,7 @@ const EG = "gateways.test_0_proxy-eg";
  */
 async function isConnected(harness, id) {
 	const response = await sendToAdapter(harness, "getGateways", {});
-	const gateway = response.result.find((/** @type {any} */ g) => g.id === id);
+	const gateway = response.result.find((g) => g.id === id);
 	return gateway ? gateway.connected : undefined;
 }
 
@@ -44,7 +44,6 @@ exports.runTests = function (suite) {
 	suite(
 		"Gateway lifecycle - appearing, going offline and coming back",
 		(getHarness) => {
-			/** @type {any} */
 			let harness;
 			const STALE = "gateways.test_0_proxy-old";
 
@@ -175,7 +174,6 @@ exports.runTests = function (suite) {
 	);
 
 	suite("Gateway lifecycle - the delivering instance stops", (getHarness) => {
-		/** @type {any} */
 		let harness;
 		const ALIVE = `system.adapter.${SENDER}.alive`;
 

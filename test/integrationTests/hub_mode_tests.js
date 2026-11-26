@@ -33,7 +33,6 @@ const DEVICE = "a4:c1:38:12:34:56";
 /** @param {(name: string, fn: (getHarness: () => any) => void) => void} suite */
 exports.runTests = function (suite) {
 	suite("Hub mode - local Bluetooth adapter disabled", (getHarness) => {
-		/** @type {any} */
 		let harness;
 
 		before(async function () {
@@ -95,16 +94,15 @@ exports.runTests = function (suite) {
 			await waitForValue(harness, `${DEVICE}.temperature`, 25);
 			await waitForValue(harness, "info.connection", true);
 			const gateways = await sendToAdapter(harness, "getGateways", {});
-			expect(
-				gateways.result.map((/** @type {any} */ g) => g.id),
-			).to.deep.equal([`${SENDER}:proxy-og`]);
+			expect(gateways.result.map((g) => g.id)).to.deep.equal([
+				`${SENDER}:proxy-og`,
+			]);
 		});
 	});
 
 	suite(
 		"Hub mode - local Bluetooth adapter enabled, but possibly no hardware",
 		(getHarness) => {
-			/** @type {any} */
 			let harness;
 
 			before(async function () {
@@ -132,9 +130,7 @@ exports.runTests = function (suite) {
 						"getGateways",
 						{},
 					);
-					const local = gateways.result.find(
-						(/** @type {any} */ g) => g.id === "local",
-					);
+					const local = gateways.result.find((g) => g.id === "local");
 					if (local && local.connected) {
 						break;
 					}
@@ -164,8 +160,7 @@ exports.runTests = function (suite) {
 						{},
 					);
 					return response.result.some(
-						(/** @type {any} */ g) =>
-							g.id === `${SENDER}:proxy-og` && g.connected,
+						(g) => g.id === `${SENDER}:proxy-og` && g.connected,
 					);
 				}, "the gateway to be listed");
 				expect(gateways).to.be.true;

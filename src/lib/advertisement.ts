@@ -40,9 +40,13 @@ const MAC_REGEX = /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/;
 /**
  * Brings a MAC address into the form the adapter uses for its device IDs (lowercase with colons).
  * Returns undefined if the input is not a MAC address.
+ *
+ * @param address
  */
 export function normalizeAddress(address: unknown): string | undefined {
-	if (typeof address !== "string") return undefined;
+	if (typeof address !== "string") {
+		return undefined;
+	}
 	let ret = address.trim().toLowerCase().replace(/-/g, ":");
 	// Also accept addresses without separators
 	if (/^[0-9a-f]{12}$/.test(ret)) {

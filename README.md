@@ -1,14 +1,19 @@
-<img src="admin/ble.png" height="48" /> ioBroker.ble
-=================
+# <img src="admin/ble2.png" height="48" /> ioBroker.ble2
 
-![Build Status](https://action-badges.now.sh/AlCalzone/ioBroker.tradfri)
+[![Test and Release](https://github.com/SimonFischer04/ioBroker.ble2/actions/workflows/test-and-release.yml/badge.svg)](https://github.com/SimonFischer04/ioBroker.ble2/actions/workflows/test-and-release.yml)
+[![npm version](https://img.shields.io/npm/v/iobroker.ble2.svg)](https://www.npmjs.com/package/iobroker.ble2)
+
+This is SimonFischer04's maintained fork of [ioBroker.ble](https://github.com/AlCalzone/ioBroker.ble), published independently as `iobroker.ble2`. The original authors and MIT license are retained.
 
 Monitor Bluetooth Low Energy (BLE) beacons and record their information. 
 Currently, only recording *advertised* service data is supported. You can monitor which services are advertised by using the nRF Connect app (service data UUIDs).
 Connecting and reading/writing service chararcteristics will be supported in a future version.
 
 ## Installation
-![Number of Installations](http://iobroker.live/badges/ble-installed.svg?break_cache=1) ![Number of Installations](http://iobroker.live/badges/ble-stable.svg?break_cache=1)
+
+Requires Node.js 22.19 or newer, js-controller 7.2.2 or newer, and admin 7.6.20 or newer.
+
+![Number of Installations](http://iobroker.live/badges/ble2-installed.svg?break_cache=1) ![Number of Installations](http://iobroker.live/badges/ble2-stable.svg?break_cache=1)
 
 This adapter needs additional libraries to compile. See https://github.com/sandeepmistry/noble#prerequisites for detailed instructions.
 On Raspberry Pi and similar, this should do it: `sudo apt-get install bluetooth bluez libbluetooth-dev libudev-dev libcap2-bin`
@@ -20,8 +25,16 @@ sudo setcap cap_net_raw+eip $(eval readlink -f `which node`)
 which requires `libcap2-bin` to be installed.
 
 ## Configuration
-If you have multiple bluetooth devices on your system, select the one to use from the dropdown.
+Select the local Bluetooth adapter by its HCI name and bus type, such as `hci0 (USB)`. If the list is unavailable, enter the index manually using the number after `hci`.
 In the textbox below, enter all UUIDs of the advertised services you want to record (as found in the nRF Connect app).
+
+### Moving from ble to ble2
+
+Install `iobroker.ble2` and create a new `ble2` instance. Copy your settings from the old `ble` instance. If both instances use the same Bluetooth device or remote scanner, disable the old instance before starting the new one.
+
+The new adapter creates its own objects and states under `ble2.<instance>.*`. Existing `ble.<instance>.*` objects and history are not renamed or deleted. Enable **Accept new devices** in the new instance to discover your sensors, then update scripts, aliases, and dashboards to use the new state IDs.
+
+Remote scanner command-line flags and the TCP protocol are unchanged. For scanner configuration supplied through environment variables, rename the `IOB_BLE_` prefix to `IOB_BLE2_`.
 
 ### Running without Bluetooth hardware
 The Bluetooth adapter of the host is optional. Disable **Use the Bluetooth adapter of this host** in the settings to run the adapter as a hub that only handles the advertisements other adapters deliver (see below). In this mode the Bluetooth driver is not loaded, so neither Bluetooth hardware, nor the `setcap` command above, nor host mode networking in Docker are needed.
@@ -33,7 +46,7 @@ A Linux computer with Bluetooth in another room, e.g. a Raspberry Pi, can scan f
 
 ```bash
 mkdir blerp && cd blerp
-# copy bin/blerp.js of this adapter into this directory, then:
+# Run npm run build:server in the source checkout, then copy bin/blerp.js here.
 npm install @stoprocent/noble
 sudo setcap cap_net_raw+eip $(eval readlink -f `which node`)
 node blerp.js --listenPort 8734 --hciDevice 0
@@ -45,7 +58,7 @@ Things to know:
 * A server serves one adapter instance at a time.
 * The connection is neither authenticated nor encrypted. Only use it in a network you trust, and do not make the port reachable from outside.
 * The servers only receive advertisements, they cannot connect to devices.
-* The monitored services from the settings also apply to what the servers deliver. `--services` on the server reduces the traffic in addition.
+* The monitored services and plugin manufacturer IDs also apply to what the servers deliver. On the server, `--services` and `--manufacturerIds` can reduce traffic.
 * `info.driverState` shows the state of the Bluetooth driver of the local Bluetooth adapter, or of the server if it is the only source.
 
 Up to version 0.14 there was a single server (setting "Use remote server"), which disabled the Bluetooth adapter of the host. Such a configuration is moved to the new setting when the adapter starts, and the Bluetooth adapter of the host stays disabled.
@@ -54,7 +67,7 @@ Up to version 0.14 there was a single server (setting "Use remote server"), whic
 Other adapters can deliver the BLE advertisements they receive, e.g. from ESPHome Bluetooth proxies distributed in the house. They are handled exactly like the ones received by the local Bluetooth adapter: the same plugins, the same objects and states. The device ID is the MAC address in lowercase, no matter which receiver delivered the advertisement.
 
 ```js
-const response = await adapter.sendToAsync("ble.0", "gateway:advertisements", {
+const response = await adapter.sendToAsync("ble2.0", "gateway:advertisements", {
 	// Identifies the receiver within the sending instance
 	gatewayId: "proxy-og",
 	items: [
@@ -145,7 +158,19 @@ An update takes a few minutes. The states below `<mac>.pvvx`:
 After the update the adapter connects again, checks the new version and sets the clock. A failed update is not repeated automatically. Devices with a PIN code are not supported.
 
 ## Plugin system
-The adapter supports extension via plugins. Those define which advertised services should be listened to and how to translate the data. The plugin structure is defined in https://github.com/AlCalzone/ioBroker.ble/blob/master/src/plugins/plugin.ts and an example of a working plugin is defined here https://github.com/AlCalzone/ioBroker.ble/blob/master/src/plugins/_default.ts
+Build the adapter from source with `npm ci` followed by `npm run build`. The generated backend `build/` directory is not tracked in Git. Published npm packages include the generated files; installation directly from Git is disabled with `common.nogit`.
+
+For a standalone remote scanner, `npm run build:server` generates `bin/blerp.js`. This generated bundle is also ignored by Git; it loads the installed `@stoprocent/noble` driver at runtime.
+
+The admin interface is provided by ioBroker JSONConfig (`admin/jsonConfig.json`) and requires admin 7.6.20 or newer. It has no separate frontend build. **Accept new devices** controls the live `options.allowNewDevices` state and resets after five minutes.
+
+Choose one or more entries from the **Active plugins** dropdown. Existing plugin settings are loaded automatically; the basic advertisement handler stays enabled even when no plugin is selected.
+
+Run `npm run lint` to check the adapter, tests, and JavaScript helpers using the shared ioBroker ESLint configuration. Use `npm run lint -- --fix` to apply automatic fixes.
+
+The adapter supports extension via plugins. Those define which advertised services should be listened to and how to translate the data. The plugin structure is defined in https://github.com/SimonFischer04/ioBroker.ble2/blob/master/src/plugins/plugin.ts and an example of a working plugin is defined here https://github.com/SimonFischer04/ioBroker.ble2/blob/master/src/plugins/_default.ts
+
+Plugins can also declare `manufacturerIds`, an optional list of Bluetooth company identifiers, to receive manufacturer data from devices that do not advertise a matching service. The Ruuvi Tag plugin uses company identifier `0x0499`. When running a remote scanner, include `--manufacturerIds 1177` alongside its service filters to receive these packets.
 
 If you have any device transmitting specially encoded information via advertisements, feel free to create a PR with a new plugin for that.
 
@@ -156,12 +181,66 @@ If you have any device transmitting specially encoded information via advertisem
   * [Mosquito Repellent](https://www.aliexpress.com/item/32883859984.html)
 * `"mi-flora"`: Original plugin for the flower care plant sensor, now aliased to `"xiaomi"`
 * `"ruuvi-tag"`: [Ruuvi Tag](https://tag.ruuvi.com/) multisensor with firmware versions v1 and v2. **Untested, please give feedback!** 
+* `"switchbot"`: SwitchBot Meter-family temperature, humidity, and battery advertisements (`fd3d` or `0d00`).
 * `"bthome"`: Sensors using the [BTHome](https://bthome.io) protocol. For now this is limited to the `v2` revision of the protocol and does not support encrypted packets.
+* `"mopeka"`: Mopeka Pro Check LPG tank sensors (standard sensor type `0x03`).
+
+To read authenticated Xiaomi MiBeacon v4 or v5 advertisements, enable **Xiaomi** and add the device's Bluetooth MAC address and 32-digit hexadecimal bindkey under **Xiaomi MiBeacon bindkeys**. Use the bindkey assigned when the sensor was paired or configured. ioBroker encrypts the stored configuration. Admin configuration exports include the bindkeys.
+
+For Mopeka, add `mopeka` to **Active plugins** and enable **Accept new devices** while discovering the sensor. Local scanning includes its manufacturer identifier automatically. A remote scanner with service filters also needs `--manufacturerIds 89` to forward manufacturer-only advertisements.
+
+The plugin creates `mopeka_level_raw` (uncalibrated ultrasonic reading), `mopeka_temperature` (°C), `mopeka_battery_v` (V), `mopeka_battery_percent` (CR2032 estimate), and `mopeka_reading_quality` (0: no valid echo, 1: low, 2: medium, 3: high). A reading with quality 0 clears the raw level to `null`; battery and temperature still update. Converting the raw reading to fill percentage, volume, or weight requires calibration for the tank and its contents.
+
+The standard Pro Check layout is verified against [ESPHome](https://github.com/esphome/esphome/blob/dev/esphome/components/mopeka_pro_check/mopeka_pro_check.cpp) and [mopeka-iot-ble](https://github.com/Bluetooth-Devices/mopeka-iot-ble/blob/main/src/mopeka_iot_ble/parser.py). Other Mopeka sensor types are not handled by this plugin.
+
+#### Xiaomi LYWSD03MMC temperature and humidity monitor
+
+The stock firmware can send encrypted Xiaomi measurements. For passive readings with ble2, use compatible custom firmware configured for unencrypted BTHome v2.
+
+1. Check the sensor's hardware revision against the [pvvx ATC_MiThermometer device list](https://github.com/pvvx/ATC_MiThermometer). Follow the firmware project's instructions for that revision, including any special steps for the first update.
+2. On a device with Bluetooth, open [TelinkMiFlasher](https://pvvx.github.io/ATC_MiThermometer/TelinkMiFlasher.html) in a Web Bluetooth browser. Connect to the thermometer and follow the [firmware update instructions](https://github.com/pvvx/ATC_MiThermometer#flashing-or-updating-the-firmware-ota).
+3. Reconnect in the flasher after the sensor restarts. Set the advertising type to **BTHome v2**, leave advertising encryption disabled, and save the settings.
+4. In the ble2 instance settings, enable **BTHome** under **Active plugins** and save. Turn on **Accept new devices** and wait for the sensor's next advertisement. ble2 creates the temperature, humidity, and battery states under the device's Bluetooth address as the readings arrive.
+
+Keep the sensor near the scanner during discovery. If you run a remote scanner with an explicit service filter, include `fcd2` so BTHome advertisements reach the adapter.
+
+## Publishing releases
+
+The npm package is `iobroker.ble2`; its ioBroker adapter name is `ble2`. The GitHub repository is `SimonFischer04/ioBroker.ble2`.
+
+For the first publication of this new package, sign in to npm with your own account and build and verify the package locally:
+
+```sh
+npm login
+npm ci
+npm run build
+npm test
+npm run test:integration
+npm publish --access public
+```
+
+This creates `iobroker.ble2` under the publishing account. Publishing a new package is subject to npm's package-name availability checks; no access to `iobroker.ble` is required.
+
+After that initial publication, configure a GitHub Actions trusted publisher in the npm settings for `iobroker.ble2`. Subsequent releases use [npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers) through `ioBroker/testing-action-deploy@v1`:
+
+| npm setting | Value for this fork |
+| --- | --- |
+| Organization or user | `SimonFischer04` |
+| Repository | `ioBroker.ble2` |
+| Workflow filename | `test-and-release.yml` |
+| Environment | Leave blank |
+
+The npm account configuring this must have publish rights for `iobroker.ble2`. The package's `repository.url` must match the repository running the release workflow; update both the npm publisher settings and this field if publishing from another repository.
+
+For an intended release, update `package.json` and `io-package.json` to the new version, merge the release changes, and push the matching `v<version>` tag to run the checks, build, and publish jobs. The Git tag does not rewrite the version in these files. Use `npm version <version> --no-git-tag-version` to update `package.json` and `package-lock.json`, then set `common.version` in `io-package.json` to the same value before committing. Each npm version must be new; changing the npm dist-tag does not allow an existing version to be published again. The deploy action uses Node.js 24 and updates npm to version 11 for OIDC authentication. It builds the adapter before publication and includes JSONConfig and its translations in the npm package. Pre-release tags such as `v1.0.0-beta.0` publish under the npm `next` dist-tag.
+
+No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm authentication and `contents: write` for creating the GitHub release. Pull requests run the checks and tests and skip publishing. Verify the first intended release succeeds before removing any old npm publish token.
 
 ## Changelog
 <!--
 	Placeholder for next release:
 	### __WORK IN PROGRESS__
+* **BREAKING:** Require js-controller 7.2.2 or newer; update adapter-core and release tools, repository metadata, and Dependabot configuration.
 -->
 ### __WORK IN PROGRESS__
 * Other adapters can deliver BLE advertisements they received, e.g. from ESPHome Bluetooth proxies (`gateway:advertisements`). Several receivers can be used at the same time.
@@ -173,6 +252,17 @@ If you have any device transmitting specially encoded information via advertisem
 * Connections to devices through gateways of other adapters, e.g. ESPHome Bluetooth proxies: `discoverServices`, `readCharacteristic` and `writeCharacteristic`
 * The clock of pvvx thermometers can be set automatically through such gateways: at start, in an interval, after each change between summer and winter time and with a button. Firmware version, hardware ID and the deviation of the clock are shown
 * Newer pvvx firmware can be installed on the thermometers through gateways that support it (`gatt:writeSequence`), after checks of battery and signal. The newest version is looked up once a day
+* Replace manual plugin names with a multi-select dropdown, preserving existing plugin settings.
+* Add Mopeka Pro Check support with raw level, temperature, battery, and reading quality states.
+* Replace the custom React settings page with responsive native JSONConfig (requires admin 7.6.20 or newer), preserving settings and the live discovery switch.
+* **BREAKING:** Rename the maintained fork to `iobroker.ble2` with the `ble2` adapter namespace.
+* **BREAKING:** Require Node.js 22.19 or newer; test Node.js 22, 24, and 26 on Linux, Windows, and macOS.
+* Added BTHome signed counters, signed power, volume storage, and direction measurements.
+* Fixed discovery and decoding of Ruuvi Tag manufacturer-only advertisements, including packets received after empty or unrelated frames.
+* Ignore invalid Mi Flora soil moisture readings above 100% to preserve the last valid measurement.
+
+### 0.14.2-beta.1 (2026-11-21)
+* Prepare a fresh prerelease version to verify npm Trusted Publishing.
 
 ### 0.14.1 (2025-02-09)
 * Fixed compatibility issues with newer OS and Node.js versions (#874)
@@ -199,152 +289,12 @@ If you have any device transmitting specially encoded information via advertisem
 * Fix: RSSI will now be updated, even if it was unchanged (#493)
 * Dependency updates, lots of dependency updates...
 
-### 0.12.0 (2020-10-29)
-* Scanning is now done in a separate process, so uncatchable errors in `noble` no longer bring down the main process
-
-### 0.11.8 (2020-08-25)
-* The pressure value reported by Ruuvi Tags is now parsed with two decimal places
-
-### 0.11.7 (2020-08-20)
-* Added a more helpful error message if the adapter terminates with error `EAFNOSUPPORT`
-
-### 0.11.6 (2020-05-07)
-* Ignore unhandled out of range error somewhere in `noble`
-
-### 0.11.4 (2020-04-23)
-* Utilize JS-Controller's auto module rebuild if possible
-
-### 0.11.3 (2020-04-22)
-* Fixed a crash that happens when `noble` can not be loaded.
-
-### 0.11.2 (2020-04-19)
-* Avoid setting `undefined` as a state value to be compatible with JS-Controller 3.0
-
-### 0.11.1 (2020-04-11)
-* Fixed typo in Ruuvi Tag plugin: `motionCounter` -> `movementCounter`
-
-### 0.11.0 (2020-03-25)
-* Removed compact support. `noble` sometimes throws errors in callbacks that cannot be handled and would bring the whole compact group down.
-* Added support for the Xiaomi Kettle
-* Encrypted packets are no longer decoded (for now) to avoid creating thousands of `unknown (0xabcd)` states
-
-### 0.10.1 (2019-10-13)
-* Fixed crash in JS-Controller 2.0
-
-### 0.10.0 (2019-09-26)
-* `xiaomi` plugin: test the received data instead of relying on MAC prefixes
-
-### 0.9.2 (2019-09-26)
-* Add `e7:2e:00` as an alternative mac prefix for MiTemperature
-
-### 0.9.1 (2019-09-22)
-* Fix compact mode crashes
-
-### 0.9.0 (2019-09-04)
-* Devices without service data but with manufacturer data are no longer treated as empty
-* `_default` plugin: Create states for manufacturer data
-* `ruuvi-tag` plugin: Set `"Ruuvi Tag"` as the default name for the device object
-
-### 0.8.4 (2019-09-03)
-* `ruuvi-tag` plugin: Fix parsing of data format 3 and 5
-
-### 0.8.3 (2019-08-26)
-* Add `80:ea:ca` as an alternative mac prefix for FlowerCare
-
-### 0.8.2 (2019-08-14)
-* Add `3f:5b:7d` as an alternative mac prefix for the Xiaomi watch
-
-### 0.8.1 (2019-07-26)
-* Added support for the Xiaomi Mosquito Repellent (read-only!)
-
-### 0.7.4 (2019-07-03)
-* Removed dependency to admin instance on slaves
-* Several dependency updates
-
-### 0.7.3 (2019-04-05)
-* Add MiTemperature watch with E-Ink display
-
-### 0.7.2 (2019-04-05)
-* Add `58:2d:34` as an alternative mac prefix for MiTemperature
-
-### 0.7.0 (2019-02-05)
-* Support MaterializeCSS (Admin v3)
-* Support compact mode
-* Use @iobroker/testing for tests
-
-### 0.6.0 (2018-12-23)
-* Add NodeJS 10 support
-* Add an option to disallow new devices
-
-### 0.5.5 (2018-11-29)
-* Bugfix: Preserving object properties works again
-
-### 0.5.3 (2018-11-23)
-* Cache objects for a short while instead of retrieving them from ioBroker all the time
-* Support negative temperatures from Xiaomi devices
-
-### 0.5.2 (2018-03-28)
-* Fixed `isHandling` for the `ruuvi-tag` plugin
-
-### 0.5.1 (2018-03-28)
-* Restored accidentally deleted `mi-flora` plugin.
-
-### 0.5.0 (2018-03-27)
-* (JonasR & AlCalzone) Added support for the Ruuvi Tag with the `ruuvi-tag` plugin
-
-### 0.4.2 (2018-03-27)
-* Fixed the parsing of temperature+humidity packets from the Xiaomi temperature sensor
-
-### 0.4.1 (2018-03-24)
-* Forgot to load legacy `mi-flora` plugin
-* Fixed an error when a plugin defines no objects
-
-### 0.4.0 (2018-03-24)
-* (zuvielx9 & AlCalzone) Support for all Xiaomi bluetooth sensors using the `xiaomi` plugin
-* reworked plugin system slightly
-
-### 0.3.5 (2018-03-18)
-* Bugfix: Next attempt at preserving object properties like history and name
-
-### 0.3.4 (2018-01-01)
-* Bugfix: Keep `history` settings by not overriding existing objects
-* Bugfix: When plugins return `undefined`, ignore the packet
-
-### 0.3.3 (2017-11-24)
-* Enable logging of RSSI
-
-### 0.3.2 (2017-09-27)
-* Add * wildcard for "all services"
-
-### 0.3.1 (2017-09-27)
-* Bugfix: don't throw error when RSSI state doens't exist
-
-### 0.3.0 (2017-09-27)
-* Support throttling of RSSI updates
-
-### 0.2.2 (2017-09-27)
-* Bugfix: Only monitor services from _enabled_ plugins
-
-### 0.2.1 (2017-09-27)
-* Bugfix: last patch broke the service filtering
-
-### 0.2.0 (2017-09-26)
-* Modularized the adapter code into a plugin system
-* Added Mi-Flora plugin
-
-### 0.1.0 (2017-09-06)
-* Support selection of bluetooth devices
-
-### 0.0.2 (2017-09-06)
-* Store more information, improved object structure.
-
-### 0.0.1
-* initial release
+Older entries are available in [CHANGELOG_OLD.md](CHANGELOG_OLD.md).
 
 ## License
 The MIT License (MIT)
 
-Copyright (c) 2017-2025 AlCalzone <d.griesel@gmx.net>
+Copyright (c) 2026 SimonFischer04 <simi.fischa@gmail.com>; 2017-2025 AlCalzone <d.griesel@gmx.net>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

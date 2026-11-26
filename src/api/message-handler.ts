@@ -1,4 +1,4 @@
-import { exec } from "child_process";
+import { execFile } from "node:child_process";
 import type { ConnectionManager } from "../connections/connection-manager";
 import type { DeviceRegistry } from "../devices/device-registry";
 import type { GatewayRegistry } from "../gateways/gateway-registry";
@@ -10,6 +10,7 @@ import {
 	type GattReadResult,
 	type GatewayResponse,
 } from "../lib/gateway-protocol";
+import { getHciOptions, parseHciPorts } from "../lib/hci-ports";
 import { normalizeUuid } from "../lib/uuid";
 import {
 	BASE64_REGEX,
@@ -36,6 +37,11 @@ interface GattRequest {
 /**
  * Validates the payload of discoverServices, readCharacteristic and writeCharacteristic
  * before anything is connected. Throws GatewayError("INVALID_PAYLOAD").
+ *
+ * @param payload
+ * @param fields
+ * @param fields.characteristic
+ * @param fields.data
  */
 function parseGattRequest(
 	payload: unknown,
@@ -63,9 +69,12 @@ function parseGattRequest(
 	if (fields.characteristic) {
 		const serviceUuid = normalizeUuid(service);
 		const characteristicUuid = normalizeUuid(characteristic);
-		if (!serviceUuid) throw invalid(`"service" must be a UUID`);
-		if (!characteristicUuid)
+		if (!serviceUuid) {
+			throw invalid(`"service" must be a UUID`);
+		}
+		if (!characteristicUuid) {
 			throw invalid(`"characteristic" must be a UUID`);
+		}
 		request.service = serviceUuid;
 		request.characteristic = characteristicUuid;
 	}
@@ -82,7 +91,11 @@ function parseGattRequest(
 	return request;
 }
 
-/** Runs a GATT command and turns the result or the error into the answer */
+/**
+ * Runs a GATT command and turns the result or the error into the answer
+ *
+ * @param run
+ */
 async function runGattCommand<T>(
 	run: () => Promise<T>,
 ): Promise<GatewayResponse<T>> {
@@ -93,42 +106,46 @@ async function runGattCommand<T>(
 	}
 }
 
-/** Creates the handler for the messages other adapters and the admin UI send to this adapter */
+/**
+ * Creates the handler for the messages other adapters and the admin UI send to this adapter
+ *
+ * @param ctx
+ */
 export function createMessageHandler(
 	ctx: MessageHandlerContext,
 ): (obj: ioBroker.Message) => void {
 	const { adapter } = ctx;
 
 	return (obj) => {
-		if (!obj) return;
+		if (!obj) {
+			return;
+		}
 
 		// responds to the adapter that sent the original message
 		function respond(response: any): void {
-			if (obj.callback)
+			if (obj.callback) {
 				adapter.sendTo(obj.from, obj.command, response, obj.callback);
+			}
 		}
 
 		switch (obj.command) {
+			case "getHCIOptions":
 			case "getHCIPorts":
-				exec("hciconfig | grep hci", (error, stdout, _stderr) => {
-					// hci1:   Type: BR/EDR  Bus: USB
-					// hci0:   Type: BR/EDR  Bus: UART
+				if (!obj.callback) {
+					return;
+				}
+				execFile("hciconfig", { timeout: 3000 }, (error, stdout) => {
+					const wantsOptions = obj.command === "getHCIOptions";
 					if (error != null) {
-						respond({ error });
+						respond(wantsOptions ? [] : { error });
 						return;
 					}
-					// parse index and bus type
-					const ports: { index: number; bus: string }[] = [];
-					const regex = /^hci(\d+)\:.+Bus\:\s(\w+)$/gm;
-					let result: RegExpExecArray | null;
-
-					while (true) {
-						result = regex.exec(stdout);
-						if (!(result && result.length)) break;
-						const port = { index: +result[1], bus: result[2] };
-						ports.push(port);
-					}
-					respond({ error: null, result: ports });
+					const ports = parseHciPorts(stdout);
+					respond(
+						wantsOptions
+							? getHciOptions(ports, adapter.config.hciDevice)
+							: { error: null, result: ports },
+					);
 				});
 				return;
 

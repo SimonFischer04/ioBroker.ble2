@@ -16,7 +16,11 @@ export interface PreconditionInput {
 	bestGateway: { gatewayId: string; rssi: number } | undefined;
 }
 
-/** Throws PvvxUpdateError if the device must not be updated now */
+/**
+ * Throws PvvxUpdateError if the device must not be updated now
+ *
+ * @param input
+ */
 export function checkPreconditions(input: PreconditionInput): void {
 	const { address, now, battery, bestGateway } = input;
 	if (!bestGateway) {

@@ -125,7 +125,12 @@ export class FakePvvxDevice implements GattLink {
 		return Promise.resolve(this.configResponse);
 	}
 
-	/** Handles a write to the update characteristic like the Telink firmware */
+	/**
+	 * Handles a write to the update characteristic like the Telink firmware
+	 *
+	 * @param data
+	 * @param withResponse
+	 */
 	private writeOta(data: Buffer, withResponse: boolean): Promise<void> {
 		const ota = this.ota;
 		const dropped =
@@ -138,7 +143,9 @@ export class FakePvvxDevice implements GattLink {
 		}
 		ota.writes.push({ data: Buffer.from(data), withResponse });
 		const setStatus = (status: number): void => {
-			if (ota.status === 0) ota.status = status;
+			if (ota.status === 0) {
+				ota.status = status;
+			}
 		};
 		if (data.length === 2 && data[0] === 0x01 && data[1] === 0xff) {
 			// A new update starts from the beginning
@@ -160,7 +167,9 @@ export class FakePvvxDevice implements GattLink {
 				ota.received.push(Buffer.from(data.subarray(2, 18)));
 			}
 			const fail = ota.failStatusAfterPackets;
-			if (fail && ota.dataPackets >= fail.after) ota.status = fail.status;
+			if (fail && ota.dataPackets >= fail.after) {
+				ota.status = fail.status;
+			}
 		} else if (data.length === 6 && data[0] === 0x02 && data[1] === 0xff) {
 			if (data.readUInt16LE(2) !== ota.received.length - 1) {
 				setStatus(4);
@@ -182,8 +191,12 @@ export class FakePvvxDevice implements GattLink {
 		data: Buffer,
 		withResponse: boolean,
 	): Promise<void> {
-		if (this.failWrite) return Promise.reject(this.failWrite);
-		if (handle === OTA_HANDLE) return this.writeOta(data, withResponse);
+		if (this.failWrite) {
+			return Promise.reject(this.failWrite);
+		}
+		if (handle === OTA_HANDLE) {
+			return this.writeOta(data, withResponse);
+		}
 		this.writes.push({ data: Buffer.from(data), withResponse });
 		const listener = this.listener;
 		const command = data[0];
@@ -205,7 +218,9 @@ export class FakePvvxDevice implements GattLink {
 
 	private answer(data: Buffer): Buffer {
 		const command = data[0];
-		if (command === CMD_CONFIG) return this.configResponse;
+		if (command === CMD_CONFIG) {
+			return this.configResponse;
+		}
 		if (command === CMD_TIME && data.length >= 5) {
 			if (!this.ignoreSetTime) {
 				this.clock = data.readUInt32LE(1);
@@ -213,7 +228,9 @@ export class FakePvvxDevice implements GattLink {
 			}
 			return this.timeResponse();
 		}
-		if (command === CMD_TIME) return this.timeResponse();
+		if (command === CMD_TIME) {
+			return this.timeResponse();
+		}
 		return Buffer.from([command, 0xff]);
 	}
 
@@ -221,7 +238,9 @@ export class FakePvvxDevice implements GattLink {
 		const answer = Buffer.alloc(this.timeAdjust ? 9 : 5);
 		answer[0] = CMD_TIME;
 		answer.writeUInt32LE(this.clock >>> 0, 1);
-		if (this.timeAdjust) answer.writeUInt32LE(this.lastSet >>> 0, 5);
+		if (this.timeAdjust) {
+			answer.writeUInt32LE(this.lastSet >>> 0, 5);
+		}
 		return answer;
 	}
 
@@ -231,7 +250,9 @@ export class FakePvvxDevice implements GattLink {
 		withResponse: boolean,
 		readAfter: boolean,
 	): Promise<Buffer | undefined> {
-		for (const entry of data) await this.write(handle, entry, withResponse);
+		for (const entry of data) {
+			await this.write(handle, entry, withResponse);
+		}
 		return readAfter ? this.read(handle) : undefined;
 	}
 
@@ -239,7 +260,9 @@ export class FakePvvxDevice implements GattLink {
 		handle: number,
 		listener: (data: Buffer) => void,
 	): Promise<void> {
-		if (handle === COMMAND_HANDLE) this.listener = listener;
+		if (handle === COMMAND_HANDLE) {
+			this.listener = listener;
+		}
 		return Promise.resolve();
 	}
 
@@ -253,7 +276,11 @@ export class FakePvvxDevice implements GattLink {
 	}
 }
 
-/** A real GattSession over the simulated device */
+/**
+ * A real GattSession over the simulated device
+ *
+ * @param device
+ */
 export function createFakeSession(device: FakePvvxDevice): GattSession {
 	return new GattSession(device);
 }

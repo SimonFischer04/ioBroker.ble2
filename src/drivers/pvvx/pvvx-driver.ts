@@ -4,19 +4,30 @@ import { PvvxCommandChannel } from "./command-channel";
 import { formatVersion } from "./protocol";
 import { type Clock, syncTime } from "./time-sync";
 
-/** Parses the setting pvvxDevices. Invalid entries are returned separately, duplicates are removed. */
+/**
+ * Parses the setting pvvxDevices. Invalid entries are returned separately, duplicates are removed.
+ *
+ * @param setting
+ */
 export function parseDeviceList(setting: unknown): {
 	addresses: string[];
 	invalid: string[];
 } {
 	const addresses: string[] = [];
 	const invalid: string[] = [];
-	if (typeof setting !== "string") return { addresses, invalid };
+	if (typeof setting !== "string") {
+		return { addresses, invalid };
+	}
 	for (const entry of setting.split(/[\s,;]+/)) {
-		if (!entry) continue;
+		if (!entry) {
+			continue;
+		}
 		const address = normalizeAddress(entry);
-		if (!address) invalid.push(entry);
-		else if (!addresses.includes(address)) addresses.push(address);
+		if (!address) {
+			invalid.push(entry);
+		} else if (!addresses.includes(address)) {
+			addresses.push(address);
+		}
 	}
 	return { addresses, invalid };
 }
@@ -137,7 +148,9 @@ export class PvvxDriver {
 
 	/** Creates the objects and starts the timer. Does nothing without addresses. */
 	public async start(): Promise<void> {
-		if (this.devices.size === 0) return;
+		if (this.devices.size === 0) {
+			return;
+		}
 		const { adapter, clock } = this.ctx;
 		for (const address of this.devices.keys()) {
 			await this.createObjects(address);
@@ -148,7 +161,9 @@ export class PvvxDriver {
 			device.failures = 0;
 		}
 		this.lastOffset = clock.timezoneOffset(now);
-		if (this.disposed) return;
+		if (this.disposed) {
+			return;
+		}
 		this.interval = this.ctx.setInterval(
 			() => void this.tick(),
 			TICK_INTERVAL_MS,
@@ -185,7 +200,9 @@ export class PvvxDriver {
 
 	/** Runs all syncs that are due. Called by the timer, public for tests. Resolves when they are done. */
 	public async tick(): Promise<void> {
-		if (this.ticking || this.disposed) return;
+		if (this.ticking || this.disposed) {
+			return;
+		}
 		this.ticking = true;
 		try {
 			const { clock, adapter } = this.ctx;
@@ -206,7 +223,9 @@ export class PvvxDriver {
 				.sort((a, b) => a.nextDue - b.nextDue);
 			// One after the other: the gateways have few connection slots
 			for (const device of due) {
-				if (this.disposed) break;
+				if (this.disposed) {
+					break;
+				}
 				if (this.ctx.isBusy?.(device.address)) {
 					// A firmware update would block the queue of the device, try again later
 					device.nextDue = now + RETRY_DELAYS_MS[0];
@@ -232,26 +251,31 @@ export class PvvxDriver {
 				},
 				{ timeoutMs: SESSION_TIMEOUT_MS },
 			);
-			if (this.disposed) return;
+			if (this.disposed) {
+				return;
+			}
 			device.failures = 0;
 			device.nextDue =
 				this.intervalMs > 0
 					? ctx.clock.now() + this.intervalMs
 					: Infinity;
 			await this.setStates(device.address, {
-				lastTimeSync: ctx.clock.now(),
 				timeDeviation: result.deviation,
 				firmwareVersion: formatVersion(result.version),
 				...(result.hardwareId !== undefined
 					? { hardwareId: result.hardwareId }
 					: {}),
 				lastError: "",
+				// Publish the completion timestamp after the other sync results.
+				lastTimeSync: ctx.clock.now(),
 			});
 			ctx.adapter.log.info(
 				`Set the clock of ${device.address}, it was ${result.deviation} s off`,
 			);
 		} catch (e) {
-			if (this.disposed) return;
+			if (this.disposed) {
+				return;
+			}
 			const now = ctx.clock.now();
 			device.failures++;
 			const failures = device.failures;
@@ -286,7 +310,9 @@ export class PvvxDriver {
 		values: Record<string, ioBroker.StateValue>,
 	): Promise<void> {
 		for (const [id, value] of Object.entries(values)) {
-			if (this.disposed) return;
+			if (this.disposed) {
+				return;
+			}
 			try {
 				await this.ctx.adapter.setStateAsync(
 					`${address}.pvvx.${id}`,
@@ -301,7 +327,12 @@ export class PvvxDriver {
 		}
 	}
 
-	/** Handles the button. Returns true if the state belongs to this driver. */
+	/**
+	 * Handles the button. Returns true if the state belongs to this driver.
+	 *
+	 * @param id
+	 * @param state
+	 */
 	public handleStateChange(
 		id: string,
 		state: ioBroker.State | null | undefined,
@@ -311,7 +342,9 @@ export class PvvxDriver {
 			? /^(.+)\.pvvx\.syncTime$/.exec(id.slice(prefix.length))
 			: null;
 		const device = match ? this.devices.get(match[1]) : undefined;
-		if (!device) return false;
+		if (!device) {
+			return false;
+		}
 		if (!state || state.ack === true || !state.val || this.disposed) {
 			return true;
 		}
@@ -323,10 +356,16 @@ export class PvvxDriver {
 		return true;
 	}
 
-	/** Sets the clock of the device soon, like the button, e.g. after a firmware update */
+	/**
+	 * Sets the clock of the device soon, like the button, e.g. after a firmware update
+	 *
+	 * @param address
+	 */
 	public requestSync(address: string): void {
 		const device = this.devices.get(address);
-		if (!device || this.disposed) return;
+		if (!device || this.disposed) {
+			return;
+		}
 		device.nextDue = 0;
 		device.failures = 0;
 		// While a tick runs, the device comes next time

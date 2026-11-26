@@ -8,6 +8,7 @@ import {
 	extendDevice,
 	extendState,
 } from "../lib/iobroker-objects";
+import { RssiUpdates } from "../lib/rssi-updates";
 import type { Plugin } from "../plugins/plugin";
 
 export interface AdvertisementProcessorOptions {
@@ -31,23 +32,47 @@ export class AdvertisementProcessor {
 		private readonly options: AdvertisementProcessorOptions,
 		private readonly devices: DeviceRegistry,
 		private readonly gateways: GatewayRegistry,
-	) {}
+	) {
+		this.rssiUpdates = new RssiUpdates(
+			_.adapter,
+			options.rssiUpdateInterval,
+		);
+	}
+
+	private readonly rssiUpdates: RssiUpdates;
+
+	public observeState(
+		id: string,
+		state: ioBroker.State | null | undefined,
+	): void {
+		this.rssiUpdates.observe(id, state);
+	}
+
+	public removeState(id: string): void {
+		this.rssiUpdates.remove(id);
+	}
 
 	/** Whether new devices may be recorded */
 	private allowNewDevices = false;
-	private resetAllowNewDevicesTimeout: NodeJS.Timeout | undefined;
+	private resetAllowNewDevicesTimeout: ioBroker.Timeout | undefined;
 	/** Cache of new devices we already ignored */
 	private readonly ignoredNewDeviceIDs = new Set<string>();
 
 	public dispose(): void {
 		if (this.resetAllowNewDevicesTimeout) {
-			clearTimeout(this.resetAllowNewDevicesTimeout);
+			_.adapter.clearTimeout(this.resetAllowNewDevicesTimeout);
 		}
 	}
 
-	/** Enables or disables recording new devices */
+	/**
+	 * Enables or disables recording new devices
+	 *
+	 * @param allow
+	 */
 	public setAllowNewDevices(allow: boolean): void {
-		if (allow === this.allowNewDevices) return;
+		if (allow === this.allowNewDevices) {
+			return;
+		}
 		this.allowNewDevices = allow;
 		_.adapter.log.info(
 			allow
@@ -66,11 +91,11 @@ export class AdvertisementProcessor {
 
 	private autoResetAllowNewDevices(): void {
 		if (this.resetAllowNewDevicesTimeout) {
-			clearTimeout(this.resetAllowNewDevicesTimeout);
+			_.adapter.clearTimeout(this.resetAllowNewDevicesTimeout);
 		}
 
 		// After 5 minutes, reset it to false
-		this.resetAllowNewDevicesTimeout = setTimeout(() => {
+		this.resetAllowNewDevicesTimeout = _.adapter.setTimeout(() => {
 			this.allowNewDevices = false;
 			_.adapter.setState("options.allowNewDevices", false, true);
 			this.resetAllowNewDevicesTimeout = undefined;
@@ -82,7 +107,9 @@ export class AdvertisementProcessor {
 	}
 
 	public async process(peripheral: PeripheralInfo): Promise<void> {
-		if (peripheral == null) return;
+		if (peripheral == null) {
+			return;
+		}
 
 		let serviceDataIsNotEmpty = false;
 		let manufacturerDataIsNotEmpty = false;
@@ -173,7 +200,9 @@ export class AdvertisementProcessor {
 		// Test if we may record this device
 		if (!this.allowNewDevices) {
 			// We may not. First test if we already ignored this device
-			if (this.ignoredNewDeviceIDs.has(deviceId)) return;
+			if (this.ignoredNewDeviceIDs.has(deviceId)) {
+				return;
+			}
 			// If not, check if the RSSI object exists, as that exists for every one
 			if (
 				!(await _.objectCache.objectExists(
@@ -200,21 +229,11 @@ export class AdvertisementProcessor {
 			},
 			native: {},
 		});
-		// update RSSI information
-		const rssiState = await _.adapter.getStateAsync(`${deviceId}.rssi`);
-		if (
-			rssiState == null ||
-			// Allow updating the unchanged state because some people use it for presence detection
-			rssiState.ts + this.options.rssiUpdateInterval < Date.now() // But don't update too frequently
-		) {
-			_.adapter.log.debug(`updating rssi state for ${deviceId}`);
-			// With several gateways, this is the signal strength of the one that receives the device best
-			await _.adapter.setStateAsync(
-				`${deviceId}.rssi`,
-				observation.bestRssi,
-				true,
-			);
-		}
+		// Use the signal strength of the gateway that receives the device best.
+		await this.rssiUpdates.update(
+			`${_.adapter.namespace}.${deviceId}.rssi`,
+			observation.bestRssi,
+		);
 
 		// Now update device-specific objects and states
 		const context = plugin.createContext(peripheral);
@@ -222,7 +241,9 @@ export class AdvertisementProcessor {
 		const values = plugin.getValues(context);
 
 		// We can't do anything without objects
-		if (objects == null) return;
+		if (objects == null) {
+			return;
+		}
 
 		// Ensure the device object exists
 		await extendDevice(deviceId, peripheral, objects.device);
@@ -230,13 +251,13 @@ export class AdvertisementProcessor {
 		if (objects.channels != null && objects.channels.length > 0) {
 			await Promise.all(
 				objects.channels.map((c) =>
-					extendChannel(deviceId + "." + c.id, c),
+					extendChannel(`${deviceId}.${c.id}`, c),
 				),
 			);
 		}
 		// Ensure the state objects exist. These might change in every advertisement frame
 		await Promise.all(
-			objects.states.map((s) => extendState(deviceId + "." + s.id, s)),
+			objects.states.map((s) => extendState(`${deviceId}.${s.id}`, s)),
 		);
 
 		// Now fill the states with values
@@ -247,7 +268,7 @@ export class AdvertisementProcessor {
 			// eslint-disable-next-line prefer-const
 			for (let [stateId, value] of entries(values)) {
 				// Fix special chars
-				stateId = stateId.replace(/[\(\)]+/g, "").replace(" ", "_");
+				stateId = stateId.replace(/[()]+/g, "").replace(" ", "_");
 				// set the value if there's an object for the state
 				const iobStateId = `${_.adapter.namespace}.${deviceId}.${stateId}`;
 				if ((await _.objectCache.getObject(iobStateId)) != null) {

@@ -68,6 +68,9 @@ export class DeviceRegistry {
 	/**
 	 * Records that a gateway received the device, whether its advertisement is decoded or not.
 	 * Connections need to know every device in range.
+	 *
+	 * @param peripheral
+	 * @param now
 	 */
 	public track(peripheral: PeripheralInfo, now: number = Date.now()): void {
 		const gatewayId = peripheral.gatewayId ?? UNKNOWN_GATEWAY;
@@ -97,10 +100,17 @@ export class DeviceRegistry {
 			lastSeen: now,
 		});
 
-		if (now - this.lastPrune > 60000) this.prune(now);
+		if (now - this.lastPrune > 60000) {
+			this.prune(now);
+		}
 	}
 
-	/** Records a received advertisement and tells how to treat it */
+	/**
+	 * Records a received advertisement and tells how to treat it
+	 *
+	 * @param peripheral
+	 * @param now
+	 */
 	public observe(
 		peripheral: PeripheralInfo,
 		now: number = Date.now(),
@@ -138,13 +148,20 @@ export class DeviceRegistry {
 		return { duplicate, bestRssi, bestGateway };
 	}
 
-	/** The gateways that received the device within rssiMaxAgeMs, strongest signal first */
+	/**
+	 * The gateways that received the device within rssiMaxAgeMs, strongest signal first
+	 *
+	 * @param address
+	 * @param now
+	 */
 	public getReceivers(
 		address: string,
 		now: number = Date.now(),
 	): { gatewayId: string; rssi: number }[] {
 		const device = this.devices.get(address);
-		if (!device) return [];
+		if (!device) {
+			return [];
+		}
 		return [...device.gateways]
 			.filter(
 				([, reception]) =>
@@ -154,12 +171,20 @@ export class DeviceRegistry {
 			.sort((a, b) => b.rssi - a.rssi);
 	}
 
-	/** The address type the device reported. "public" if it is unknown. */
+	/**
+	 * The address type the device reported. "public" if it is unknown.
+	 *
+	 * @param address
+	 */
 	public getAddressType(address: string): "public" | "random" {
 		return this.devices.get(address)?.addressType ?? "public";
 	}
 
-	/** Lists the devices that were recently received */
+	/**
+	 * Lists the devices that were recently received
+	 *
+	 * @param now
+	 */
 	public getDevices(now: number = Date.now()): DeviceInfo[] {
 		this.prune(now);
 		return [...this.devices.values()].map((device) => ({
@@ -171,7 +196,11 @@ export class DeviceRegistry {
 		}));
 	}
 
-	/** Forgets the devices and receptions that are too old */
+	/**
+	 * Forgets the devices and receptions that are too old
+	 *
+	 * @param now
+	 */
 	public prune(now: number = Date.now()): void {
 		this.lastPrune = now;
 		for (const [address, device] of this.devices) {
@@ -188,7 +217,11 @@ export class DeviceRegistry {
 	}
 }
 
-/** Identifies the content of an advertisement, independent of who received it */
+/**
+ * Identifies the content of an advertisement, independent of who received it
+ *
+ * @param peripheral
+ */
 function getFingerprint(peripheral: PeripheralInfo): string {
 	const { serviceData, manufacturerData } = peripheral.advertisement;
 	const parts: string[] = [];

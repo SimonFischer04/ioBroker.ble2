@@ -1,25 +1,29 @@
 {
-  "name": "iobroker.ble",
-  "version": "0.14.1",
+  "name": "iobroker.ble2",
+  "version": "0.14.2-beta.1",
   "description": "ioBroker adapter to monitor Bluetooth Low Energy (BLE) beacons",
   "author": {
-    "name": "AlCalzone",
-    "email": "d.griesel@gmx.net"
+    "name": "SimonFischer04",
+    "url": "https://github.com/SimonFischer04",
+    "email": "simi.fischa@gmail.com"
   },
   "main": "build/main.js",
   "files": [
-    "admin/*.html",
-    "admin/build",
-    "admin/*.css",
+    "CHANGELOG_OLD.md",
+    "admin/jsonConfig.json",
+    "admin/i18n",
     "admin/*.png",
-    "admin/*.js",
     "build/",
     "io-package.json"
   ],
   "contributors": [
+    {
+      "name": "AlCalzone",
+      "email": "d.griesel@gmx.net"
+    },
     "zuvielx9 (https://github.com/zuvielx9)"
   ],
-  "homepage": "https://github.com/AlCalzone/ioBroker.ble",
+  "homepage": "https://github.com/SimonFischer04/ioBroker.ble2",
   "license": "MIT",
   "keywords": [
     "ioBroker",
@@ -29,86 +33,63 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/AlCalzone/ioBroker.ble"
+    "url": "https://github.com/SimonFischer04/ioBroker.ble2"
   },
   "engines": {
-    "node": ">= 18"
+    "node": ">=22.19"
   },
   "dependencies": {
-    "@iobroker/adapter-core": "^3.0.4",
+    "@iobroker/adapter-core": "^3.4.3",
     "alcalzone-shared": "^4.0.8",
-    "iobroker-react-components": "^1.0.0",
     "yargs": "^17.7.2"
   },
   "optionalDependencies": {
     "@stoprocent/noble": "^1.18.2"
   },
   "devDependencies": {
-    "@alcalzone/release-script": "~3.7.0",
-    "@alcalzone/release-script-plugin-iobroker": "~3.7.0",
-    "@alcalzone/release-script-plugin-license": "~3.7.0",
-    "@alcalzone/release-script-plugin-manual-review": "~3.7.0",
-    "@iobroker/adapter-dev": "^1.2.0",
-    "@iobroker/testing": "^4.1.0",
-    "@material-ui/core": "^4.12.4",
-    "@tsconfig/node18": "^18.2.2",
-    "@types/chai": "^4.3.11",
-    "@types/chai-as-promised": "^7.1.8",
-    "@types/mocha": "^10.0.6",
-    "@types/node": "^18.19.3",
+    "@alcalzone/release-script": "~5.2.1",
+    "@alcalzone/release-script-plugin-iobroker": "~5.2.0",
+    "@alcalzone/release-script-plugin-license": "~5.2.2",
+    "@alcalzone/release-script-plugin-manual-review": "~5.2.0",
+    "@iobroker/adapter-dev": "^1.5.0",
+    "@iobroker/eslint-config": "^2.3.4",
+    "@iobroker/testing": "^6.3.2",
+    "@iobroker/types": "^7.2.5",
+    "@tsconfig/node22": "^22.0.7",
+    "@types/node": "^22.20.5",
     "@types/proxyquire": "^1.3.31",
-    "@types/sinon": "^17.0.2",
-    "@types/sinon-chai": "^3.2.12",
     "@types/yargs": "^17.0.32",
-    "@typescript-eslint/eslint-plugin": "^6.16.0",
-    "@typescript-eslint/parser": "^6.14.0",
-    "axios": "^1.6.7",
-    "chai": "^4.3.10",
-    "chai-as-promised": "^7.1.1",
     "esbuild": "^0.19.9",
-    "eslint": "^8.55.0",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-prettier": "^5.0.1",
-    "iobroker-react": "git+https://git@github.com/AlCalzone/iobroker-react.git",
-    "mocha": "^10.2.0",
     "node-gyp": "^10.0.1",
     "nyc": "^15.1.0",
-    "prettier": "^3.2.5",
-    "prettier-plugin-organize-imports": "^3.2.4",
     "proxyquire": "^2.1.3",
-    "react": "^17.0.2",
-    "react-dom": "^17.0.2",
     "rimraf": "^5.0.5",
-    "sinon": "^17.0.1",
-    "sinon-chai": "^3.7.0",
     "source-map-support": "^0.5.21",
     "ts-node": "^10.9.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.9.3"
   },
   "scripts": {
     "prebuild": "rimraf build admin/build",
-    "build:react": "build-adapter react",
     "build:ts": "build-adapter ts",
     "check": "tsc -p tsconfig.build.json --noEmit",
-    "build": "build-adapter all",
-    "watch:react": "npm run build:react -- --watch",
+    "build": "build-adapter ts",
     "watch:ts": "npm run build:ts -- --watch",
-    "watch": "build-adapter all --watch",
+    "watch": "build-adapter ts --watch",
     "test:package": "mocha test/package --exit",
     "test:integration": "mocha test/integration --exit",
-    "test:ts": "mocha \"src/**/*.test.ts\"",
-    "test": "mocha \"src/**/*.test.ts\" --watch",
-    "coverage": "nyc mocha \"src/**/*.test.ts\"",
+    "test:unit": "mocha \"src/**/*.test.ts\"",
+    "test": "npm run test:unit && npm run test:package",
+    "test:watch": "npm run test:unit -- --watch",
+    "coverage": "nyc npm run test:unit",
     "show-coverage": "npm run coverage & start ./coverage/index.html",
-    "lint:ts": "eslint --ext .ts src",
-    "lint": "npm run lint:ts",
-    "prepublishOnly": "npm run test:package",
+    "lint:ts": "eslint src test/mocks",
+    "lint": "eslint .",
     "translate": "translate-adapter translate",
     "release": "release-script",
     "build:server": "esbuild src/scanProcess.ts --bundle --main-fields=main --outfile=bin/blerp.js --platform=node --format=cjs --target=node14.18 --external:@stoprocent/noble"
   },
   "bugs": {
-    "url": "https://github.com/AlCalzone/ioBroker.ble/issues"
+    "url": "https://github.com/SimonFischer04/ioBroker.ble2/issues"
   },
   "nyc": {
     "all": true,

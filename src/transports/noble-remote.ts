@@ -111,7 +111,7 @@ export class NobleRemoteTransport implements Transport {
 					try {
 						const msg = JSON.parse(line);
 						reviver(msg);
-					} catch (e) {
+					} catch {
 						adapter.log.debug(
 							`Invalid message from BLE server ${this.name}: ${line}`,
 						);
@@ -125,10 +125,14 @@ export class NobleRemoteTransport implements Transport {
 
 	public stop(): void {
 		this.stopped = true;
-		if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+		if (this.reconnectTimer) {
+			clearTimeout(this.reconnectTimer);
+		}
 		try {
 			this.socket?.destroy();
-		} catch {}
+		} catch {
+			// The socket may have already been closed.
+		}
 	}
 
 	private handleMessage(message: ScanMessage): void {
@@ -141,7 +145,9 @@ export class NobleRemoteTransport implements Transport {
 				gateways.setConnected(this.gateway, false);
 				break;
 			case "discover":
-				if (message.peripheral == null) break;
+				if (message.peripheral == null) {
+					break;
+				}
 				gateways.recordAdvertisements(this.gateway, 1);
 				this.ctx.onAdvertisement({
 					...message.peripheral,

@@ -25,10 +25,11 @@ export class ObjectCache {
 		undefined,
 		compareExpireTimestamp,
 	);
-	private expireTimer: NodeJS.Timeout | undefined;
+	private expireTimer: ioBroker.Timeout | undefined;
 
 	/**
 	 * Retrieves an object from the cache or queries the database if it is not cached yet
+	 *
 	 * @param id The id of the object to retrieve
 	 */
 	public async getObject(id: string): Promise<ioBroker.Object | undefined> {
@@ -36,19 +37,21 @@ export class ObjectCache {
 			// retrieve the original object from the DB
 			const ret = await _.adapter.getForeignObjectAsync(id);
 			// and remember it in the cache
-			if (ret != null) this.storeObject(ret);
+			if (ret != null) {
+				this.storeObject(ret);
+			}
 		}
 		return this.retrieveObject(id);
 	}
 
 	public async objectExists(id: string): Promise<boolean> {
-		if (this.cache.has(id)) return true;
-		// Try to retrieve the original object from the DB
-		const ret = await _.adapter.getForeignObjectAsync(id);
-		return ret != undefined;
+		if (this.cache.has(id)) {
+			return true;
+		}
+		return (await this.getObject(id)) != undefined;
 	}
 
-	private storeObject(obj: ioBroker.Object) {
+	private storeObject(obj: ioBroker.Object): void {
 		const clone = extend({}, obj) as ioBroker.Object;
 		this.cache.set(clone._id, clone);
 		this.rememberForExpiry(clone._id);
@@ -60,8 +63,10 @@ export class ObjectCache {
 		}
 	}
 
-	private rememberForExpiry(id: string) {
-		if (typeof this.expiryDuration !== "number") return;
+	private rememberForExpiry(id: string): void {
+		if (typeof this.expiryDuration !== "number") {
+			return;
+		}
 
 		const existingTimestamp = [...this.expireTimestamps].find(
 			(ets) => ets.id === id,
@@ -76,16 +81,18 @@ export class ObjectCache {
 		this.expireTimestamps.add(newTimestamp);
 		// if no expiry timer is running, start one
 		if (this.expireTimer == null) {
-			this.expireTimer = setTimeout(
+			this.expireTimer = _.adapter.setTimeout(
 				() => this.expire(),
 				this.expiryDuration,
 			);
 		}
 	}
 
-	private expire() {
+	private expire(): void {
 		this.expireTimer = undefined;
-		if (this.expireTimestamps.length === 0) return;
+		if (this.expireTimestamps.length === 0) {
+			return;
+		}
 
 		const nextTimestamp = this.expireTimestamps.peekStart()!;
 		const timeDelta = nextTimestamp.timestamp - Date.now();
@@ -97,12 +104,14 @@ export class ObjectCache {
 		this.setTimerForNextExpiry();
 	}
 
-	private setTimerForNextExpiry() {
-		if (this.expireTimestamps.length === 0) return;
+	private setTimerForNextExpiry(): void {
+		if (this.expireTimestamps.length === 0) {
+			return;
+		}
 
 		const nextTimestamp = this.expireTimestamps.peekStart()!;
 		const timeDelta = nextTimestamp.timestamp - Date.now();
-		this.expireTimer = setTimeout(
+		this.expireTimer = _.adapter.setTimeout(
 			() => this.expire(),
 			Math.max(timeDelta, 100),
 		);
@@ -110,6 +119,7 @@ export class ObjectCache {
 
 	/**
 	 * Causes the cache for an object to be invalidated
+	 *
 	 * @param id The id of the object to invalidate
 	 */
 	public invalidateObject(id: string): void {
@@ -118,7 +128,7 @@ export class ObjectCache {
 
 	/**
 	 * Updates an object in the cache
-	 * @param id The id of the object to update
+	 *
 	 * @param obj The updated object
 	 */
 	public updateObject(obj: ioBroker.Object): void {
@@ -127,7 +137,7 @@ export class ObjectCache {
 
 	public dispose(): void {
 		if (this.expireTimer != undefined) {
-			clearTimeout(this.expireTimer);
+			_.adapter.clearTimeout(this.expireTimer);
 			this.expireTimer = undefined;
 		}
 		this.cache.clear();

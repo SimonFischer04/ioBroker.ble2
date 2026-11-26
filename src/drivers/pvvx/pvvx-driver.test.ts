@@ -51,7 +51,9 @@ class FakeAdapter {
 		id: string,
 		obj: ioBroker.SettableObject,
 	): Promise<{ id: string }> {
-		if (!this.objects.has(id)) this.objects.set(id, obj);
+		if (!this.objects.has(id)) {
+			this.objects.set(id, obj);
+		}
 		return Promise.resolve({ id });
 	}
 
@@ -94,7 +96,9 @@ class FakeConnections {
 		this.calls.push(address);
 		const behavior = this.behaviors.get(address);
 		try {
-			if (behavior instanceof GatewayError) throw behavior;
+			if (behavior instanceof GatewayError) {
+				throw behavior;
+			}
 			if (behavior instanceof FakePvvxDevice) {
 				return await job(createFakeSession(behavior));
 			}
@@ -202,7 +206,11 @@ describe("drivers/pvvx/pvvx-driver", () => {
 			return driver;
 		}
 
-		/** Lets time pass and runs a tick */
+		/**
+		 * Lets time pass and runs a tick
+		 *
+		 * @param ms
+		 */
 		async function advance(ms: number): Promise<void> {
 			clock.nowMs += ms;
 			await driver.tick();
@@ -371,7 +379,9 @@ describe("drivers/pvvx/pvvx-driver", () => {
 			);
 			await createDriver([FIRST], 0).start();
 			await advance(START_DELAY_MS);
-			for (const delay of RETRY_DELAYS_MS) await advance(delay);
+			for (const delay of RETRY_DELAYS_MS) {
+				await advance(delay);
+			}
 			expect(connections.calls).to.have.lengthOf(4);
 
 			await advance(FALLBACK_INTERVAL_MS - 1);

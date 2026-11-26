@@ -45,17 +45,13 @@ function announce(harness, gateways, protocol = "ble-gateway/1") {
  */
 async function getGateways(harness) {
 	const response = await sendToAdapter(harness, "getGateways", {});
-	return Object.fromEntries(
-		response.result.map((/** @type {any} */ g) => [g.id, g]),
-	);
+	return Object.fromEntries(response.result.map((g) => [g.id, g]));
 }
 
 /** @param {(name: string, fn: (getHarness: () => any) => void) => void} suite */
 exports.runTests = function (suite) {
 	suite("Gateway interface - announcing gateways", (getHarness) => {
-		/** @type {any} */
 		let harness;
-		/** @type {number} */
 		let epoch;
 
 		before(async function () {
@@ -111,7 +107,7 @@ exports.runTests = function (suite) {
 			await waitForValue(harness, `${OG}.connected`, true);
 			await waitForValue(harness, `${OG}.freeSlots`, 3);
 			const obj = await harness.objects.getObjectAsync(
-				`ble.0.${OG}.freeSlots`,
+				`ble2.0.${OG}.freeSlots`,
 			);
 			expect(obj.common).to.include({
 				type: "number",

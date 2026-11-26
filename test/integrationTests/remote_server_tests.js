@@ -57,15 +57,12 @@ function gatewayStates(server) {
  */
 async function getGateways(harness) {
 	const response = await sendToAdapter(harness, "getGateways", {});
-	return Object.fromEntries(
-		response.result.map((/** @type {any} */ g) => [g.id, g]),
-	);
+	return Object.fromEntries(response.result.map((g) => [g.id, g]));
 }
 
 /** @param {(name: string, fn: (getHarness: () => any) => void) => void} suite */
 exports.runTests = function (suite) {
 	suite("Remote scan servers - several at once", (getHarness) => {
-		/** @type {any} */
 		let harness;
 		const keller = new FakeScanServer();
 		const og = new FakeScanServer();
@@ -154,12 +151,11 @@ exports.runTests = function (suite) {
 			});
 
 			const devices = await sendToAdapter(harness, "getDevices", {});
-			const device = devices.result.find(
-				(/** @type {any} */ d) => d.address === DEVICE,
-			);
-			expect(
-				device.gateways.map((/** @type {any} */ g) => g.id),
-			).to.deep.equal([gatewayId(og), gatewayId(keller)]);
+			const device = devices.result.find((d) => d.address === DEVICE);
+			expect(device.gateways.map((g) => g.id)).to.deep.equal([
+				gatewayId(og),
+				gatewayId(keller),
+			]);
 		});
 
 		it("only handles advertisements of the monitored services", async function () {
@@ -236,7 +232,6 @@ exports.runTests = function (suite) {
 	suite(
 		"Remote scan servers - migration of the setting of version 0.14",
 		(getHarness) => {
-			/** @type {any} */
 			let harness;
 			const server = new FakeScanServer();
 

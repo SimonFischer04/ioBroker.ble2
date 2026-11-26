@@ -5,10 +5,14 @@ export type DeviceObjectDefinition = Partial<
 >;
 export type ChannelObjectDefinition = Partial<
 	Pick<ioBroker.ChannelObject, "common" | "native">
-> & { id: string };
+> & {
+	id: string;
+};
 export type StateObjectDefinition = Partial<
 	Pick<ioBroker.StateObject, "common" | "native">
-> & { id: string };
+> & {
+	id: string;
+};
 
 /**
  * Defines the object structure for a handled peripheral.
@@ -38,6 +42,8 @@ export interface Plugin<TContext = any> {
 	description: string;
 	/** A list of services to include in the scan */
 	advertisedServices: string[];
+	/** Bluetooth company identifiers to include even without advertised services */
+	manufacturerIds?: number[];
 
 	/** Determines whether this plugin is handling a peripheral or not */
 	isHandling: (peripheral: PeripheralInfo) => boolean;
@@ -53,12 +59,19 @@ export function getServiceData(
 	peripheral: PeripheralInfo,
 	uuid: string,
 ): Buffer | undefined {
-	for (const entry of peripheral.advertisement!.serviceData!) {
-		if (entry.uuid === uuid) return entry.data;
+	for (const entry of peripheral.advertisement?.serviceData ?? []) {
+		if (entry.uuid === uuid) {
+			return entry.data;
+		}
 	}
 }
 
-/** Aliases an existing plugin with a new name */
+/**
+ * Aliases an existing plugin with a new name
+ *
+ * @param newName Name of the alias
+ * @param oldPlugin Plugin to reuse
+ */
 export function alias(newName: string, oldPlugin: Plugin): Plugin {
 	const { name, ...plugin } = oldPlugin;
 	return {

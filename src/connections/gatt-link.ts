@@ -14,6 +14,7 @@ export interface GattLink {
 	/**
 	 * Writes the values to the handle in this order and reads it afterwards if readAfter is set.
 	 * Only for gateways with the feature "writeSequence", the ConnectionManager makes sure of that.
+	 *
 	 * @returns The value read, undefined without readAfter
 	 */
 	writeSequence(

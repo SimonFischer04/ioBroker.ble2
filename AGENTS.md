@@ -1,4 +1,4 @@
-# AGENTS.md – ioBroker.ble
+# AGENTS.md – ioBroker.ble2
 
 Guide for AI coding agents working in this repository. Read it completely before changing anything.
 
@@ -60,7 +60,7 @@ src/drivers/pvvx/                     time sync of pvvx thermometers: protocol.t
                                       pvvx.checkFirmware), update-error.ts. test-image.ts is for the tests only
 src/api/message-handler.ts            all sendTo commands the adapter accepts
 src/plugins/                          decoder plugins. Do not change them unless the task is about a decoder.
-admin/src/                            settings UI (React, iobroker-react), translations in admin/src/i18n
+admin/jsonConfig.json                 native settings UI, translations in admin/i18n
 test/integration.js                   entry point of the integration tests
 test/integrationTests/                integration suites, see below
 ```
@@ -78,17 +78,17 @@ advertisements) -> `AdvertisementProcessor.process()` -> `DeviceRegistry.observe
   in `src/scanProcess.ts`. Type-only imports of noble are allowed there, nowhere else.
 - **A problem with one gateway must not stop the adapter.** No `process.exit()`, no `adapter.terminate()` outside of
   the "rebuild required" case in `src/transports/noble-local.ts`.
-- **`ble` knows no other adapter.** No code that refers to ioBroker.esphome or any other adapter by name. Other
+- **`ble2` knows no other adapter.** No code that refers to ioBroker.esphome or any other adapter by name. Other
   adapters use the gateway interface.
 - **`src/lib/gateway-protocol.ts` has no imports** and only additive changes within `ble-gateway/1`: do not rename or
   remove fields or commands, do not change the meaning of existing ones.
 - **Answers to sendTo commands** of the gateway interface have the form `{ error: null, result }` or
   `{ error: { code, message } }`. `getHCIPorts` and unknown commands keep their old form.
-- **`build/`, `admin/build/` and `bin/` are committed.** After changing `src/` or `admin/src/` run `npm run build` and
-  commit the result together with the sources. Do not edit files in `build/` by hand. Do not rebuild `bin/blerp.js`.
-- Tabs for indentation, formatted with prettier (`.prettierrc.js`). Comments in English.
+- **Build output is generated.** Run `npm run build` after changing `src/`. The standalone scanner bundle is produced by
+  `npm run build:server`.
+- Tabs for indentation, formatted with prettier (`prettier.config.mjs`). Comments in English.
 - New settings: `native` in `io-package.json`, `src/lib/adapter-config.d.ts`, and (if the user may change them)
-  `admin/src/index.tsx` plus all 10 files in `admin/src/i18n/`. Old instance configurations do not have the new key:
+  `admin/jsonConfig.json` and translations in `admin/i18n/`. Old instance configurations do not have the new key:
   code must treat a missing value like the default.
 
 ## Commands
@@ -96,22 +96,18 @@ advertisements) -> `AdvertisementProcessor.process()` -> `DeviceRegistry.observe
 ```bash
 npm ci                    # install
 npm run check             # type check (tsc --noEmit)
-npm run lint              # eslint over src/
+npm run lint              # eslint over source and tests
 npx prettier --check "src/**/*.ts" "test/integration.js" "test/integrationTests/*.js"
-npm run build             # compiles src/ to build/ and admin/src/ to admin/build/
-npm run test:ts           # unit tests, src/**/*.test.ts
+npm run build             # compiles src/ to build/
+npm run test:unit           # unit tests, src/**/*.test.ts
 npm run test:package      # package.json / io-package.json checks
 npm run test:integration  # starts the built adapter in a test ioBroker installation (about 2 minutes)
 ```
 
 All of them have to pass before a commit. Known pitfalls:
 
-- **Unit tests on Node.js 22 and newer:** `npm run test:ts` fails with "TypeScript namespace declaration is not
-  supported in strip-only mode" (an existing test uses a namespace). Run
-  `NODE_OPTIONS=--no-experimental-strip-types npm run test:ts` instead. CI uses Node.js 18 and 20.
-- **The integration tests run `build/`, not `src/`.** Run `npm run build` first, otherwise you test the old code.
-- The test installation in `/tmp/test-iobroker.ble` is reused. `test/integration.js` deletes its npm lockfiles so the
-  current build gets installed. If the tests still seem to run old code, delete that directory.
+- **The integration tests run `build/`, not `src/`.** Run `npm run build` first.
+- Set `TMPDIR` to a fresh temporary directory if you need an isolated ioBroker installation.
 - The test scripts pass the pattern to mocha in quotes (`mocha "src/**/*.test.ts"`), so mocha finds tests at any
   depth. Without the quotes the shell expands `**` like `*` and tests two directories below `src/` silently do not run
   (that hid 15 decoder tests until November 2026). Keep the quotes.

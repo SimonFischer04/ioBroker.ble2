@@ -11,7 +11,11 @@ export type ScanErrorKind =
 	| "ignorable"
 	| "unknown";
 
-/** Determines what an error reported by the scanner means for the local Bluetooth adapter */
+/**
+ * Determines what an error reported by the scanner means for the local Bluetooth adapter
+ *
+ * @param err
+ */
 export function classifyScanError(err: Error): ScanErrorKind {
 	const message = err?.message ?? "";
 	if (

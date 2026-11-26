@@ -12,7 +12,12 @@ export const CMD_CONFIG = 0x55;
 /** Read or set the clock */
 export const CMD_TIME = 0x23;
 
-/** Value for the device clock: local time as Unix seconds, unsigned 32 bit */
+/**
+ * Value for the device clock: local time as Unix seconds, unsigned 32 bit
+ *
+ * @param nowMs
+ * @param timezoneOffsetMinutes
+ */
 export function localClockValue(
 	nowMs: number,
 	timezoneOffsetMinutes: number,
@@ -20,22 +25,36 @@ export function localClockValue(
 	return (Math.floor(nowMs / 1000) - timezoneOffsetMinutes * 60) >>> 0;
 }
 
-/** Request to read (no value) or set (value) the clock */
+/**
+ * Request to read (no value) or set (value) the clock
+ *
+ * @param value
+ */
 export function encodeTimeRequest(value?: number): Buffer {
-	if (value === undefined) return Buffer.from([CMD_TIME]);
+	if (value === undefined) {
+		return Buffer.from([CMD_TIME]);
+	}
 	const request = Buffer.alloc(5);
 	request[0] = CMD_TIME;
 	request.writeUInt32LE(value >>> 0, 1);
 	return request;
 }
 
-/** Answer to CMD_TIME. undefined if it is not one. */
+/**
+ * Answer to CMD_TIME. undefined if it is not one.
+ *
+ * @param data
+ */
 export function parseTimeResponse(
 	data: Buffer,
 ): { clock: number; lastSet?: number } | undefined {
-	if (data.length < 5 || data[0] !== CMD_TIME) return undefined;
+	if (data.length < 5 || data[0] !== CMD_TIME) {
+		return undefined;
+	}
 	const clock = data.readUInt32LE(1);
-	if (data.length >= 9) return { clock, lastSet: data.readUInt32LE(5) };
+	if (data.length >= 9) {
+		return { clock, lastSet: data.readUInt32LE(5) };
+	}
 	return { clock };
 }
 
@@ -44,16 +63,28 @@ export function encodeConfigRequest(): Buffer {
 	return Buffer.from([CMD_CONFIG]);
 }
 
-/** Answer to CMD_CONFIG. undefined if it is not one. */
+/**
+ * Answer to CMD_CONFIG. undefined if it is not one.
+ *
+ * @param data
+ */
 export function parseConfigResponse(
 	data: Buffer,
 ): { version: number; hardwareId?: number } | undefined {
-	if (data.length < 10 || data[0] !== CMD_CONFIG) return undefined;
+	if (data.length < 10 || data[0] !== CMD_CONFIG) {
+		return undefined;
+	}
 	const version = data[1];
-	if (data.length < 12) return { version };
+	if (data.length < 12) {
+		return { version };
+	}
 	let hver = data[11];
-	if (version < 0x36) hver &= 0x87;
-	if (version >= 0x48) return { version, hardwareId: hver };
+	if (version < 0x36) {
+		hver &= 0x87;
+	}
+	if (version >= 0x48) {
+		return { version, hardwareId: hver };
+	}
 	const id = hver & 0x0f;
 	return {
 		version,
@@ -61,12 +92,21 @@ export function parseConfigResponse(
 	};
 }
 
-/** 0x59 -> "5.9" */
+/**
+ * 0x59 -> "5.9"
+ *
+ * @param version
+ */
 export function formatVersion(version: number): string {
 	return `${version >> 4}.${version & 0x0f}`;
 }
 
-/** Seconds the device clock is ahead (positive) or behind (negative) */
+/**
+ * Seconds the device clock is ahead (positive) or behind (negative)
+ *
+ * @param deviceClock
+ * @param expectedValue
+ */
 export function clockDeviation(
 	deviceClock: number,
 	expectedValue: number,

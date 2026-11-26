@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["../../../src/drivers/pvvx/test-image.ts"],
-  "sourcesContent": ["// A valid firmware image for the unit and integration tests. Not used by the adapter itself.\n\nimport { crc32Telink } from \"./ota-protocol\";\n\n/** A valid image for the tests. size >= 1024 and (size & 0x0f) === 4. */\nexport function buildTestImage(size: number): Buffer {\n\tif (!Number.isInteger(size) || size < 1024 || (size & 0x0f) !== 4) {\n\t\tthrow new Error(`${size} is not a valid image size`);\n\t}\n\tconst image = Buffer.alloc(size);\n\tfor (let i = 0; i < size; i++) image[i] = (i * 7 + 3) & 0xff;\n\timage.write(\"KNLT\", 8, \"ascii\");\n\timage.writeUInt32LE(size, 0x18);\n\timage.writeUInt32LE(crc32Telink(image.subarray(0, size - 4)), size - 4);\n\treturn image;\n}\n"],
-  "mappings": ";;;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAEA,0BAA4B;AAGrB,SAAS,eAAe,MAAsB;AACpD,MAAI,CAAC,OAAO,UAAU,IAAI,KAAK,OAAO,SAAS,OAAO,QAAU,GAAG;AAClE,UAAM,IAAI,MAAM,GAAG,gCAAgC;AAAA,EACpD;AACA,QAAM,QAAQ,OAAO,MAAM,IAAI;AAC/B,WAAS,IAAI,GAAG,IAAI,MAAM;AAAK,UAAM,KAAM,IAAI,IAAI,IAAK;AACxD,QAAM,MAAM,QAAQ,GAAG,OAAO;AAC9B,QAAM,cAAc,MAAM,EAAI;AAC9B,QAAM,kBAAc,iCAAY,MAAM,SAAS,GAAG,OAAO,CAAC,CAAC,GAAG,OAAO,CAAC;AACtE,SAAO;AACR;",
-  "names": []
-}

@@ -72,7 +72,9 @@ export class GatewayRegistry {
 
 	public dispose(): void {
 		this.disposed = true;
-		if (this.timer) clearInterval(this.timer);
+		if (this.timer) {
+			clearInterval(this.timer);
+		}
 		this.timer = undefined;
 	}
 
@@ -83,7 +85,11 @@ export class GatewayRegistry {
 		);
 	}
 
-	/** The gateway with this (full) ID */
+	/**
+	 * The gateway with this (full) ID
+	 *
+	 * @param id
+	 */
 	public get(id: string): GatewayInfo | undefined {
 		const gateway = this.gateways.get(id);
 		return gateway && this.toInfo(gateway);
@@ -101,7 +107,17 @@ export class GatewayRegistry {
 		return { ...info, features: [...info.features] };
 	}
 
-	/** Reports what a gateway can do. This also marks it as active. */
+	/**
+	 * Reports what a gateway can do. This also marks it as active.
+	 *
+	 * @param description
+	 * @param capabilities
+	 * @param capabilities.connect
+	 * @param capabilities.freeSlots
+	 * @param capabilities.slotLimit
+	 * @param capabilities.features
+	 * @param now
+	 */
 	public announce(
 		description: GatewayDescription,
 		capabilities: {
@@ -154,7 +170,12 @@ export class GatewayRegistry {
 		}
 	}
 
-	/** Reports whether a gateway is active */
+	/**
+	 * Reports whether a gateway is active
+	 *
+	 * @param description
+	 * @param connected
+	 */
 	public setConnected(
 		description: GatewayDescription,
 		connected: boolean,
@@ -163,7 +184,13 @@ export class GatewayRegistry {
 		this.updateConnected(gateway, connected);
 	}
 
-	/** Reports that a gateway received advertisements. This also marks it as active. */
+	/**
+	 * Reports that a gateway received advertisements. This also marks it as active.
+	 *
+	 * @param description
+	 * @param count
+	 * @param now
+	 */
 	public recordAdvertisements(
 		description: GatewayDescription,
 		count: number,
@@ -190,13 +217,23 @@ export class GatewayRegistry {
 		}
 	}
 
-	/** Reports that an advertisement was skipped because another gateway delivered it first */
+	/**
+	 * Reports that an advertisement was skipped because another gateway delivered it first
+	 *
+	 * @param gatewayId
+	 */
 	public recordDuplicate(gatewayId: string): void {
 		const gateway = this.gateways.get(gatewayId);
-		if (gateway) gateway.duplicates++;
+		if (gateway) {
+			gateway.duplicates++;
+		}
 	}
 
-	/** Marks all gateways of an instance as offline, e.g. because that instance was stopped */
+	/**
+	 * Marks all gateways of an instance as offline, e.g. because that instance was stopped
+	 *
+	 * @param sender
+	 */
 	public senderOffline(sender: string): void {
 		for (const gateway of this.gateways.values()) {
 			if (gateway.sender === sender) {
@@ -248,7 +285,9 @@ export class GatewayRegistry {
 	}
 
 	private updateConnected(gateway: GatewayEntry, connected: boolean): void {
-		if (gateway.connected === connected) return;
+		if (gateway.connected === connected) {
+			return;
+		}
 		gateway.connected = connected;
 		this.enqueue(gateway, () =>
 			this.adapter.setStateAsync(
@@ -329,7 +368,9 @@ export class GatewayRegistry {
 	private enqueue(gateway: GatewayEntry, task: () => Promise<unknown>): void {
 		gateway.queue = gateway.queue
 			.then(async () => {
-				if (!this.disposed) await task();
+				if (!this.disposed) {
+					await task();
+				}
 			})
 			.catch((e) => {
 				this.adapter.log.warn(

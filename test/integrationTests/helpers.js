@@ -1,12 +1,12 @@
 // @ts-check
 
-const { spawnSync } = require("child_process");
+const { spawnSync } = require("node:child_process");
 
 /**
  * Helpers to talk to the adapter the way another adapter does: with sendTo
  */
 
-const NAMESPACE = "ble.0";
+const NAMESPACE = "ble2.0";
 
 /** The instance the test harness sends messages as. Gateways are named after it. */
 const SENDER = "test.0";
@@ -73,57 +73,51 @@ class MessageClient {
 		this.harness = harness;
 		this.from = `system.adapter.${SENDER}`;
 		this.nextId = 1;
-		/** @type {Map<number, (response: any) => void>} */
 		this.pending = new Map();
-		/** @type {((command: string, message: any) => any) | null} */
 		this.requestHandler = null;
 		/**
 		 * Everything the adapter sent to this instance, answered or not
 		 *
-		 * @type {{command: string, message: any}[]}
 		 */
 		this.received = [];
 
-		harness.on(
-			"stateChange",
-			(/** @type {string} */ id, /** @type {any} */ msg) => {
-				if (id !== `messagebox.${this.from}` || !msg) {
-					return;
+		harness.on("stateChange", (id, msg) => {
+			if (id !== `messagebox.${this.from}` || !msg) {
+				return;
+			}
+			if (msg.callback && msg.callback.ack) {
+				// The answer to one of our requests
+				const resolve = this.pending.get(msg.callback.id);
+				if (resolve) {
+					this.pending.delete(msg.callback.id);
+					resolve(msg.message);
 				}
-				if (msg.callback && msg.callback.ack) {
-					// The answer to one of our requests
-					const resolve = this.pending.get(msg.callback.id);
-					if (resolve) {
-						this.pending.delete(msg.callback.id);
-						resolve(msg.message);
+				return;
+			}
+			this.received.push({
+				command: msg.command,
+				message: msg.message,
+			});
+			if (msg.callback && this.requestHandler) {
+				Promise.resolve(
+					this.requestHandler(msg.command, msg.message),
+				).then((response) => {
+					// undefined = leave the request unanswered
+					if (response !== undefined) {
+						this.push(msg.from, {
+							command: msg.command,
+							message: response,
+							from: this.from,
+							callback: { ...msg.callback, ack: true },
+						});
 					}
-					return;
-				}
-				this.received.push({
-					command: msg.command,
-					message: msg.message,
 				});
-				if (msg.callback && this.requestHandler) {
-					Promise.resolve(
-						this.requestHandler(msg.command, msg.message),
-					).then((response) => {
-						// undefined = leave the request unanswered
-						if (response !== undefined) {
-							this.push(msg.from, {
-								command: msg.command,
-								message: response,
-								from: this.from,
-								callback: { ...msg.callback, ack: true },
-							});
-						}
-					});
-				}
-			},
-		);
+			}
+		});
 	}
 
 	/**
-	 * @param {string} target - Messagebox to send to, e.g. "system.adapter.ble.0"
+	 * @param {string} target - Messagebox to send to, e.g. "system.adapter.ble2.0"
 	 * @param {any} obj - The message
 	 */
 	push(target, obj) {
@@ -173,7 +167,6 @@ class MessageClient {
 	}
 }
 
-/** @type {WeakMap<object, MessageClient>} */
 const messageClients = new WeakMap();
 
 /**
@@ -339,9 +332,7 @@ async function waitForValue(harness, id, expected, timeoutMs) {
 			timeoutMs,
 		);
 	} catch (e) {
-		throw new Error(
-			`${/** @type {Error} */ (e).message}, it is ${JSON.stringify(actual)}`,
-		);
+		throw new Error(`${e.message}, it is ${JSON.stringify(actual)}`);
 	}
 }
 
@@ -355,7 +346,7 @@ async function waitForValue(harness, id, expected, timeoutMs) {
  * @returns {Promise<void>}
  */
 async function startAdapter(harness, native = {}, env = {}) {
-	await harness.changeAdapterConfig("ble", {
+	await harness.changeAdapterConfig(harness.adapterName, {
 		native: { localScanner: false, ...native },
 	});
 	await harness.startAdapterAndWait(false, env);

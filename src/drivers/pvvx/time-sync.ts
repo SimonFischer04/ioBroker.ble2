@@ -42,7 +42,12 @@ export class PvvxProtocolError extends Error {
 /** How far the clock may be off after setting it, in seconds */
 const MAX_SET_DEVIATION_S = 2;
 
-/** Reads the configuration and the clock of the device, then sets the clock to the local time */
+/**
+ * Reads the configuration and the clock of the device, then sets the clock to the local time
+ *
+ * @param channel
+ * @param clock
+ */
 export async function syncTime(
 	channel: PvvxCommandChannel,
 	clock: Clock,

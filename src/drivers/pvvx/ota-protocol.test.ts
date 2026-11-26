@@ -101,7 +101,11 @@ describe("drivers/pvvx/ota-protocol", () => {
 	});
 
 	describe("validateImage()", () => {
-		/** A copy of a valid image with changes */
+		/**
+		 * A copy of a valid image with changes
+		 *
+		 * @param change
+		 */
 		function changed(change: (image: Buffer) => void): Buffer {
 			const image = Buffer.from(buildTestImage(1028));
 			change(image);

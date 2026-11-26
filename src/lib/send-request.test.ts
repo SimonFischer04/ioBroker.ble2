@@ -21,7 +21,9 @@ class FakeSender implements RequestSender {
 		message: unknown,
 		callback: (response: unknown) => void,
 	): void {
-		if (this.throwOnSend) throw this.throwOnSend;
+		if (this.throwOnSend) {
+			throw this.throwOnSend;
+		}
 		this.sent.push({ instance, command, message, callback });
 	}
 

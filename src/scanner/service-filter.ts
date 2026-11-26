@@ -1,8 +1,15 @@
 import type { PeripheralInfo } from "../lib/advertisement";
+import { matchesScanFilter } from "../lib/scan-filter";
 
-/** Brings a configured service name into the form used in advertisements */
+/**
+ * Brings a configured service name into the form used in advertisements
+ *
+ * @param name
+ */
 export function fixServiceName(name: string | null | undefined): string {
-	if (name == null) return "";
+	if (name == null) {
+		return "";
+	}
 	name = name.trim();
 	// No whitespace
 	for (const char of ["\r", "\n", "\t", " "]) {
@@ -15,20 +22,16 @@ export function fixServiceName(name: string | null | undefined): string {
 }
 
 /**
- * Whether an advertisement contains one of the monitored services, either in its list of
- * services or as service data. An empty list of monitored services matches everything.
+ * Apply the same scan filters to advertisements from other gateways.
  *
- * The local scanner applies this filter while scanning. Advertisements from other gateways
- * arrive unfiltered, so the same rule has to be applied to them here.
+ * @param peripheral
+ * @param services
+ * @param manufacturerIds
  */
 export function matchesServiceFilter(
 	peripheral: PeripheralInfo,
-	services: string[],
+	services: readonly string[],
+	manufacturerIds: readonly number[] = [],
 ): boolean {
-	if (services.length === 0) return true;
-	const { serviceUuids, serviceData } = peripheral.advertisement ?? {};
-	return (
-		!!serviceUuids?.some((uuid) => services.includes(uuid)) ||
-		!!serviceData?.some((entry) => services.includes(entry.uuid))
-	);
+	return matchesScanFilter(peripheral, services, manufacturerIds);
 }

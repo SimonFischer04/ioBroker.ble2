@@ -43,12 +43,18 @@ class FakeAdapter {
 
 	public subscribeForeignStates(): void {}
 
-	/** The last request with this command */
+	/**
+	 * The last request with this command
+	 *
+	 * @param command
+	 */
 	public last(command: string): SentRequest {
 		const request = [...this.sent]
 			.reverse()
 			.find((r) => r.command === command);
-		if (!request) throw new Error(`${command} was not sent`);
+		if (!request) {
+			throw new Error(`${command} was not sent`);
+		}
 		return request;
 	}
 

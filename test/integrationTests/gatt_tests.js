@@ -3,7 +3,7 @@
 /**
  * GATT Integration Test - connections through gateways of other adapters
  *
- * Other adapters run discoverServices, readCharacteristic and writeCharacteristic on ble.0. The
+ * Other adapters run discoverServices, readCharacteristic and writeCharacteristic on ble2.0. The
  * adapter connects through a gateway another instance announced (here test.0, played by
  * FakeGattGateway) and sends it the gatt:* commands. The device is the one the gateways deliver
  * advertisements of: the gateway with the best signal is tried first.
@@ -79,9 +79,7 @@ const TWO_GATEWAYS = [
 /** @param {(name: string, fn: (getHarness: () => any) => void) => void} suite */
 exports.runTests = function (suite) {
 	suite("GATT - reading and writing through a gateway", (getHarness) => {
-		/** @type {any} */
 		let harness;
-		/** @type {FakeGattGateway} */
 		let gateway;
 
 		before(async function () {
@@ -273,11 +271,7 @@ exports.runTests = function (suite) {
 					},
 				],
 			]) {
-				const response = await sendToAdapter(
-					harness,
-					/** @type {string} */ (command),
-					message,
-				);
+				const response = await sendToAdapter(harness, command, message);
 				expect(response.error?.code, JSON.stringify(message)).to.equal(
 					"INVALID_PAYLOAD",
 				);
@@ -287,9 +281,7 @@ exports.runTests = function (suite) {
 	});
 
 	suite("GATT - choosing a gateway", (getHarness) => {
-		/** @type {any} */
 		let harness;
-		/** @type {FakeGattGateway} */
 		let gateway;
 
 		before(async function () {
@@ -368,9 +360,7 @@ exports.runTests = function (suite) {
 	});
 
 	suite("GATT - when things go wrong", (getHarness) => {
-		/** @type {any} */
 		let harness;
-		/** @type {FakeGattGateway} */
 		let gateway;
 
 		before(async function () {
@@ -420,7 +410,7 @@ exports.runTests = function (suite) {
 			await new Promise((resolve) => setTimeout(resolve, 500));
 			const reported = Date.now();
 			gateway.open.delete(`proxy-og|${DEVICE}`);
-			getMessageClient(harness).push("system.adapter.ble.0", {
+			getMessageClient(harness).push("system.adapter.ble2.0", {
 				command: "gateway:connectionState",
 				message: {
 					gatewayId: "proxy-og",

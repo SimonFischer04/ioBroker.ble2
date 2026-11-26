@@ -46,7 +46,6 @@ const OTA_HANDLE = 42;
  * @returns {((address: string, handle: number, dataHex: string) => string[] | undefined) & PvvxThermometer} The handler, its state can be changed
  */
 function createPvvxHandler(options = {}) {
-	/** @type {PvvxThermometer} */
 	const state = {
 		clock: 0,
 		lastSet: 0,
@@ -84,8 +83,10 @@ function createPvvxHandler(options = {}) {
 	const writeOta = (address, data) => {
 		const ota = thermometer.ota;
 		ota.sequenceWrites++;
-		const setStatus = (/** @type {number} */ status) => {
-			if (ota.status === 0) ota.status = status;
+		const setStatus = (status) => {
+			if (ota.status === 0) {
+				ota.status = status;
+			}
 		};
 		if (data.length === 2 && data[0] === 0x01 && data[1] === 0xff) {
 			// A new update starts from the beginning
@@ -114,7 +115,9 @@ function createPvvxHandler(options = {}) {
 				ota.received.push(Buffer.from(data.subarray(2, 18)));
 			}
 			const fail = ota.failStatusAfterPackets;
-			if (fail && ota.dataPackets >= fail.after) ota.status = fail.status;
+			if (fail && ota.dataPackets >= fail.after) {
+				ota.status = fail.status;
+			}
 		} else if (data.length === 6 && data[0] === 0x02 && data[1] === 0xff) {
 			if (data.readUInt16LE(2) !== ota.received.length - 1) {
 				setStatus(4);
@@ -146,6 +149,7 @@ function createPvvxHandler(options = {}) {
 
 	/**
 	 * @param {string} _address - The device
+	 * @param address
 	 * @param {number} handle - Handle written to
 	 * @param {string} dataHex - The data
 	 * @returns {string[] | undefined} The notifications
@@ -155,7 +159,9 @@ function createPvvxHandler(options = {}) {
 			writeOta(address, Buffer.from(dataHex, "hex"));
 			return undefined;
 		}
-		if (handle !== COMMAND_HANDLE) return undefined;
+		if (handle !== COMMAND_HANDLE) {
+			return undefined;
+		}
 		thermometer.writes.push(dataHex);
 		const data = Buffer.from(dataHex, "hex");
 		const command = data[0];

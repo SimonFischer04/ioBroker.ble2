@@ -17,7 +17,11 @@ const BLOCK_SIZE = 16;
 const SIGNATURE = Buffer.from("KNLT", "ascii");
 const ZIGBEE_MAGIC = Buffer.from([0x1e, 0xf1, 0xee, 0x0b]);
 
-/** CRC-16/MODBUS: start 0xFFFF, reflected polynomial 0xA001, no final XOR */
+/**
+ * CRC-16/MODBUS: start 0xFFFF, reflected polynomial 0xA001, no final XOR
+ *
+ * @param data
+ */
 export function crc16Modbus(data: Uint8Array): number {
 	let crc = 0xffff;
 	for (const byte of data) {
@@ -41,7 +45,11 @@ const CRC32_TABLE = (() => {
 	return table;
 })();
 
-/** CRC-32 of the Telink images: polynomial 0xEDB88320, start 0xFFFFFFFF, no final XOR */
+/**
+ * CRC-32 of the Telink images: polynomial 0xEDB88320, start 0xFFFFFFFF, no final XOR
+ *
+ * @param data
+ */
 export function crc32Telink(data: Uint8Array): number {
 	// Own table: zlib.crc32 only exists from Node.js 20.15
 	let crc = 0xffffffff;
@@ -59,13 +67,23 @@ export type ImageProblem =
 	| "BAD_LENGTH"
 	| "BAD_CHECKSUM";
 
-/** Checks an image as in docs/pvvx-protocol.md 6.2. Returns the length n of the image or the problem. */
+/**
+ * Checks an image as in docs/pvvx-protocol.md 6.2. Returns the length n of the image or the problem.
+ *
+ * @param image
+ */
 export function validateImage(
 	image: Buffer,
 ): { length: number } | { problem: ImageProblem } {
-	if (image.length < MIN_IMAGE_SIZE) return { problem: "TOO_SMALL" };
-	if (image.length > MAX_IMAGE_SIZE) return { problem: "TOO_LARGE" };
-	if (image.subarray(0, 4).equals(ZIGBEE_MAGIC)) return { problem: "ZIGBEE" };
+	if (image.length < MIN_IMAGE_SIZE) {
+		return { problem: "TOO_SMALL" };
+	}
+	if (image.length > MAX_IMAGE_SIZE) {
+		return { problem: "TOO_LARGE" };
+	}
+	if (image.subarray(0, 4).equals(ZIGBEE_MAGIC)) {
+		return { problem: "ZIGBEE" };
+	}
 	if (!image.subarray(8, 12).equals(SIGNATURE)) {
 		return { problem: "NO_SIGNATURE" };
 	}
@@ -86,7 +104,12 @@ export function validateImage(
 	return { length };
 }
 
-/** The first n bytes of the image, padded with 0xFF to a multiple of 16, as blocks of 16 bytes */
+/**
+ * The first n bytes of the image, padded with 0xFF to a multiple of 16, as blocks of 16 bytes
+ *
+ * @param image
+ * @param length
+ */
 export function toBlocks(image: Buffer, length: number): Buffer[] {
 	const count = Math.ceil(length / BLOCK_SIZE);
 	const padded = Buffer.alloc(count * BLOCK_SIZE, 0xff);
@@ -98,7 +121,12 @@ export function toBlocks(image: Buffer, length: number): Buffer[] {
 	return blocks;
 }
 
-/** Data packet: index (2 bytes LE), 16 bytes, CRC-16 over both (2 bytes LE) */
+/**
+ * Data packet: index (2 bytes LE), 16 bytes, CRC-16 over both (2 bytes LE)
+ *
+ * @param index
+ * @param block
+ */
 export function encodeDataPacket(index: number, block: Buffer): Buffer {
 	const packet = Buffer.alloc(2 + BLOCK_SIZE + 2);
 	packet.writeUInt16LE(index, 0);
@@ -107,7 +135,11 @@ export function encodeDataPacket(index: number, block: Buffer): Buffer {
 	return packet;
 }
 
-/** End packet: 02 ff, last index (LE), last index inverted (LE) */
+/**
+ * End packet: 02 ff, last index (LE), last index inverted (LE)
+ *
+ * @param lastIndex
+ */
 export function encodeEndPacket(lastIndex: number): Buffer {
 	const packet = Buffer.from([0x02, 0xff, 0, 0, 0, 0]);
 	packet.writeUInt16LE(lastIndex, 2);
@@ -115,7 +147,11 @@ export function encodeEndPacket(lastIndex: number): Buffer {
 	return packet;
 }
 
-/** Text for a status byte of the update, docs/pvvx-protocol.md 6.6 */
+/**
+ * Text for a status byte of the update, docs/pvvx-protocol.md 6.6
+ *
+ * @param status
+ */
 export function otaStatusText(status: number): string {
 	switch (status) {
 		case 1:

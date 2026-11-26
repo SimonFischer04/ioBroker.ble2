@@ -1,6 +1,6 @@
 ﻿import { filter as objFilter } from "alcalzone-shared/objects";
-import * as fs from "fs";
-import * as path from "path";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import type { ObjectCache } from "./object-cache";
 
 export class Global {
@@ -22,7 +22,10 @@ export class Global {
 
 	/**
 	 * Kurzschreibweise für die Ermittlung mehrerer Objekte
-	 * @param id
+	 *
+	 * @param pattern Object ID pattern
+	 * @param type Object type to retrieve
+	 * @param role Optional role filter
 	 */
 	public static async $$(
 		pattern: string,
@@ -35,9 +38,8 @@ export class Global {
 		)) as Record<string, ioBroker.Object>;
 		if (role) {
 			return objFilter(objects, (o) => o.common.role === role);
-		} else {
-			return objects;
 		}
+		return objects;
 	}
 
 	// Workaround für unvollständige Adapter-Upgrades
@@ -53,8 +55,9 @@ export class Global {
 		if (
 			ioPack.instanceObjects == null ||
 			ioPack.instanceObjects.length === 0
-		)
+		) {
 			return;
+		}
 
 		// wait for all instance objects to be created
 		const setObjects = (ioPack.instanceObjects as ioBroker.Object[]).map(

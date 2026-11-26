@@ -7,6 +7,8 @@ import type { AdvertisementData, ServiceData } from "./advertisement";
  *
  * The payload may be the advertisement and the scan response concatenated.
  * Malformed trailing data is ignored, everything parsed up to that point is returned.
+ *
+ * @param raw
  */
 export function parseAdvertisementData(raw: Buffer): AdvertisementData {
 	const serviceUuids: string[] = [];
@@ -17,9 +19,13 @@ export function parseAdvertisementData(raw: Buffer): AdvertisementData {
 	while (offset < raw.length) {
 		const length = raw[offset];
 		// A length of 0 marks the end of the significant part
-		if (length === 0) break;
+		if (length === 0) {
+			break;
+		}
 		// The structure must fit into the remaining data
-		if (offset + 1 + length > raw.length) break;
+		if (offset + 1 + length > raw.length) {
+			break;
+		}
 
 		const type = raw[offset + 1];
 		const data = raw.subarray(offset + 2, offset + 1 + length);
@@ -45,7 +51,9 @@ export function parseAdvertisementData(raw: Buffer): AdvertisementData {
 				break;
 
 			case 0x0a: // TX power level
-				if (data.length >= 1) ret.txPowerLevel = data.readInt8(0);
+				if (data.length >= 1) {
+					ret.txPowerLevel = data.readInt8(0);
+				}
 				break;
 
 			case 0x16: // Service data, 16 bit UUID
@@ -68,7 +76,11 @@ export function parseAdvertisementData(raw: Buffer): AdvertisementData {
 	return ret;
 }
 
-/** UUIDs are transmitted in little endian, the string form is big endian */
+/**
+ * UUIDs are transmitted in little endian, the string form is big endian
+ *
+ * @param bytes
+ */
 function uuidToString(bytes: Buffer): string {
 	return Buffer.from(bytes).reverse().toString("hex");
 }
@@ -76,7 +88,9 @@ function uuidToString(bytes: Buffer): string {
 function addUuids(target: string[], data: Buffer, uuidLength: number): void {
 	for (let i = 0; i + uuidLength <= data.length; i += uuidLength) {
 		const uuid = uuidToString(data.subarray(i, i + uuidLength));
-		if (!target.includes(uuid)) target.push(uuid);
+		if (!target.includes(uuid)) {
+			target.push(uuid);
+		}
 	}
 }
 
@@ -85,7 +99,9 @@ function addServiceData(
 	data: Buffer,
 	uuidLength: number,
 ): void {
-	if (data.length < uuidLength) return;
+	if (data.length < uuidLength) {
+		return;
+	}
 	target.push({
 		uuid: uuidToString(data.subarray(0, uuidLength)),
 		data: Buffer.from(data.subarray(uuidLength)),

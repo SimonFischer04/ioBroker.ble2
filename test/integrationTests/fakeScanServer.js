@@ -12,9 +12,7 @@ const net = require("net");
 
 class FakeScanServer {
 	constructor() {
-		/** @type {net.Server | null} */
 		this.server = null;
-		/** @type {Set<net.Socket>} */
 		this.sockets = new Set();
 		/** Port it listens on, assigned by the operating system on the first start */
 		this.port = 0;
@@ -45,19 +43,22 @@ class FakeScanServer {
 			server.listen(this.port, "127.0.0.1", () => resolve(undefined));
 		});
 		this.server = server;
-		this.port = /** @type {net.AddressInfo} */ (server.address()).port;
+		this.port = server.address().port;
 	}
 
 	/** Closes all connections and stops listening, like a server that is switched off */
 	async stop() {
-		for (const socket of this.sockets) socket.destroy();
+		for (const socket of this.sockets) {
+			socket.destroy();
+		}
 		this.sockets.clear();
 		const server = this.server;
 		this.server = null;
-		if (server)
+		if (server) {
 			await new Promise((resolve) =>
 				server.close(() => resolve(undefined)),
 			);
+		}
 	}
 
 	/** Whether the adapter is connected */
@@ -72,8 +73,10 @@ class FakeScanServer {
 	 * @param {net.Socket} [only] - Send it to this connection only
 	 */
 	send(message, only) {
-		const line = JSON.stringify(message) + "\n";
-		for (const socket of only ? [only] : this.sockets) socket.write(line);
+		const line = `${JSON.stringify(message)}\n`;
+		for (const socket of only ? [only] : this.sockets) {
+			socket.write(line);
+		}
 	}
 
 	/**

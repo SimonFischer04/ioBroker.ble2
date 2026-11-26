@@ -23,7 +23,14 @@ export interface TransferOptions {
 	sleep(ms: number): Promise<void>;
 }
 
-/** Transfers the image (docs/pvvx-protocol.md 6.4). Resolves after the end packet was sent. */
+/**
+ * Transfers the image (docs/pvvx-protocol.md 6.4). Resolves after the end packet was sent.
+ *
+ * @param session
+ * @param image
+ * @param length
+ * @param options
+ */
 export async function transferImage(
 	session: GattSession,
 	image: Buffer,
@@ -76,7 +83,9 @@ export async function transferImage(
 		await write(encodeEndPacket(count - 1), false);
 	} catch (e) {
 		const code = (e as { code?: unknown })?.code;
-		if (code !== "NOT_CONNECTED" && code !== "TIMEOUT") throw e;
+		if (code !== "NOT_CONNECTED" && code !== "TIMEOUT") {
+			throw e;
+		}
 	}
 	options.onProgress(1);
 }

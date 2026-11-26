@@ -98,11 +98,8 @@ async function objectsExist(harness) {
 /** @param {(name: string, fn: (getHarness: () => any) => void) => void} suite */
 exports.runTests = function (suite) {
 	suite("pvvx - setting the clock", (getHarness) => {
-		/** @type {any} */
 		let harness;
-		/** @type {FakeGattGateway} */
 		let gateway;
-		/** @type {ReturnType<typeof createPvvxHandler>} */
 		let thermometer;
 
 		before(async function () {
@@ -248,9 +245,7 @@ exports.runTests = function (suite) {
 	});
 
 	suite("pvvx - device not reachable", (getHarness) => {
-		/** @type {any} */
 		let harness;
-		/** @type {FakeGattGateway} */
 		let gateway;
 
 		before(async function () {
@@ -291,7 +286,6 @@ exports.runTests = function (suite) {
 	});
 
 	suite("pvvx - invalid configuration", (getHarness) => {
-		/** @type {any} */
 		let harness;
 
 		before(async function () {
@@ -319,7 +313,6 @@ exports.runTests = function (suite) {
 	});
 
 	suite("pvvx - no devices configured", (getHarness) => {
-		/** @type {any} */
 		let harness;
 
 		before(async function () {
@@ -336,7 +329,7 @@ exports.runTests = function (suite) {
 				startkey: `${NAMESPACE}.`,
 				endkey: `${NAMESPACE}.香`,
 			});
-			const ids = objects.rows.map((/** @type {any} */ row) => row.id);
+			const ids = objects.rows.map((row) => row.id);
 			expect(ids.length, "objects of the instance").to.be.greaterThan(0);
 			expect(ids.filter((id) => id.includes(".pvvx"))).to.deep.equal([]);
 		});

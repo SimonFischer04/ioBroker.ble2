@@ -17,7 +17,12 @@ const MAX_DOWNLOAD_SIZE = 256 * 1024;
 /** firmware.json is loaded again after this time */
 export const INDEX_MAX_AGE_MS = 6 * 3600000;
 
-/** Loads from a base URL with fetch() */
+/**
+ * Loads from a base URL with fetch()
+ *
+ * @param baseUrl
+ * @param fetchImpl
+ */
 export function createHttpFirmwareSource(
 	baseUrl: string,
 	fetchImpl: typeof fetch = (...args) => fetch(...args),
@@ -71,7 +76,9 @@ export interface FirmwareIndex {
 }
 
 export function parseFirmwareIndex(json: unknown): FirmwareIndex | undefined {
-	if (json == null || typeof json !== "object") return undefined;
+	if (json == null || typeof json !== "object") {
+		return undefined;
+	}
 	const { version, custom } = json as Record<string, unknown>;
 	if (
 		!Number.isInteger(version) ||
@@ -90,7 +97,13 @@ export type ImageSelection =
 	| { path: string; version: number }
 	| { problem: "UNKNOWN_HARDWARE" | "NO_IMAGE" | "UP_TO_DATE" };
 
-/** docs/pvvx-protocol.md 6.3 */
+/**
+ * docs/pvvx-protocol.md 6.3
+ *
+ * @param index
+ * @param hardwareId
+ * @param installedVersion
+ */
 export function selectImage(
 	index: FirmwareIndex,
 	hardwareId: number | undefined,
@@ -105,8 +118,12 @@ export function selectImage(
 		return { problem: "UNKNOWN_HARDWARE" };
 	}
 	const path = index.custom[hardwareId];
-	if (!path.endsWith(".bin")) return { problem: "NO_IMAGE" };
-	if (installedVersion >= index.version) return { problem: "UP_TO_DATE" };
+	if (!path.endsWith(".bin")) {
+		return { problem: "NO_IMAGE" };
+	}
+	if (installedVersion >= index.version) {
+		return { problem: "UP_TO_DATE" };
+	}
 	return { path, version: index.version };
 }
 
@@ -127,7 +144,11 @@ export class FirmwareCatalog {
 		{ image: Buffer; length: number }
 	>();
 
-	/** firmware.json, loaded again when older than INDEX_MAX_AGE_MS or when refresh is set */
+	/**
+	 * firmware.json, loaded again when older than INDEX_MAX_AGE_MS or when refresh is set
+	 *
+	 * @param refresh
+	 */
 	public async getIndex(refresh: boolean = false): Promise<FirmwareIndex> {
 		const now = this.clock.now();
 		if (
@@ -157,12 +178,18 @@ export class FirmwareCatalog {
 		return value;
 	}
 
-	/** The image, loaded once per path and kept in memory */
+	/**
+	 * The image, loaded once per path and kept in memory
+	 *
+	 * @param path
+	 */
 	public async getImage(
 		path: string,
 	): Promise<{ image: Buffer; length: number }> {
 		const cached = this.images.get(path);
-		if (cached) return cached;
+		if (cached) {
+			return cached;
+		}
 		let image: Buffer;
 		try {
 			image = await this.source.getImage(path);

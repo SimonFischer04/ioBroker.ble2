@@ -14,7 +14,9 @@ const HOSTNAME_REGEX =
 const IPV6_REGEX = /^[0-9A-Fa-f:.]+$/;
 
 function parsePort(text: string): number | undefined {
-	if (!/^\d{1,5}$/.test(text)) return undefined;
+	if (!/^\d{1,5}$/.test(text)) {
+		return undefined;
+	}
 	const port = +text;
 	return port >= 1 && port <= 65535 ? port : undefined;
 }
@@ -22,6 +24,8 @@ function parsePort(text: string): number | undefined {
 /**
  * Parses one entry: "host", "host:port", "[ipv6]" or "[ipv6]:port".
  * Returns undefined if the entry is not valid.
+ *
+ * @param entry
  */
 export function parseServer(entry: string): RemoteServer | undefined {
 	let host: string;
@@ -30,21 +34,31 @@ export function parseServer(entry: string): RemoteServer | undefined {
 	const bracketed = /^\[([^\]]+)\](?::(.*))?$/.exec(entry);
 	if (bracketed) {
 		host = bracketed[1];
-		if (!IPV6_REGEX.test(host) || !host.includes(":")) return undefined;
+		if (!IPV6_REGEX.test(host) || !host.includes(":")) {
+			return undefined;
+		}
 		if (bracketed[2] !== undefined) {
 			const parsed = parsePort(bracketed[2]);
-			if (parsed === undefined) return undefined;
+			if (parsed === undefined) {
+				return undefined;
+			}
 			port = parsed;
 		}
 	} else {
 		const parts = entry.split(":");
 		// More than one colon without brackets would be an IPv6 address without a port we could tell apart
-		if (parts.length > 2) return undefined;
+		if (parts.length > 2) {
+			return undefined;
+		}
 		host = parts[0];
-		if (!HOSTNAME_REGEX.test(host)) return undefined;
+		if (!HOSTNAME_REGEX.test(host)) {
+			return undefined;
+		}
 		if (parts.length === 2) {
 			const parsed = parsePort(parts[1]);
-			if (parsed === undefined) return undefined;
+			if (parsed === undefined) {
+				return undefined;
+			}
 			port = parsed;
 		}
 	}
@@ -56,6 +70,8 @@ export function parseServer(entry: string): RemoteServer | undefined {
 /**
  * Parses the setting with the remote scan servers. Entries are separated by commas, semicolons,
  * spaces or line breaks. Duplicates are removed, invalid entries are returned separately.
+ *
+ * @param setting
  */
 export function parseServerList(setting: unknown): {
 	servers: RemoteServer[];
@@ -63,10 +79,14 @@ export function parseServerList(setting: unknown): {
 } {
 	const servers: RemoteServer[] = [];
 	const invalid: string[] = [];
-	if (typeof setting !== "string") return { servers, invalid };
+	if (typeof setting !== "string") {
+		return { servers, invalid };
+	}
 
 	for (const entry of setting.split(/[\s,;]+/)) {
-		if (entry === "") continue;
+		if (entry === "") {
+			continue;
+		}
 		const server = parseServer(entry);
 		if (!server) {
 			invalid.push(entry);
@@ -92,6 +112,8 @@ export interface ServerSettings {
  *
  * Returns the changes that keep the behaviour of such a configuration, undefined if there is nothing
  * to migrate.
+ *
+ * @param native
  */
 export function migrateServerSettings(
 	native: ServerSettings,
@@ -100,12 +122,16 @@ export function migrateServerSettings(
 	| undefined {
 	const legacy =
 		typeof native.server === "string" ? native.server.trim() : "";
-	if (legacy === "") return undefined;
+	if (legacy === "") {
+		return undefined;
+	}
 	const current =
 		typeof native.remoteServers === "string"
 			? native.remoteServers.trim()
 			: "";
 	// Both set: the new setting was saved by the new admin UI, the old one is a leftover
-	if (current !== "") return undefined;
+	if (current !== "") {
+		return undefined;
+	}
 	return { server: "", remoteServers: legacy, localScanner: false };
 }

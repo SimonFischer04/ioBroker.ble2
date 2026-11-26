@@ -4,7 +4,7 @@
  * Gateway Interface Integration Test - advertisements
  *
  * Another adapter delivers the advertisements its gateways (e.g. ESPHome Bluetooth proxies)
- * received with sendTo("ble.0", "gateway:advertisements", ...). The packets used here are
+ * received with sendTo("ble2.0", "gateway:advertisements", ...). The packets used here are
  * raw payloads as the devices send them, so the whole chain is covered: validating the
  * message, parsing the AD structures, selecting the decoder plugin, creating the objects
  * and writing the states.
@@ -49,7 +49,6 @@ exports.runTests = function (suite) {
 	suite(
 		"Gateway interface - advertisements of the supported devices",
 		(getHarness) => {
-			/** @type {any} */
 			let harness;
 
 			before(async function () {
@@ -265,7 +264,7 @@ exports.runTests = function (suite) {
 				const response = await sendToAdapter(harness, "getDevices", {});
 				expect(response.error).to.be.null;
 				const device = response.result.find(
-					(/** @type {any} */ d) => d.address === "a4:c1:38:00:00:02",
+					(d) => d.address === "a4:c1:38:00:00:02",
 				);
 				expect(device, "the device").to.be.ok;
 				expect(device.name).to.equal("ATC_123456");
@@ -281,7 +280,6 @@ exports.runTests = function (suite) {
 	suite(
 		"Gateway interface - new devices and monitored services",
 		(getHarness) => {
-			/** @type {any} */
 			let harness;
 			const known = "a4:c1:38:12:34:56";
 
@@ -349,9 +347,7 @@ exports.runTests = function (suite) {
 				// They are listed, a connection may still be wanted to a device that is not decoded
 				const devices = await sendToAdapter(harness, "getDevices", {});
 				expect(
-					devices.result
-						.map((/** @type {any} */ d) => d.address)
-						.sort(),
+					devices.result.map((d) => d.address).sort(),
 				).to.deep.equal(
 					[otherService, manufacturerDataOnly, marker, known].sort(),
 				);

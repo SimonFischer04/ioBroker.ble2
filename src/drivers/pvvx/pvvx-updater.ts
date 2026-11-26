@@ -145,14 +145,24 @@ function errorCode(e: unknown): string {
 	return typeof code === "string" ? code : "ERROR";
 }
 
-/** "5.9" -> 0x59, undefined for anything else */
+/**
+ * "5.9" -> 0x59, undefined for anything else
+ *
+ * @param value
+ */
 function parseVersion(value: unknown): number | undefined {
-	if (typeof value !== "string") return undefined;
+	if (typeof value !== "string") {
+		return undefined;
+	}
 	const match = /^(\d+)\.(\d+)$/.exec(value);
-	if (!match) return undefined;
+	if (!match) {
+		return undefined;
+	}
 	const major = Number(match[1]);
 	const minor = Number(match[2]);
-	if (major > 15 || minor > 15) return undefined;
+	if (major > 15 || minor > 15) {
+		return undefined;
+	}
 	return (major << 4) | minor;
 }
 
@@ -175,7 +185,9 @@ export class PvvxUpdater {
 
 	/** Creates the objects, schedules the checks. Does nothing without addresses. */
 	public async start(): Promise<void> {
-		if (this.options.addresses.length === 0) return;
+		if (this.options.addresses.length === 0) {
+			return;
+		}
 		const { adapter } = this.ctx;
 		try {
 			await adapter.setObjectNotExistsAsync("pvvx", {
@@ -242,9 +254,15 @@ export class PvvxUpdater {
 		}
 	}
 
-	/** Updates firmwareAvailable of all devices, without connecting to them. Public for tests. */
+	/**
+	 * Updates firmwareAvailable of all devices, without connecting to them. Public for tests.
+	 *
+	 * @param refresh
+	 */
 	public async checkAll(refresh: boolean): Promise<void> {
-		if (this.checking || this.disposed) return;
+		if (this.checking || this.disposed) {
+			return;
+		}
 		this.checking = true;
 		const { adapter, catalog } = this.ctx;
 		try {
@@ -258,7 +276,9 @@ export class PvvxUpdater {
 				return;
 			}
 			for (const address of this.options.addresses) {
-				if (this.disposed) return;
+				if (this.disposed) {
+					return;
+				}
 				try {
 					const hardwareId = (
 						await adapter.getStateAsync(
@@ -296,12 +316,20 @@ export class PvvxUpdater {
 		}
 	}
 
-	/** Whether an update of the device is queued or running */
+	/**
+	 * Whether an update of the device is queued or running
+	 *
+	 * @param address
+	 */
 	public isBusy(address: string): boolean {
 		return this.busy.has(address);
 	}
 
-	/** Queues the update of a device. Resolves when it is finished (done or failed). Public for tests. */
+	/**
+	 * Queues the update of a device. Resolves when it is finished (done or failed). Public for tests.
+	 *
+	 * @param address
+	 */
 	public update(address: string): Promise<void> {
 		if (this.disposed || !this.options.addresses.includes(address)) {
 			return Promise.resolve();
@@ -325,9 +353,13 @@ export class PvvxUpdater {
 
 	/** Starts the next update, if none is running */
 	private async pump(): Promise<void> {
-		if (this.running || this.disposed) return;
+		if (this.running || this.disposed) {
+			return;
+		}
 		const next = this.queue.shift();
-		if (!next) return;
+		if (!next) {
+			return;
+		}
 		this.running = true;
 		let updated = false;
 		try {
@@ -337,12 +369,17 @@ export class PvvxUpdater {
 			this.busy.delete(next.address);
 		}
 		// The clock may be wrong after the restart. Only now: the time sync skips busy devices.
-		if (updated && !this.disposed) this.ctx.requestTimeSync(next.address);
+		if (updated && !this.disposed) {
+			this.ctx.requestTimeSync(next.address);
+		}
 		next.finished();
 		void this.pump();
 	}
 
-	/** @returns Whether the device runs the new firmware now */
+	/**
+	 * @param address
+	 * @returns Whether the device runs the new firmware now
+	 */
 	private async run(address: string): Promise<boolean> {
 		const { ctx } = this;
 		try {
@@ -425,13 +462,17 @@ export class PvvxUpdater {
 				firmwareError: "",
 				firmwareStatus: "done",
 			});
-			if (this.disposed) return false;
+			if (this.disposed) {
+				return false;
+			}
 			ctx.adapter.log.info(
 				`Updated the firmware of ${address} to ${formatVersion(expected)}`,
 			);
 			return true;
 		} catch (e) {
-			if (this.disposed) return false;
+			if (this.disposed) {
+				return false;
+			}
 			const firmwareError = `${errorCode(e)}: ${errorMessage(e)}`;
 			ctx.adapter.log.warn(
 				`The firmware update of ${address} failed: ${firmwareError}`,
@@ -444,12 +485,19 @@ export class PvvxUpdater {
 		}
 	}
 
-	/** Waits for the restart and checks that the device runs the new version */
+	/**
+	 * Waits for the restart and checks that the device runs the new version
+	 *
+	 * @param address
+	 * @param expected
+	 */
 	private async verify(address: string, expected: number): Promise<void> {
 		await this.sleep(VERIFY_DELAY_MS);
 		let lastError: unknown;
 		for (let attempt = 0; attempt < VERIFY_ATTEMPTS; attempt++) {
-			if (attempt > 0) await this.sleep(VERIFY_RETRY_MS);
+			if (attempt > 0) {
+				await this.sleep(VERIFY_RETRY_MS);
+			}
 			let version: number;
 			try {
 				version = await this.ctx.connections.withSession(
@@ -476,7 +524,9 @@ export class PvvxUpdater {
 				lastError = e;
 				continue;
 			}
-			if (version === expected) return;
+			if (version === expected) {
+				return;
+			}
 			throw new PvvxUpdateError(
 				"VERIFY_FAILED",
 				`Version ${formatVersion(version)} after the update, expected ${formatVersion(expected)}`,
@@ -492,17 +542,25 @@ export class PvvxUpdater {
 		// 100 only after the new version was read
 		const value = Math.floor(fraction * 99);
 		const last = this.lastProgress.get(address) ?? 0;
-		if (value - last < PROGRESS_STEP) return;
+		if (value - last < PROGRESS_STEP) {
+			return;
+		}
 		this.lastProgress.set(address, value);
 		void this.setStates(address, { firmwareProgress: value });
 	}
 
-	/** Waits. After dispose() it never resolves, so nothing goes on. */
+	/**
+	 * Waits. After dispose() it never resolves, so nothing goes on.
+	 *
+	 * @param ms
+	 */
 	private sleep(ms: number): Promise<void> {
 		return new Promise((resolve) => {
 			const timer = this.ctx.setTimeout(() => {
 				this.timers.delete(timer);
-				if (!this.disposed) resolve();
+				if (!this.disposed) {
+					resolve();
+				}
 			}, ms);
 			this.timers.add(timer);
 		});
@@ -513,7 +571,9 @@ export class PvvxUpdater {
 		values: Record<string, ioBroker.StateValue>,
 	): Promise<void> {
 		for (const [id, value] of Object.entries(values)) {
-			if (this.disposed) return;
+			if (this.disposed) {
+				return;
+			}
 			try {
 				await this.ctx.adapter.setStateAsync(
 					`${address}.pvvx.${id}`,
@@ -547,13 +607,20 @@ export class PvvxUpdater {
 		}
 	}
 
-	/** Handles the buttons. Returns true if the state belongs to the updater. */
+	/**
+	 * Handles the buttons. Returns true if the state belongs to the updater.
+	 *
+	 * @param id
+	 * @param state
+	 */
 	public handleStateChange(
 		id: string,
 		state: ioBroker.State | null | undefined,
 	): boolean {
 		const prefix = `${this.ctx.adapter.namespace}.`;
-		if (!id.startsWith(prefix)) return false;
+		if (!id.startsWith(prefix)) {
+			return false;
+		}
 		const relative = id.slice(prefix.length);
 
 		let action: (() => void) | undefined;
@@ -580,7 +647,9 @@ export class PvvxUpdater {
 
 	public dispose(): void {
 		this.disposed = true;
-		for (const timer of this.timers) this.ctx.clearTimeout(timer);
+		for (const timer of this.timers) {
+			this.ctx.clearTimeout(timer);
+		}
 		this.timers.clear();
 		if (this.interval !== undefined) {
 			this.ctx.clearInterval(this.interval);

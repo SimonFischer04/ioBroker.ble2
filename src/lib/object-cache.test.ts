@@ -1,3 +1,4 @@
+import type * as ObjectCacheModule from "./object-cache";
 import { extend } from "alcalzone-shared/objects";
 import { expect } from "chai";
 import * as proxyquireModule from "proxyquire";
@@ -16,13 +17,10 @@ namespace mocks {
 	export const customSubscriptions = createCustomSubscriptionsMock();
 }
 
-const { ObjectCache } = proxyquire<typeof import("./object-cache")>(
-	"./object-cache",
-	{
-		"./custom-subscriptions": mocks.customSubscriptions,
-		"../lib/global": mocks.global,
-	},
-);
+const { ObjectCache } = proxyquire<typeof ObjectCacheModule>("./object-cache", {
+	"./custom-subscriptions": mocks.customSubscriptions,
+	"../lib/global": mocks.global,
+});
 
 describe("lib/object-cache", () => {
 	afterEach(() => {
@@ -251,6 +249,19 @@ describe("lib/object-cache", () => {
 			// now it has, expect the updated object
 			const expired = await cache.getObject("whatever");
 			expired!.should.not.deep.equal(original);
+		});
+
+		it("cancels a pending expiration when disposed", async () => {
+			const cache = new ObjectCache(DURATION);
+			mocks.database.publishObject({
+				_id: "pending",
+				type: "state",
+				common: { role: "value" },
+			});
+			await cache.getObject("pending");
+			clock.countTimers().should.equal(1);
+			cache.dispose();
+			clock.countTimers().should.equal(0);
 		});
 
 		it.skip("test multiple expirations in sequence", () => {

@@ -58,7 +58,13 @@ export class ConnectionManager {
 	private readonly queues = new Map<string, DeviceQueue>();
 	private disposed = false;
 
-	/** Connects to the device, runs the job and disconnects again, whatever happens */
+	/**
+	 * Connects to the device, runs the job and disconnects again, whatever happens
+	 *
+	 * @param address
+	 * @param job
+	 * @param options
+	 */
 	public withSession<T>(
 		address: string,
 		job: (session: GattSession) => Promise<T>,
@@ -73,7 +79,9 @@ export class ConnectionManager {
 				),
 			);
 		}
-		if (this.disposed) return Promise.reject(stoppingError());
+		if (this.disposed) {
+			return Promise.reject(stoppingError());
+		}
 
 		return new Promise<T>((resolve, reject) => {
 			let queue = this.queues.get(normalized);
@@ -90,16 +98,23 @@ export class ConnectionManager {
 	public dispose(): void {
 		this.disposed = true;
 		for (const queue of this.queues.values()) {
-			for (const job of queue.waiting.splice(0))
+			for (const job of queue.waiting.splice(0)) {
 				job.reject(stoppingError());
+			}
 			void queue.session?.close().catch(() => {});
 		}
 	}
 
-	/** Starts the next waiting job for the device, if none is running */
+	/**
+	 * Starts the next waiting job for the device, if none is running
+	 *
+	 * @param address
+	 */
 	private pump(address: string): void {
 		const queue = this.queues.get(address);
-		if (!queue || queue.running) return;
+		if (!queue || queue.running) {
+			return;
+		}
 		if (queue.waiting.length === 0) {
 			this.queues.delete(address);
 			return;
@@ -107,32 +122,49 @@ export class ConnectionManager {
 		let index = queue.waiting.findIndex(
 			(job) => job.options.priority === "high",
 		);
-		if (index === -1) index = 0;
+		if (index === -1) {
+			index = 0;
+		}
 		const [job] = queue.waiting.splice(index, 1);
 		queue.running = true;
 		void this.run(address, queue, job);
 	}
 
-	/** The gateway a session would try first, with the signal strength it receives the device with */
+	/**
+	 * The gateway a session would try first, with the signal strength it receives the device with
+	 *
+	 * @param address
+	 * @param requireFeature
+	 */
 	public bestGateway(
 		address: string,
 		requireFeature?: GatewayFeature,
 	): { gatewayId: string; rssi: number } | undefined {
 		const normalized = normalizeAddress(address);
-		if (!normalized) return undefined;
+		if (!normalized) {
+			return undefined;
+		}
 		const [gatewayId] = this.getCandidates(
 			normalized,
 			undefined,
 			requireFeature,
 		);
-		if (!gatewayId) return undefined;
+		if (!gatewayId) {
+			return undefined;
+		}
 		const receiver = this.ctx.devices
 			.getReceivers(normalized)
 			.find((r) => r.gatewayId === gatewayId);
 		return receiver && { gatewayId, rssi: receiver.rssi };
 	}
 
-	/** The gateways to try, best first */
+	/**
+	 * The gateways to try, best first
+	 *
+	 * @param address
+	 * @param preferGateway
+	 * @param requireFeature
+	 */
 	private getCandidates(
 		address: string,
 		preferGateway?: string,
@@ -242,13 +274,19 @@ export class ConnectionManager {
 			this.ctx.clearTimeout(timer);
 			const session = queue.session;
 			queue.session = undefined;
-			if (session) await this.closeSession(session);
+			if (session) {
+				await this.closeSession(session);
+			}
 			queue.running = false;
 			this.pump(address);
 		}
 	}
 
-	/** Closes a session, waiting at most CLOSE_TIMEOUT_MS */
+	/**
+	 * Closes a session, waiting at most CLOSE_TIMEOUT_MS
+	 *
+	 * @param session
+	 */
 	private async closeSession(session: GattSession): Promise<void> {
 		let timer: unknown;
 		await Promise.race([

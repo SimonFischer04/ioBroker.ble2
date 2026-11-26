@@ -17,6 +17,12 @@ export interface RequestSender {
  * Sends a command to another instance and resolves with the `result` of its answer.
  * Rejects with a GatewayError: the error of the answer, TIMEOUT if none arrived in time,
  * GATT_ERROR if the answer has an unknown form.
+ *
+ * @param adapter
+ * @param instance
+ * @param command
+ * @param message
+ * @param timeoutMs
  */
 export function sendRequest<T>(
 	adapter: RequestSender,
@@ -28,7 +34,9 @@ export function sendRequest<T>(
 	return new Promise<T>((resolve, reject) => {
 		let settled = false;
 		const timer = adapter.setTimeout(() => {
-			if (settled) return;
+			if (settled) {
+				return;
+			}
 			settled = true;
 			reject(
 				new GatewayError(
@@ -39,7 +47,9 @@ export function sendRequest<T>(
 		}, timeoutMs);
 
 		const settle = (fn: () => void): void => {
-			if (settled) return;
+			if (settled) {
+				return;
+			}
 			settled = true;
 			adapter.clearTimeout(timer);
 			fn();

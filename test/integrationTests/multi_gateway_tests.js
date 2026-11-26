@@ -37,9 +37,7 @@ const NEAR = `${SENDER}:proxy-og`;
 async function getGateways(harness) {
 	const response = await sendToAdapter(harness, "getGateways", {});
 	expect(response.error).to.be.null;
-	return Object.fromEntries(
-		response.result.map((/** @type {any} */ g) => [g.id, g]),
-	);
+	return Object.fromEntries(response.result.map((g) => [g.id, g]));
 }
 
 /** @param {(name: string, fn: (getHarness: () => any) => void) => void} suite */
@@ -47,7 +45,6 @@ exports.runTests = function (suite) {
 	suite(
 		"Several gateways - the same device received by more than one",
 		(getHarness) => {
-			/** @type {any} */
 			let harness;
 
 			before(async function () {
@@ -111,7 +108,7 @@ exports.runTests = function (suite) {
 				expect(device.address).to.equal(DEVICE);
 				// Strongest signal first
 				expect(
-					device.gateways.map((/** @type {any} */ g) => ({
+					device.gateways.map((g) => ({
 						id: g.id,
 						rssi: g.rssi,
 					})),

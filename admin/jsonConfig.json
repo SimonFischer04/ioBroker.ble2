@@ -1,0 +1,250 @@
+{
+    "type": "panel",
+    "i18n": true,
+    "items": {
+        "localScanner": {
+            "type": "checkbox",
+            "label": "Use the Bluetooth adapter of this host",
+            "help": "When disabled, only advertisements from remote scan servers and other adapters are handled. No Bluetooth hardware is needed then.",
+            "default": true,
+            "xs": 12,
+            "sm": 6,
+            "md": 4
+        },
+        "remoteServers": {
+            "type": "text",
+            "label": "Remote scan servers:",
+            "placeholder": "host:port",
+            "help": "One per line, as host or host:port (default port 8734). Each runs bin/blerp.js. They are used together with the local Bluetooth adapter.",
+            "trim": false,
+            "xs": 12,
+            "sm": 6,
+            "md": 4,
+            "lg": 4,
+            "xl": 4,
+            "minRows": 2
+        },
+        "hciDevice": {
+            "type": "selectSendTo",
+            "label": "Select device:",
+            "help": "On linux this can be determined with `hciconfig`:",
+            "command": "getHCIOptions",
+            "manual": true,
+            "validator": "String(data.hciDevice ?? '').trim() === '' || (/^\\d+$/.test(String(data.hciDevice).trim()) && Number.isSafeInteger(Number(data.hciDevice)))",
+            "validatorNoSaveOnError": true,
+            "xs": 12,
+            "sm": 6,
+            "md": 4,
+            "lg": 4,
+            "xl": 4,
+            "disabled": "data.localScanner === false"
+        },
+        "rssiThrottle": {
+            "type": "number",
+            "label": "RSSI update interval [ms]:",
+            "help": "Too frequent updates can slow down the admin.",
+            "min": 0,
+            "max": 10000,
+            "step": 1,
+            "xs": 12,
+            "sm": 6,
+            "md": 4,
+            "lg": 4,
+            "xl": 4
+        },
+        "services": {
+            "type": "text",
+            "label": "Monitored services, * for all services:",
+            "help": "Service characteristics as HEX codes or UUID, comma separated.",
+            "minRows": 3,
+            "trim": false,
+            "xs": 12,
+            "sm": 6,
+            "md": 6,
+            "lg": 6,
+            "xl": 6
+        },
+        "plugins": {
+            "type": "text",
+            "hidden": true,
+            "onChange": {
+                "alsoDependsOn": [
+                    "_pluginSelection"
+                ],
+                "calculateFunc": "(data._pluginSelection || []).join(',')"
+            },
+            "xs": 12,
+            "sm": 12,
+            "md": 12,
+            "lg": 12,
+            "xl": 12
+        },
+        "_pluginSelection": {
+            "type": "select",
+            "multiple": true,
+            "label": "Active plugins:",
+            "help": "Select the plugins for your sensors. Basic advertisement data is always available.",
+            "doNotSave": true,
+            "defaultFunc": "[...new Set((Array.isArray(data.plugins) ? data.plugins : String(data.plugins || '').split(',')).map(p => p.trim().toLowerCase()).filter(p => ['xiaomi', 'mi-flora', 'ruuvi-tag', 'bthome', 'mopeka', 'switchbot'].includes(p)))]",
+            "options": [
+                {
+                    "label": "Xiaomi",
+                    "value": "xiaomi"
+                },
+                {
+                    "label": "Mi Flora",
+                    "value": "mi-flora"
+                },
+                {
+                    "label": "Ruuvi Tag",
+                    "value": "ruuvi-tag"
+                },
+                {
+                    "label": "SwitchBot Meter",
+                    "value": "switchbot"
+                },
+                {
+                    "label": "BTHome",
+                    "value": "bthome"
+                },
+                {
+                    "label": "Mopeka Pro Check",
+                    "value": "mopeka"
+                }
+            ],
+            "xs": 12,
+            "sm": 6,
+            "md": 6,
+            "lg": 6,
+            "xl": 6
+        },
+        "xiaomiBindkeys": {
+            "type": "text",
+            "hidden": true
+        },
+        "_xiaomiBindkeyHeading": {
+            "type": "header",
+            "text": "Xiaomi MiBeacon bindkeys",
+            "size": 3,
+            "hidden": "!['xiaomi', 'mi-flora'].some(p => (data._pluginSelection || []).includes(p))",
+            "xs": 12
+        },
+        "_xiaomiBindkeyRows": {
+            "type": "table",
+            "help": "Enter the MAC address and bindkey for each encrypted Xiaomi MiBeacon v4 or v5 device.",
+            "hidden": "!['xiaomi', 'mi-flora'].some(p => (data._pluginSelection || []).includes(p))",
+            "doNotSave": true,
+            "defaultFunc": "try { const rows = JSON.parse(data.xiaomiBindkeys || '[]'); return Array.isArray(rows) ? rows : []; } catch { return []; }",
+            "onChange": {
+                "calculateFunc": "const rows = data._xiaomiBindkeyRows || []; data.xiaomiBindkeys = JSON.stringify(rows); return rows;"
+            },
+            "xs": 12,
+            "useCardFor": [
+                "xs",
+                "sm"
+            ],
+            "uniqueColumns": [
+                "address"
+            ],
+            "items": [
+                {
+                    "type": "text",
+                    "attr": "address",
+                    "title": "Bluetooth MAC address",
+                    "default": "",
+                    "validator": "/^(?:[0-9a-f]{12}|(?:[0-9a-f]{2}:){5}[0-9a-f]{2})$/i.test((data.address || '').trim())",
+                    "validatorErrorText": "Enter a valid Bluetooth MAC address.",
+                    "validatorNoSaveOnError": true
+                },
+                {
+                    "type": "password",
+                    "attr": "key",
+                    "title": "Bindkey",
+                    "default": "",
+                    "validator": "/^[0-9a-f]{32}$/i.test((data.key || '').trim())",
+                    "validatorErrorText": "Enter a 32-digit hexadecimal bindkey.",
+                    "validatorNoSaveOnError": true
+                }
+            ]
+        },
+        "allowEmptyDevices": {
+            "type": "checkbox",
+            "label": "Allow creation of devices without advertised data",
+            "xs": 12,
+            "sm": 6,
+            "md": 6,
+            "lg": 6,
+            "xl": 6
+        },
+        "_discovery": {
+            "type": "panel",
+            "xs": 12,
+            "sm": 6,
+            "md": 6,
+            "lg": 6,
+            "xl": 6,
+            "items": {
+                "_allowNewDevices": {
+                    "type": "state",
+                    "label": "Accept new devices",
+                    "oid": "options.allowNewDevices",
+                    "control": "switch",
+                    "foreign": false,
+                    "xs": 12,
+                    "sm": 12,
+                    "md": 12,
+                    "lg": 12,
+                    "xl": 12
+                },
+                "_discoveryHelp": {
+                    "type": "staticText",
+                    "text": "This will be automatically disabled after 5 minutes.",
+                    "xs": 12,
+                    "style": {
+                        "fontSize": 12
+                    },
+                    "sm": 12,
+                    "md": 12,
+                    "lg": 12,
+                    "xl": 12
+                }
+            }
+        },
+        "gatewayTimeout": {
+            "type": "number",
+            "label": "Gateway timeout [s]:",
+            "help": "Mark a gateway offline after this many seconds without advertisements.",
+            "min": 1,
+            "default": 60,
+            "xs": 12,
+            "sm": 6
+        },
+        "pvvxDevices": {
+            "type": "text",
+            "label": "pvvx thermometers (MAC addresses):",
+            "placeholder": "a4:c1:38:12:34:56",
+            "help": "The clock of these devices is set to the local time: at start, in this interval, after each change between summer and winter time, and with the button pvvx.syncTime. Needs a gateway that can connect, e.g. an ESPHome Bluetooth proxy.",
+            "minRows": 3,
+            "trim": false,
+            "xs": 12,
+            "sm": 6
+        },
+        "pvvxSyncInterval": {
+            "type": "number",
+            "label": "Time sync interval [h]:",
+            "help": "0 = only at start, after a time change and with the button.",
+            "min": 0,
+            "default": 24,
+            "xs": 12,
+            "sm": 6
+        },
+        "pvvxFirmwareCheck": {
+            "type": "checkbox",
+            "label": "Check daily for new pvvx firmware",
+            "help": "Once a day, the adapter looks up the newest firmware for the pvvx thermometers on GitHub (pvvx/ATC_MiThermometer) and shows it in pvvx.firmwareAvailable. Nothing is installed without pressing a button.",
+            "default": true,
+            "xs": 12,
+            "sm": 6
+        }
+    }
+}

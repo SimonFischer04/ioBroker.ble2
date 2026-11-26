@@ -2,9 +2,7 @@ import { expect } from "chai";
 import { XiaomiAdvertisement } from "./xiaomi_protocol";
 
 type OperationModes =
-	| "mi-flora-normal"
-	| "mi-flora-uninitialized"
-	| "temp-sensor-normal";
+	"mi-flora-normal" | "mi-flora-uninitialized" | "temp-sensor-normal";
 function assertFlags(
 	operationMode: OperationModes,
 	parsed: XiaomiAdvertisement,
@@ -62,6 +60,56 @@ function assertCapabilities(actual: number, expected: number | undefined) {
 }
 
 describe("xiaomi protocol => ", () => {
+	describe("authenticated MiBeacon advertisements", () => {
+		const key = Buffer.from("000102030405060708090a0b0c0d0e0f", "hex");
+		const mac = "112233445566";
+		const readKey = (address: string): Buffer | undefined =>
+			address === mac ? key : undefined;
+		// Fixtures generated with Python cryptography's AESCCM and a synthetic key.
+		const frames = [
+			"58506f06016655443322114ddf680bb3cc4f2e444a51325175010203f1251ef9",
+			"48406f06014ddf680bb3cc4f2e444a51325175010203f1251ef9",
+			"78506f060166554433221120aa4ddf680bb3cc4f2e444a51325175010203f1251ef9",
+		];
+
+		it("reads multiple events in v4 and v5 frames", () => {
+			for (const frame of frames) {
+				const advertisement = new XiaomiAdvertisement(
+					Buffer.from(frame, "hex"),
+					"11:22:33:44:55:66",
+					readKey,
+				);
+				expect(advertisement.isEncrypted).to.be.true;
+				expect(advertisement.event).to.deep.equal({
+					temperature: 22.8,
+					humidity: 44,
+					battery: 77,
+				});
+			}
+		});
+
+		it("requires the right device address, key, and authentication tag", () => {
+			const frame = Buffer.from(frames[0], "hex");
+			expect(() => new XiaomiAdvertisement(frame)).to.throw("bindkey");
+			expect(
+				() =>
+					new XiaomiAdvertisement(
+						frame,
+						"11:22:33:44:55:00",
+						readKey,
+					),
+			).to.throw("MAC address");
+			expect(
+				() =>
+					new XiaomiAdvertisement(frame, mac, () => Buffer.alloc(16)),
+			).to.throw();
+			frame[frame.length - 1] ^= 1;
+			expect(
+				() => new XiaomiAdvertisement(frame, mac, readKey),
+			).to.throw();
+		});
+	});
+
 	describe("packets should be parsed correctly => ", () => {
 		it("incomplete packet", () => {
 			function create(hex: string) {
@@ -144,6 +192,30 @@ describe("xiaomi protocol => ", () => {
 			parsed.event!.should.deep.equal({
 				moisture: 0x0d,
 			});
+		});
+
+		it("Mi-Flora: ignores invalid moisture percentages", () => {
+			for (const moisture of [101, 160, 255]) {
+				const frame = Buffer.from(
+					"71209800d8795d658d7cc40d08100100",
+					"hex",
+				);
+				frame[frame.length - 1] = moisture;
+				expect(new XiaomiAdvertisement(frame).event).to.deep.equal({});
+			}
+		});
+
+		it("Mi-Flora: keeps valid moisture percentages including the boundaries", () => {
+			for (const moisture of [0, 13, 100]) {
+				const frame = Buffer.from(
+					"71209800d8795d658d7cc40d08100100",
+					"hex",
+				);
+				frame[frame.length - 1] = moisture;
+				expect(new XiaomiAdvertisement(frame).event).to.deep.equal({
+					moisture,
+				});
+			}
 		});
 
 		it("Mi-Flora: Illuminance", () => {

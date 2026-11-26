@@ -12,6 +12,8 @@ import type { Transport, TransportContext } from "./transport";
 export interface NobleLocalOptions {
 	/** Which BLE services to scan for. Empty = all. */
 	services: string[];
+	/** Bluetooth company identifiers to accept */
+	manufacturerIds: readonly number[];
 	/** Index of the HCI device to use */
 	hciDevice?: number;
 }
@@ -40,10 +42,18 @@ export class NobleLocalTransport implements Transport {
 	private stopped = false;
 
 	public start(): void {
-		if (this.stopped) return;
+		if (this.stopped) {
+			return;
+		}
 		const { adapter } = this.ctx;
 
 		const args: string[] = ["-s", ...this.options.services];
+		if (this.options.manufacturerIds.length > 0) {
+			args.push(
+				"--manufacturerIds",
+				...this.options.manufacturerIds.map(String),
+			);
+		}
 		if (this.options.hciDevice) {
 			args.push("-d", this.options.hciDevice.toString());
 		}
@@ -80,7 +90,9 @@ export class NobleLocalTransport implements Transport {
 		this.stopped = true;
 		try {
 			this.scanProcess?.kill();
-		} catch {}
+		} catch {
+			// The process may have already exited.
+		}
 	}
 
 	private handleMessage(message: ScanMessage): void {
@@ -93,7 +105,9 @@ export class NobleLocalTransport implements Transport {
 				gateways.setConnected(NobleLocalTransport.gateway, false);
 				break;
 			case "discover":
-				if (message.peripheral == null) break;
+				if (message.peripheral == null) {
+					break;
+				}
 				gateways.recordAdvertisements(NobleLocalTransport.gateway, 1);
 				this.ctx.onAdvertisement({
 					...message.peripheral,
@@ -116,6 +130,8 @@ export class NobleLocalTransport implements Transport {
 	/**
 	 * A problem with the local Bluetooth adapter must not stop the adapter:
 	 * it may still receive advertisements from external gateways.
+	 *
+	 * @param err
 	 */
 	private handleError(err: Error): void {
 		const { adapter } = this.ctx;

@@ -57,7 +57,9 @@ class FakeAdapter {
 		id: string,
 		obj: ioBroker.SettableObject,
 	): Promise<{ id: string }> {
-		if (!this.objects.has(id)) this.objects.set(id, obj);
+		if (!this.objects.has(id)) {
+			this.objects.set(id, obj);
+		}
 		return Promise.resolve({ id });
 	}
 
@@ -76,7 +78,13 @@ class FakeAdapter {
 		return Promise.resolve(this.states.get(this.relative(id)) ?? null);
 	}
 
-	/** Sets a state without recording it, like the rest of the adapter would */
+	/**
+	 * Sets a state without recording it, like the rest of the adapter would
+	 *
+	 * @param id
+	 * @param val
+	 * @param ts
+	 */
 	public preset(id: string, val: ioBroker.StateValue, ts = NOW): void {
 		this.states.set(id, { val, ack: true, ts });
 	}
@@ -85,7 +93,11 @@ class FakeAdapter {
 		return this.states.get(id)?.val;
 	}
 
-	/** The values a state was set to, in order */
+	/**
+	 * The values a state was set to, in order
+	 *
+	 * @param id
+	 */
 	public history(id: string): string[] {
 		return this.writes
 			.filter((w) => w.startsWith(`${id}=`))
@@ -120,11 +132,17 @@ class FakeConnections {
 		this.sessions.push({ address, options });
 		const gate = this.gate;
 		this.gate = undefined;
-		if (gate) await gate;
+		if (gate) {
+			await gate;
+		}
 		const failure = this.failures.get(address);
-		if (failure) throw failure;
+		if (failure) {
+			throw failure;
+		}
 		const device = this.devices.get(address);
-		if (!device) throw new GatewayError("NO_GATEWAY", "unknown device");
+		if (!device) {
+			throw new GatewayError("NO_GATEWAY", "unknown device");
+		}
 		return job(createFakeSession(device));
 	}
 

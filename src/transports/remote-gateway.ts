@@ -55,7 +55,12 @@ function isCount(value: unknown): boolean {
 	);
 }
 
-/** Validates the payload of "gateway:announce" */
+/**
+ * Validates the payload of "gateway:announce"
+ *
+ * @param sender
+ * @param payload
+ */
 export function parseAnnounceMessage(
 	sender: string,
 	payload: unknown,
@@ -133,6 +138,9 @@ export function parseAnnounceMessage(
  * Validates the payload of "gateway:advertisements" and converts the advertisements into the
  * form the decoder plugins work with. Invalid items are skipped, so a single broken packet
  * does not discard the whole batch.
+ *
+ * @param sender
+ * @param payload
  */
 export function parseGatewayMessage(
 	sender: string,
@@ -174,15 +182,21 @@ function parseItem(
 	item: unknown,
 	gatewayId: string,
 ): PeripheralInfo | undefined {
-	if (item == null || typeof item !== "object") return;
+	if (item == null || typeof item !== "object") {
+		return;
+	}
 	const { address, addressType, rssi, data, connectable } = item as Record<
 		string,
 		unknown
 	>;
 
 	const normalizedAddress = normalizeAddress(address);
-	if (!normalizedAddress) return;
-	if (typeof rssi !== "number" || !Number.isFinite(rssi)) return;
+	if (!normalizedAddress) {
+		return;
+	}
+	if (typeof rssi !== "number" || !Number.isFinite(rssi)) {
+		return;
+	}
 	if (
 		typeof data !== "string" ||
 		data.length > Math.ceil(MAX_DATA_LENGTH / 3) * 4 ||
@@ -241,12 +255,17 @@ export class RemoteGatewayTransport implements Transport, GattLinkProvider {
 	}
 
 	public stop(): void {
-		for (const link of [...this.links.values()]) link.handleEnded();
+		for (const link of [...this.links.values()]) {
+			link.handleEnded();
+		}
 	}
 
 	/**
 	 * Opens a connection to a device through a gateway another adapter provides
+	 *
 	 * @param gatewayId Full ID of the gateway, e.g. "esphome.0:proxy-og"
+	 * @param address
+	 * @param addressType
 	 */
 	public async connect(
 		gatewayId: string,
@@ -290,7 +309,9 @@ export class RemoteGatewayTransport implements Transport, GattLinkProvider {
 			address,
 			mtu,
 			() => {
-				if (this.links.get(key) === link) this.links.delete(key);
+				if (this.links.get(key) === link) {
+					this.links.delete(key);
+				}
 			},
 		);
 		this.links.set(key, link);
@@ -299,7 +320,9 @@ export class RemoteGatewayTransport implements Transport, GattLinkProvider {
 
 	/**
 	 * Handles a "gateway:connectionState" message: a connection ended without being asked to
+	 *
 	 * @param sender The instance that sent the message, e.g. "esphome.0"
+	 * @param payload
 	 */
 	public handleConnectionState(sender: string, payload: unknown): void {
 		const target = this.parseTarget(sender, payload);
@@ -310,7 +333,9 @@ export class RemoteGatewayTransport implements Transport, GattLinkProvider {
 			return;
 		}
 		const link = this.links.get(target);
-		if (!link) return;
+		if (!link) {
+			return;
+		}
 		this.ctx.adapter.log.debug(
 			`The connection ${target} was ended by the gateway`,
 		);
@@ -319,11 +344,15 @@ export class RemoteGatewayTransport implements Transport, GattLinkProvider {
 
 	/**
 	 * Handles a "gateway:notification" message
+	 *
 	 * @param sender The instance that sent the message, e.g. "esphome.0"
+	 * @param payload
 	 */
 	public handleNotification(sender: string, payload: unknown): void {
 		const target = this.parseTarget(sender, payload);
-		if (!target) return;
+		if (!target) {
+			return;
+		}
 		const { handle, data } = payload as Record<string, unknown>;
 		if (
 			!Number.isInteger(handle) ||
@@ -338,16 +367,29 @@ export class RemoteGatewayTransport implements Transport, GattLinkProvider {
 			?.handleNotification(handle as number, Buffer.from(data, "base64"));
 	}
 
-	/** Ends all links of a gateway that went offline, without telling the gateway */
+	/**
+	 * Ends all links of a gateway that went offline, without telling the gateway
+	 *
+	 * @param gatewayId
+	 */
 	public gatewayOffline(gatewayId: string): void {
 		for (const [key, link] of [...this.links]) {
-			if (key.startsWith(`${gatewayId}|`)) link.handleEnded();
+			if (key.startsWith(`${gatewayId}|`)) {
+				link.handleEnded();
+			}
 		}
 	}
 
-	/** The key of the link a message is about, undefined if the message is invalid */
+	/**
+	 * The key of the link a message is about, undefined if the message is invalid
+	 *
+	 * @param sender
+	 * @param payload
+	 */
 	private parseTarget(sender: string, payload: unknown): string | undefined {
-		if (payload == null || typeof payload !== "object") return undefined;
+		if (payload == null || typeof payload !== "object") {
+			return undefined;
+		}
 		const { gatewayId, address } = payload as Record<string, unknown>;
 		if (
 			typeof gatewayId !== "string" ||
@@ -356,20 +398,26 @@ export class RemoteGatewayTransport implements Transport, GattLinkProvider {
 			return undefined;
 		}
 		const normalized = normalizeAddress(address);
-		if (!normalized) return undefined;
+		if (!normalized) {
+			return undefined;
+		}
 		return `${sender}:${gatewayId}|${normalized}`;
 	}
 
 	/**
 	 * Handles a "gateway:advertisements" message
+	 *
 	 * @param sender The instance that sent the message, e.g. "esphome.0"
+	 * @param payload
 	 */
 	public handleAdvertisements(
 		sender: string,
 		payload: unknown,
 	): GatewayResponse<GatewayAdvertisementsResult> {
 		const parsed = parseGatewayMessage(sender, payload);
-		if ("error" in parsed) return parsed;
+		if ("error" in parsed) {
+			return parsed;
+		}
 
 		this.watchSender(sender);
 		this.ctx.gateways.recordAdvertisements(
@@ -391,14 +439,18 @@ export class RemoteGatewayTransport implements Transport, GattLinkProvider {
 
 	/**
 	 * Handles a "gateway:announce" message
+	 *
 	 * @param sender The instance that sent the message, e.g. "esphome.0"
+	 * @param payload
 	 */
 	public handleAnnounce(
 		sender: string,
 		payload: unknown,
 	): GatewayResponse<GatewayAnnounceResult> {
 		const parsed = parseAnnounceMessage(sender, payload);
-		if ("error" in parsed) return parsed;
+		if ("error" in parsed) {
+			return parsed;
+		}
 
 		this.watchSender(sender);
 		for (const { id, ...capabilities } of parsed.gateways) {
@@ -413,22 +465,35 @@ export class RemoteGatewayTransport implements Transport, GattLinkProvider {
 		};
 	}
 
-	/** When the sending instance stops, its gateways are offline immediately */
+	/**
+	 * When the sending instance stops, its gateways are offline immediately
+	 *
+	 * @param sender
+	 */
 	private watchSender(sender: string): void {
-		if (this.senders.has(sender)) return;
+		if (this.senders.has(sender)) {
+			return;
+		}
 		this.senders.add(sender);
 		this.ctx.adapter.subscribeForeignStates(
 			`system.adapter.${sender}.alive`,
 		);
 	}
 
-	/** Must be called for the state changes the adapter receives */
+	/**
+	 * Must be called for the state changes the adapter receives
+	 *
+	 * @param id
+	 * @param state
+	 */
 	public handleStateChange(
 		id: string,
 		state: ioBroker.State | null | undefined,
 	): void {
 		const sender = ALIVE_REGEX.exec(id)?.[1];
-		if (!sender || !this.senders.has(sender)) return;
+		if (!sender || !this.senders.has(sender)) {
+			return;
+		}
 		if (state?.val === false) {
 			this.ctx.adapter.log.info(
 				`${sender} was stopped, its gateways are offline`,

@@ -2,7 +2,11 @@ import { expect } from "chai";
 import { parseAdvertisementData } from "./ad-parser";
 import { normalizeAddress } from "./advertisement";
 
-/** Builds the payload of an advertisement from [type, hex data] pairs */
+/**
+ * Builds the payload of an advertisement from [type, hex data] pairs
+ *
+ * @param structures
+ */
 function ad(...structures: [type: number, hex: string][]): Buffer {
 	return Buffer.concat(
 		structures.map(([type, hex]) => {
@@ -62,7 +66,7 @@ describe("lib/ad-parser => parseAdvertisementData()", () => {
 	it("parses 128 bit UUIDs without dashes", () => {
 		const uuidLE = "fb349b5f8000008000100000d2fc0000";
 		const parsed = parseAdvertisementData(
-			ad([0x07, uuidLE], [0x21, uuidLE + "0102"]),
+			ad([0x07, uuidLE], [0x21, `${uuidLE}0102`]),
 		);
 		expect(parsed.serviceUuids).to.deep.equal([
 			"0000fcd200001000800000805f9b34fb",
