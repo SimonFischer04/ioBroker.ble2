@@ -1,267 +1,300 @@
 {
-    "type": "panel",
+    "type": "tabs",
     "i18n": true,
     "items": {
-        "server": {
-            "type": "text",
-            "label": "Use remote server:",
-            "placeholder": "address:port",
-            "help": "when configured, the local bluetooth adapter is not used",
-            "trim": false,
-            "xs": 12,
-            "sm": 6,
-            "md": 4,
-            "lg": 4,
-            "xl": 4
-        },
-        "hciDevice": {
-            "type": "selectSendTo",
-            "label": "Select device:",
-            "help": "On linux this can be determined with `hciconfig`:",
-            "command": "getHCIOptions",
-            "manual": true,
-            "validator": "String(data.hciDevice ?? '').trim() === '' || (/^\\d+$/.test(String(data.hciDevice).trim()) && Number.isSafeInteger(Number(data.hciDevice)))",
-            "validatorNoSaveOnError": true,
-            "xs": 12,
-            "sm": 6,
-            "md": 4,
-            "lg": 4,
-            "xl": 4
-        },
-        "rssiThrottle": {
-            "type": "number",
-            "label": "RSSI update interval [ms]:",
-            "help": "Too frequent updates can slow down the admin.",
-            "min": 0,
-            "max": 10000,
-            "step": 1,
-            "xs": 12,
-            "sm": 6,
-            "md": 4,
-            "lg": 4,
-            "xl": 4
-        },
-        "services": {
-            "type": "text",
-            "label": "Monitored services, * for all services:",
-            "help": "Service characteristics as HEX codes or UUID, comma separated.",
-            "minRows": 3,
-            "trim": false,
-            "xs": 12,
-            "sm": 6,
-            "md": 6,
-            "lg": 6,
-            "xl": 6
-        },
-        "plugins": {
-            "type": "text",
-            "hidden": true,
-            "onChange": {
-                "alsoDependsOn": [
-                    "_pluginSelection"
-                ],
-                "calculateFunc": "(data._pluginSelection || []).join(',')"
-            },
-            "xs": 12,
-            "sm": 12,
-            "md": 12,
-            "lg": 12,
-            "xl": 12
-        },
-        "_pluginSelection": {
-            "type": "select",
-            "multiple": true,
-            "label": "Active plugins:",
-            "help": "Select the plugins for your sensors. Basic advertisement data is always available.",
-            "doNotSave": true,
-            "defaultFunc": "[...new Set((Array.isArray(data.plugins) ? data.plugins : String(data.plugins || '').split(',')).map(p => p.trim().toLowerCase()).filter(p => ['xiaomi', 'mi-flora', 'ruuvi-tag', 'bthome', 'mopeka', 'switchbot', 'eddystone', 'mi-scale'].includes(p)))]",
-            "options": [
-                {
-                    "label": "Xiaomi",
-                    "value": "xiaomi"
-                },
-                {
-                    "label": "Mi Flora",
-                    "value": "mi-flora"
-                },
-                {
-                    "label": "Eddystone",
-                    "value": "eddystone"
-                },
-                {
-                    "label": "Ruuvi Tag",
-                    "value": "ruuvi-tag"
-                },
-                {
-                    "label": "SwitchBot Meter",
-                    "value": "switchbot"
-                },
-                {
-                    "label": "BTHome",
-                    "value": "bthome"
-                },
-                {
-                    "label": "Xiaomi Mi Scale",
-                    "value": "mi-scale"
-                },
-                {
-                    "label": "Mopeka Pro Check",
-                    "value": "mopeka"
-                }
-            ],
-            "xs": 12,
-            "sm": 6,
-            "md": 6,
-            "lg": 6,
-            "xl": 6
-        },
-        "xiaomiBindkeys": {
-            "type": "text",
-            "hidden": true
-        },
-        "_xiaomiBindkeyHeading": {
-            "type": "header",
-            "text": "Xiaomi MiBeacon bindkeys",
-            "size": 3,
-            "hidden": "!['xiaomi', 'mi-flora'].some(p => (data._pluginSelection || []).includes(p))",
-            "xs": 12
-        },
-        "_xiaomiBindkeyRows": {
-            "type": "table",
-            "help": "Enter the MAC address and bindkey for each encrypted Xiaomi MiBeacon v4 or v5 device.",
-            "hidden": "!['xiaomi', 'mi-flora'].some(p => (data._pluginSelection || []).includes(p))",
-            "doNotSave": true,
-            "defaultFunc": "try { const rows = JSON.parse(data.xiaomiBindkeys || '[]'); return Array.isArray(rows) ? rows : []; } catch { return []; }",
-            "onChange": {
-                "calculateFunc": "const rows = data._xiaomiBindkeyRows || []; data.xiaomiBindkeys = JSON.stringify(rows); return rows;"
-            },
-            "xs": 12,
-            "useCardFor": ["xs", "sm"],
-            "uniqueColumns": ["address"],
-            "items": [
-                {
-                    "type": "text",
-                    "attr": "address",
-                    "title": "Bluetooth MAC address",
-                    "default": "",
-                    "validator": "/^(?:[0-9a-f]{12}|(?:[0-9a-f]{2}:){5}[0-9a-f]{2})$/i.test((data.address || '').trim())",
-                    "validatorErrorText": "Enter a valid Bluetooth MAC address.",
-                    "validatorNoSaveOnError": true
-                },
-                {
-                    "type": "password",
-                    "attr": "key",
-                    "title": "Bindkey",
-                    "default": "",
-                    "validator": "/^[0-9a-f]{32}$/i.test((data.key || '').trim())",
-                    "validatorErrorText": "Enter a 32-digit hexadecimal bindkey.",
-                    "validatorNoSaveOnError": true
-                }
-            ]
-        },
-        "allowEmptyDevices": {
-            "type": "checkbox",
-            "label": "Allow creation of devices without advertised data",
-            "xs": 12,
-            "sm": 6,
-            "md": 6,
-            "lg": 6,
-            "xl": 6
-        },
-        "scanIntervalMinutes": {
-            "type": "number",
-            "label": "Local scan interval [min]",
-            "help": "Minutes between scan starts. Set to 0 for continuous scanning.",
-            "min": 0,
-            "max": 1440,
-            "step": 1,
-            "xs": 12,
-            "sm": 6,
-            "md": 4,
-            "lg": 4,
-            "xl": 4
-        },
-        "scanWindowSeconds": {
-            "type": "number",
-            "label": "Local scan duration [s]",
-            "help": "Seconds spent scanning in each interval. Use a duration shorter than the interval.",
-            "hidden": "!data.scanIntervalMinutes",
-            "min": 1,
-            "max": 3600,
-            "step": 1,
-            "xs": 12,
-            "sm": 6,
-            "md": 4,
-            "lg": 4,
-            "xl": 4
-        },
-        "presenceDevices": {
-            "type": "table",
-            "label": "Presence tracking",
-            "help": "Add Bluetooth devices that should get a present state.",
-            "uniqueColumns": ["address"],
-            "useCardFor": ["xs", "sm"],
-            "xs": 12,
-            "items": [
-                {
-                    "attr": "address",
-                    "type": "text",
-                    "title": "Bluetooth MAC address",
-                    "validator": "/^(?:[0-9a-f]{12}|(?:[0-9a-f]{2}:){5}[0-9a-f]{2})$/i.test((data.address || '').trim())",
-                    "validatorErrorText": "Enter a valid Bluetooth MAC address.",
-                    "validatorNoSaveOnError": true
-                },
-                {
-                    "attr": "packets",
-                    "type": "number",
-                    "title": "Packets to confirm presence",
-                    "default": 3,
-                    "min": 1,
-                    "max": 20,
-                    "step": 1
-                },
-                {
-                    "attr": "absenceSeconds",
-                    "type": "number",
-                    "title": "Full score decay time [s]",
-                    "default": 60,
-                    "min": 1,
-                    "max": 86400,
-                    "step": 1
-                }
-            ]
-        },
-        "_discovery": {
+        "_settings": {
             "type": "panel",
-            "xs": 12,
-            "sm": 6,
-            "md": 6,
-            "lg": 6,
-            "xl": 6,
+            "label": "Settings",
             "items": {
-                "_allowNewDevices": {
-                    "type": "state",
-                    "label": "Accept new devices",
-                    "oid": "options.allowNewDevices",
-                    "control": "switch",
-                    "foreign": false,
+                "server": {
+                    "type": "text",
+                    "label": "Use remote server:",
+                    "placeholder": "address:port",
+                    "help": "when configured, the local bluetooth adapter is not used",
+                    "trim": false,
+                    "xs": 12,
+                    "sm": 6,
+                    "md": 4,
+                    "lg": 4,
+                    "xl": 4
+                },
+                "hciDevice": {
+                    "type": "selectSendTo",
+                    "label": "Select device:",
+                    "help": "On linux this can be determined with `hciconfig`:",
+                    "command": "getHCIOptions",
+                    "manual": true,
+                    "validator": "String(data.hciDevice ?? '').trim() === '' || (/^\\d+$/.test(String(data.hciDevice).trim()) && Number.isSafeInteger(Number(data.hciDevice)))",
+                    "validatorNoSaveOnError": true,
+                    "xs": 12,
+                    "sm": 6,
+                    "md": 4,
+                    "lg": 4,
+                    "xl": 4
+                },
+                "rssiThrottle": {
+                    "type": "number",
+                    "label": "RSSI update interval [ms]:",
+                    "help": "Too frequent updates can slow down the admin.",
+                    "min": 0,
+                    "max": 10000,
+                    "step": 1,
+                    "xs": 12,
+                    "sm": 6,
+                    "md": 4,
+                    "lg": 4,
+                    "xl": 4
+                },
+                "services": {
+                    "type": "text",
+                    "label": "Monitored services, * for all services:",
+                    "help": "Service characteristics as HEX codes or UUID, comma separated.",
+                    "minRows": 3,
+                    "trim": false,
+                    "xs": 12,
+                    "sm": 6,
+                    "md": 6,
+                    "lg": 6,
+                    "xl": 6
+                },
+                "plugins": {
+                    "type": "text",
+                    "hidden": true,
+                    "onChange": {
+                        "alsoDependsOn": [
+                            "_pluginSelection"
+                        ],
+                        "calculateFunc": "(data._pluginSelection || []).join(',')"
+                    },
                     "xs": 12,
                     "sm": 12,
                     "md": 12,
                     "lg": 12,
                     "xl": 12
                 },
-                "_discoveryHelp": {
-                    "type": "staticText",
-                    "text": "This will be automatically disabled after 5 minutes.",
+                "_pluginSelection": {
+                    "type": "select",
+                    "multiple": true,
+                    "label": "Active plugins:",
+                    "help": "Select the plugins for your sensors. Basic advertisement data is always available.",
+                    "doNotSave": true,
+                    "defaultFunc": "[...new Set((Array.isArray(data.plugins) ? data.plugins : String(data.plugins || '').split(',')).map(p => p.trim().toLowerCase()).filter(p => ['xiaomi', 'mi-flora', 'ruuvi-tag', 'bthome', 'mopeka', 'switchbot', 'eddystone', 'mi-scale'].includes(p)))]",
+                    "options": [
+                        {
+                            "label": "Xiaomi",
+                            "value": "xiaomi"
+                        },
+                        {
+                            "label": "Mi Flora",
+                            "value": "mi-flora"
+                        },
+                        {
+                            "label": "Eddystone",
+                            "value": "eddystone"
+                        },
+                        {
+                            "label": "Ruuvi Tag",
+                            "value": "ruuvi-tag"
+                        },
+                        {
+                            "label": "SwitchBot Meter",
+                            "value": "switchbot"
+                        },
+                        {
+                            "label": "BTHome",
+                            "value": "bthome"
+                        },
+                        {
+                            "label": "Xiaomi Mi Scale",
+                            "value": "mi-scale"
+                        },
+                        {
+                            "label": "Mopeka Pro Check",
+                            "value": "mopeka"
+                        }
+                    ],
                     "xs": 12,
-                    "style": {
-                        "fontSize": 12
+                    "sm": 6,
+                    "md": 6,
+                    "lg": 6,
+                    "xl": 6
+                },
+                "xiaomiBindkeys": {
+                    "type": "text",
+                    "hidden": true
+                },
+                "_xiaomiBindkeyHeading": {
+                    "type": "header",
+                    "text": "Xiaomi MiBeacon bindkeys",
+                    "size": 3,
+                    "hidden": "!['xiaomi', 'mi-flora'].some(p => (data._pluginSelection || []).includes(p))",
+                    "xs": 12
+                },
+                "_xiaomiBindkeyRows": {
+                    "type": "table",
+                    "help": "Enter the MAC address and bindkey for each encrypted Xiaomi MiBeacon v4 or v5 device.",
+                    "hidden": "!['xiaomi', 'mi-flora'].some(p => (data._pluginSelection || []).includes(p))",
+                    "doNotSave": true,
+                    "defaultFunc": "try { const rows = JSON.parse(data.xiaomiBindkeys || '[]'); return Array.isArray(rows) ? rows : []; } catch { return []; }",
+                    "onChange": {
+                        "calculateFunc": "const rows = data._xiaomiBindkeyRows || []; data.xiaomiBindkeys = JSON.stringify(rows); return rows;"
                     },
-                    "sm": 12,
-                    "md": 12,
-                    "lg": 12,
-                    "xl": 12
+                    "xs": 12,
+                    "useCardFor": [
+                        "xs",
+                        "sm"
+                    ],
+                    "uniqueColumns": [
+                        "address"
+                    ],
+                    "items": [
+                        {
+                            "type": "text",
+                            "attr": "address",
+                            "title": "Bluetooth MAC address",
+                            "default": "",
+                            "validator": "/^(?:[0-9a-f]{12}|(?:[0-9a-f]{2}:){5}[0-9a-f]{2})$/i.test((data.address || '').trim())",
+                            "validatorErrorText": "Enter a valid Bluetooth MAC address.",
+                            "validatorNoSaveOnError": true
+                        },
+                        {
+                            "type": "password",
+                            "attr": "key",
+                            "title": "Bindkey",
+                            "default": "",
+                            "validator": "/^[0-9a-f]{32}$/i.test((data.key || '').trim())",
+                            "validatorErrorText": "Enter a 32-digit hexadecimal bindkey.",
+                            "validatorNoSaveOnError": true
+                        }
+                    ]
+                },
+                "allowEmptyDevices": {
+                    "type": "checkbox",
+                    "label": "Allow creation of devices without advertised data",
+                    "xs": 12,
+                    "sm": 6,
+                    "md": 6,
+                    "lg": 6,
+                    "xl": 6
+                },
+                "scanIntervalMinutes": {
+                    "type": "number",
+                    "label": "Local scan interval [min]",
+                    "help": "Minutes between scan starts. Set to 0 for continuous scanning.",
+                    "min": 0,
+                    "max": 1440,
+                    "step": 1,
+                    "xs": 12,
+                    "sm": 6,
+                    "md": 4,
+                    "lg": 4,
+                    "xl": 4
+                },
+                "scanWindowSeconds": {
+                    "type": "number",
+                    "label": "Local scan duration [s]",
+                    "help": "Seconds spent scanning in each interval. Use a duration shorter than the interval.",
+                    "hidden": "!data.scanIntervalMinutes",
+                    "min": 1,
+                    "max": 3600,
+                    "step": 1,
+                    "xs": 12,
+                    "sm": 6,
+                    "md": 4,
+                    "lg": 4,
+                    "xl": 4
+                },
+                "presenceDevices": {
+                    "type": "table",
+                    "label": "Presence tracking",
+                    "help": "Add Bluetooth devices that should get a present state.",
+                    "uniqueColumns": [
+                        "address"
+                    ],
+                    "useCardFor": [
+                        "xs",
+                        "sm"
+                    ],
+                    "xs": 12,
+                    "items": [
+                        {
+                            "attr": "address",
+                            "type": "text",
+                            "title": "Bluetooth MAC address",
+                            "validator": "/^(?:[0-9a-f]{12}|(?:[0-9a-f]{2}:){5}[0-9a-f]{2})$/i.test((data.address || '').trim())",
+                            "validatorErrorText": "Enter a valid Bluetooth MAC address.",
+                            "validatorNoSaveOnError": true
+                        },
+                        {
+                            "attr": "packets",
+                            "type": "number",
+                            "title": "Packets to confirm presence",
+                            "default": 3,
+                            "min": 1,
+                            "max": 20,
+                            "step": 1
+                        },
+                        {
+                            "attr": "absenceSeconds",
+                            "type": "number",
+                            "title": "Full score decay time [s]",
+                            "default": 60,
+                            "min": 1,
+                            "max": 86400,
+                            "step": 1
+                        }
+                    ]
+                },
+                "_discovery": {
+                    "type": "panel",
+                    "xs": 12,
+                    "sm": 6,
+                    "md": 6,
+                    "lg": 6,
+                    "xl": 6,
+                    "items": {
+                        "_allowNewDevices": {
+                            "type": "state",
+                            "label": "Accept new devices",
+                            "oid": "options.allowNewDevices",
+                            "control": "switch",
+                            "foreign": false,
+                            "xs": 12,
+                            "sm": 12,
+                            "md": 12,
+                            "lg": 12,
+                            "xl": 12
+                        },
+                        "_discoveryHelp": {
+                            "type": "staticText",
+                            "text": "This will be automatically disabled after 5 minutes.",
+                            "xs": 12,
+                            "style": {
+                                "fontSize": 12
+                            },
+                            "sm": 12,
+                            "md": 12,
+                            "lg": 12,
+                            "xl": 12
+                        }
+                    }
+                }
+            }
+        },
+        "_bluetooth": {
+            "type": "panel",
+            "label": "Bluetooth device map",
+            "items": {
+                "_bluetoothMap": {
+                    "type": "custom",
+                    "name": "Ble2AdminComponents/Components/BluetoothMap",
+                    "url": "build/customComponents.js",
+                    "bundlerType": "module",
+                    "guiApi": 2,
+                    "doNotSave": true,
+                    "style": {
+                        "width": "100%"
+                    }
                 }
             }
         }
