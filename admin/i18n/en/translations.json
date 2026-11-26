@@ -64,5 +64,7 @@
     "BTHome bindkeys": "BTHome bindkeys",
     "Enter the Bluetooth MAC address and bindkey for each encrypted BTHome device.": "Enter the Bluetooth MAC address and bindkey for each encrypted BTHome device.",
     "Restart an idle local scanner [min]": "Restart an idle local scanner [min]",
-    "Count only active scan time without any Bluetooth packets. Set to 0 to disable.": "Count only active scan time without any Bluetooth packets. Set to 0 to disable."
+    "Count only active scan time without any Bluetooth packets. Set to 0 to disable.": "Count only active scan time without any Bluetooth packets. Set to 0 to disable.",
+    "Enter the MAC address and bindkey for each encrypted Xiaomi MiBeacon device.": "Enter the MAC address and bindkey for each encrypted Xiaomi MiBeacon device.",
+    "Enter a 24- or 32-digit hexadecimal Xiaomi bindkey.": "Enter a 24- or 32-digit hexadecimal Xiaomi bindkey."
 }

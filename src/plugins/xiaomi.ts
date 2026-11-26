@@ -43,7 +43,7 @@ function findBindkey(mac: string): Buffer | undefined {
 					const key = row.key.trim();
 					if (
 						/^[0-9a-f]{12}$/.test(address) &&
-						/^[0-9a-f]{32}$/i.test(key)
+						/^(?:[0-9a-f]{24}|[0-9a-f]{32})$/i.test(key)
 					) {
 						bindkeys.set(address, Buffer.from(key, "hex"));
 					}

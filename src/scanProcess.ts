@@ -321,8 +321,21 @@ async function loadNoble(): Promise<void> {
 			// https://github.com/stoprocent/noble/commit/b67eea246f719947fc45b1b52b856e61637a8a8e
 			noble = (noble as any)({ extended: false });
 		}
-	} catch (error: any) {
-		await sendAsync({ type: "fatal", error });
+	} catch (error) {
+		const reason = error instanceof Error ? error.message : "Unknown error";
+		const diagnostic = new Error(
+			`Could not load the Bluetooth scanner on Node.js ${process.version} (${process.platform}/${process.arch}): ${reason}`,
+		);
+		if (process.send) {
+			await sendAsync({
+				type: "driverState",
+				driverState: "driverError",
+			});
+			await sendAsync({ type: "fatal", error: diagnostic });
+		} else {
+			// The TCP server has not started, so there is no client to notify.
+			console.error(diagnostic.message);
+		}
 		process.exit(ScanExitCodes.RequireNobleFailed);
 	}
 }
