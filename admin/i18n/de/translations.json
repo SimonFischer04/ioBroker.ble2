@@ -18,6 +18,12 @@
     "Ruuvi Tag": "Ruuvi Tag",
     "BTHome": "BTHome",
     "Mopeka Pro Check": "Mopeka Pro Check",
+    "Xiaomi MiBeacon bindkeys": "Xiaomi-MiBeacon-Bindkeys",
+    "Enter the MAC address and bindkey for each encrypted Xiaomi MiBeacon v4 or v5 device.": "MAC-Adresse und Bindkey für jedes verschlüsselte Xiaomi-MiBeacon-Gerät (v4 oder v5) eingeben.",
+    "Bluetooth MAC address": "Bluetooth-MAC-Adresse",
+    "Bindkey": "Bindkey",
+    "Enter a valid Bluetooth MAC address.": "Eine gültige Bluetooth-MAC-Adresse eingeben.",
+    "Enter a 32-digit hexadecimal bindkey.": "Einen 32-stelligen hexadezimalen Bindkey eingeben.",
     "Restart idle local scanner [min]": "Inaktiven lokalen Scanner neu starten [min]",
     "Restart after this many minutes without advertisements. Set to 0 to disable.": "Startet den lokalen Scanner nach dieser Zeit ohne Werbepakete neu. 0 deaktiviert die Funktion."
 }
