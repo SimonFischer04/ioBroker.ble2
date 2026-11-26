@@ -2,6 +2,7 @@ import * as utils from "@iobroker/adapter-core";
 import { entries } from "alcalzone-shared/objects";
 import { execFile, fork, type ChildProcess } from "node:child_process";
 import * as path from "node:path";
+import { DiscoverySuggestions } from "./lib/discovery-suggestions";
 import { DevicePresence } from "./lib/device-presence";
 import { Global as _ } from "./lib/global";
 import { getHciOptions, parseHciIndex, parseHciPorts } from "./lib/hci-ports";
@@ -30,6 +31,9 @@ let devicePresence: DevicePresence | undefined;
 
 /** Whether new devices may be recorded */
 let allowNewDevices = false;
+let discoverySuggestions: DiscoverySuggestions | undefined;
+let suggestionTimer: ioBroker.Interval | undefined;
+const suggestionState = "info.suggestedDevices";
 let resetAllowNewDevicesTimeout: ioBroker.Timeout | undefined;
 
 function autoResetAllowNewDevices(): void {
@@ -76,6 +80,32 @@ const adapter = utils.adapter({
 
 		// Workaround für fehlende InstanceObjects nach update
 		await _.ensureInstanceObjects();
+		await adapter.setStateChangedAsync(suggestionState, "[]", true);
+		if (adapter.config.suggestRecurringDevices) {
+			const suggestions = new DiscoverySuggestions();
+			discoverySuggestions = suggestions;
+			let publishing = false;
+			suggestionTimer = adapter.setInterval(() => {
+				if (publishing) {
+					return;
+				}
+				publishing = true;
+				void adapter
+					.setStateChangedAsync(
+						suggestionState,
+						JSON.stringify(suggestions.list(Date.now())),
+						true,
+					)
+					.catch((error: unknown) =>
+						adapter.log.warn(
+							`Could not publish discovery suggestions: ${String(error)}`,
+						),
+					)
+					.finally(() => {
+						publishing = false;
+					});
+			}, 15_000);
+		}
 
 		// Plugins laden
 		_.adapter.log.info(
@@ -207,6 +237,7 @@ const adapter = utils.adapter({
 	// is called when adapter shuts down - callback has to be called under any circumstances!
 	unload: (callback) => {
 		try {
+			adapter.clearInterval(suggestionTimer);
 			rssiExpiry?.stop();
 			devicePresence?.stop();
 			_.objectCache?.dispose();
@@ -222,6 +253,10 @@ const adapter = utils.adapter({
 		if (obj) {
 			// it has just been changed, so update the cached object
 			_.objectCache.updateObject(obj);
+			const prefix = `${adapter.namespace}.`;
+			if (id.startsWith(prefix) && id.endsWith(".rssi")) {
+				discoverySuggestions?.remove(id.slice(prefix.length, -5));
+			}
 		} else {
 			// it has been deleted, so delete it from the cache
 			_.objectCache.invalidateObject(id);
@@ -513,6 +548,11 @@ async function onDiscover(peripheral: PeripheralInfo): Promise<void> {
 	if (!allowNewDevices) {
 		// We may not. First test if we already ignored this device
 		if (ignoredNewDeviceIDs.has(deviceId)) {
+			discoverySuggestions?.observe(
+				deviceId,
+				advertisement.localName,
+				Date.now(),
+			);
 			return;
 		}
 		// If not, check if the RSSI object exists, as that exists for every one
@@ -523,6 +563,11 @@ async function onDiscover(peripheral: PeripheralInfo): Promise<void> {
 		) {
 			// This is a new device. Remember that we need to ignore it
 			ignoredNewDeviceIDs.add(deviceId);
+			discoverySuggestions?.observe(
+				deviceId,
+				advertisement.localName,
+				Date.now(),
+			);
 			return;
 		}
 		// This is a known device

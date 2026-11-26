@@ -272,6 +272,13 @@
                     "lg": 4,
                     "xl": 4
                 },
+                "suggestRecurringDevices": {
+                    "type": "checkbox",
+                    "label": "Suggest frequently seen Bluetooth devices",
+                    "help": "Show suggestions at info.suggestedDevices. Open the state in Objects to see the addresses.",
+                    "xs": 12,
+                    "sm": 6
+                },
                 "presenceDevices": {
                     "type": "table",
                     "label": "Presence tracking",

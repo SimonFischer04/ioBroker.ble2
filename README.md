@@ -31,6 +31,10 @@ which requires `libcap2-bin` to be installed.
 Select the local Bluetooth adapter by its HCI name and bus type, such as `hci0 (USB)`. If the list is unavailable, enter the index manually using the number after `hci`.
 In the textbox below, enter all UUIDs of the advertised services you want to record (as found in the nRF Connect app).
 
+### Suggested devices
+
+Enable **Suggest frequently seen Bluetooth devices** to see unrecorded devices in `info.suggestedDevices`. A candidate needs three sightings at least ten seconds apart within ten minutes. The list is refreshed every 15 seconds and shows the Bluetooth address, name and sighting count. Device creation still follows **Accept new devices**.
+
 ### Moving from ble to ble2
 
 Install `iobroker.ble2` and create a new `ble2` instance. Copy your settings from the old `ble` instance. If both instances use the same Bluetooth device or remote scanner, disable the old instance before starting the new one.

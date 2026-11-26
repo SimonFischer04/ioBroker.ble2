@@ -12,6 +12,7 @@ declare global {
 			xiaomiBindkeys?: string;
 			bthomeBindkeys?: string;
 			allowEmptyDevices: boolean;
+			suggestRecurringDevices?: boolean;
 			presenceDevices?: {
 				address: string;
 				packets: number;

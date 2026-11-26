@@ -62,5 +62,7 @@
     "Packets to confirm presence": "Pakete zur Bestätigung der Anwesenheit",
     "Full score decay time [s]": "Abbauzeit bei vollem Punktestand [s]",
     "BTHome bindkeys": "BTHome-Bindkeys",
-    "Enter the Bluetooth MAC address and bindkey for each encrypted BTHome device.": "Gib für jedes verschlüsselte BTHome-Gerät die Bluetooth-MAC-Adresse und den Bindkey ein."
+    "Enter the Bluetooth MAC address and bindkey for each encrypted BTHome device.": "Gib für jedes verschlüsselte BTHome-Gerät die Bluetooth-MAC-Adresse und den Bindkey ein.",
+    "Suggest frequently seen Bluetooth devices": "Häufig empfangene Bluetooth-Geräte vorschlagen",
+    "Show suggestions at info.suggestedDevices. Open the state in Objects to see the addresses.": "Vorschläge unter info.suggestedDevices anzeigen. Die Adressen stehen im Datenpunkt unter Objekte."
 }
