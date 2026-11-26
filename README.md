@@ -67,6 +67,7 @@ If you have any device transmitting specially encoded information via advertisem
 * `"mi-flora"`: Original plugin for the flower care plant sensor, now aliased to `"xiaomi"`
 * `"eddystone"`: Eddystone UID, URL, and EID identifiers and unencrypted telemetry (`feaa`).
 * `"ruuvi-tag"`: [Ruuvi Tag](https://tag.ruuvi.com/) multisensor with firmware versions v1 and v2. **Untested, please give feedback!** 
+* `"atc"`: Temperature, humidity, battery level, and voltage from unencrypted ATC1441 and PVVX Custom advertisements (`181a`).
 * `"switchbot"`: SwitchBot Meter-family temperature, humidity, and battery advertisements (`fd3d` or `0d00`).
 * `"bthome"`: Sensors using [BTHome v2](https://bthome.io), including encrypted advertisements.
 * `"mi-scale"`: Mi Scale V1 and V2 broadcast weight in kilograms and a stabilized flag (`181d` and `181b`).
@@ -79,6 +80,8 @@ ioBroker encrypts the bindkeys in the instance configuration. JSON configuration
 For a device with a bindkey, measurement and event updates require an authenticated BTHome packet with a counter greater than the last accepted counter. The adapter keeps these counters in memory. If a sensor resets its counter, restart the adapter instance to start tracking it again.
 
 To read authenticated Xiaomi MiBeacon v4 or v5 advertisements, enable **Xiaomi** and add the device's Bluetooth MAC address and 32-digit hexadecimal bindkey under **Xiaomi MiBeacon bindkeys**. Use the bindkey assigned when the sensor was paired or configured. ioBroker encrypts the stored configuration. Admin configuration exports include the bindkeys.
+
+With pvvx firmware, choose **ATC1441** or **PVVX (Custom)** in the firmware settings and enable **ATC1441 and PVVX** in the adapter. These formats carry temperature, humidity, and battery in the same packet. The scanner must expose the Bluetooth MAC address and forward `181a` service data. The **Xiaomi** plugin remains available for MiBeacon mode, where a battery packet may arrive separately from temperature and humidity.
 
 For Mopeka, add `mopeka` to **Active plugins** and enable **Accept new devices** while discovering the sensor. Local scanning includes its manufacturer identifier automatically. A remote scanner with service filters also needs `--manufacturerIds 89` to forward manufacturer-only advertisements.
 
