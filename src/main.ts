@@ -29,6 +29,7 @@ let devicePresence: DevicePresence | undefined;
 
 /** Whether new devices may be recorded */
 let allowNewDevices = false;
+let discoveryAllowlist: Set<string> | undefined;
 let resetAllowNewDevicesTimeout: ioBroker.Timeout | undefined;
 
 function autoResetAllowNewDevices(): void {
@@ -74,6 +75,25 @@ const adapter = utils.adapter({
 
 		// Workaround für fehlende InstanceObjects nach update
 		await _.ensureInstanceObjects();
+
+		const allowedAddresses = adapter.config.discoveryAllowlist?.trim();
+		if (allowedAddresses) {
+			const addresses = allowedAddresses.split(/[\s,;]+/).filter(Boolean);
+			discoveryAllowlist = new Set(
+				addresses
+					.filter((address) =>
+						/^(?:[0-9a-f]{12}|(?:[0-9a-f]{2}:){5}[0-9a-f]{2}|(?:[0-9a-f]{2}-){5}[0-9a-f]{2})$/i.test(
+							address,
+						),
+					)
+					.map(normalizeDiscoveryAddress),
+			);
+			if (discoveryAllowlist.size === 0) {
+				adapter.log.warn(
+					"The new-device allowlist has no valid Bluetooth addresses. Discovery cannot add devices.",
+				);
+			}
+		}
 
 		// Plugins laden
 		_.adapter.log.info(
@@ -189,6 +209,10 @@ const adapter = utils.adapter({
 		if (obj) {
 			// it has just been changed, so update the cached object
 			_.objectCache.updateObject(obj);
+			const prefix = `${adapter.namespace}.`;
+			if (id.startsWith(prefix) && id.endsWith(".rssi")) {
+				ignoredNewDeviceIDs.delete(id.slice(prefix.length, -5));
+			}
 		} else {
 			// it has been deleted, so delete it from the cache
 			_.objectCache.invalidateObject(id);
@@ -436,6 +460,10 @@ function fixServiceName(name: string | null | undefined): string {
 	return name.toLowerCase();
 }
 
+function normalizeDiscoveryAddress(address: string): string {
+	return address.replace(/[:-]/g, "").toLowerCase();
+}
+
 async function onDiscover(peripheral: PeripheralInfo): Promise<void> {
 	if (peripheral == null) {
 		return;
@@ -476,7 +504,11 @@ async function onDiscover(peripheral: PeripheralInfo): Promise<void> {
 	const deviceId = peripheral.address;
 
 	// Test if we may record this device
-	if (!allowNewDevices) {
+	const mayAddDevice =
+		allowNewDevices &&
+		(!discoveryAllowlist ||
+			discoveryAllowlist.has(normalizeDiscoveryAddress(deviceId)));
+	if (!mayAddDevice) {
 		// We may not. First test if we already ignored this device
 		if (ignoredNewDeviceIDs.has(deviceId)) {
 			return;
@@ -488,7 +520,9 @@ async function onDiscover(peripheral: PeripheralInfo): Promise<void> {
 			))
 		) {
 			// This is a new device. Remember that we need to ignore it
-			ignoredNewDeviceIDs.add(deviceId);
+			if (ignoredNewDeviceIDs.size < 4096) {
+				ignoredNewDeviceIDs.add(deviceId);
+			}
 			return;
 		}
 		// This is a known device

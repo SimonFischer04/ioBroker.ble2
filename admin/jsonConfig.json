@@ -224,6 +224,14 @@
                     "lg": 6,
                     "xl": 6
                 },
+                "discoveryAllowlist": {
+                    "type": "text",
+                    "label": "Bluetooth address allowlist for new devices",
+                    "help": "Separate addresses with commas or line breaks. A blank list allows any device during discovery.",
+                    "minRows": 2,
+                    "xs": 12,
+                    "sm": 6
+                },
                 "scanIntervalMinutes": {
                     "type": "number",
                     "label": "Local scan interval [min]",

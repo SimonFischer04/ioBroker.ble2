@@ -60,5 +60,7 @@
     "Packets to confirm presence": "Pakete zur Bestätigung der Anwesenheit",
     "Full score decay time [s]": "Abbauzeit bei vollem Punktestand [s]",
     "BTHome bindkeys": "BTHome-Bindkeys",
-    "Enter the Bluetooth MAC address and bindkey for each encrypted BTHome device.": "Gib für jedes verschlüsselte BTHome-Gerät die Bluetooth-MAC-Adresse und den Bindkey ein."
+    "Enter the Bluetooth MAC address and bindkey for each encrypted BTHome device.": "Gib für jedes verschlüsselte BTHome-Gerät die Bluetooth-MAC-Adresse und den Bindkey ein.",
+    "Bluetooth address allowlist for new devices": "Erlaubte Bluetooth-Adressen für neue Geräte",
+    "Separate addresses with commas or line breaks. A blank list allows any device during discovery.": "Adressen durch Kommas oder Zeilenumbrüche trennen. Bei leerer Liste werden während der Suche alle Geräte zugelassen."
 }
