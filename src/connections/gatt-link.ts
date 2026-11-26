@@ -4,10 +4,15 @@ import type { GattServiceInfo } from "../lib/gateway-protocol";
 export interface GattLink {
 	/** Full ID of the gateway, e.g. "esphome.0:proxy-og" */
 	readonly gatewayId: string;
+	/** MAC address of the connected device */
 	readonly address: string;
+	/** The MTU negotiated for the connection */
 	readonly mtu: number;
+	/** Discovers the services of the device with their characteristics and descriptors */
 	getServices(): Promise<GattServiceInfo[]>;
+	/** Reads the value of the characteristic or descriptor with this handle */
 	read(handle: number): Promise<Buffer>;
+	/** Writes the value to the characteristic or descriptor with this handle */
 	write(handle: number, data: Buffer, withResponse: boolean): Promise<void>;
 	/** Enables notifications of a characteristic. The listener is called for every notification. */
 	subscribe(handle: number, listener: (data: Buffer) => void): Promise<void>;

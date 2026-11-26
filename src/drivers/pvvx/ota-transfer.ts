@@ -16,6 +16,7 @@ import { PvvxUpdateError } from "./update-error";
 /** Pause after the start command, value of both reference clients */
 const START_DELAY_MS = 300;
 
+/** Callbacks of transferImage() for progress and waiting */
 export interface TransferOptions {
 	/** Called after every status read and at the end, with values from 0 to 1 */
 	onProgress(fraction: number): void;
@@ -26,10 +27,10 @@ export interface TransferOptions {
 /**
  * Transfers the image (docs/pvvx-protocol.md 6.4). Resolves after the end packet was sent.
  *
- * @param session
- * @param image
- * @param length
- * @param options
+ * @param session Connection to the device
+ * @param image Validated firmware image
+ * @param length Length n from validateImage()
+ * @param options Progress callback and sleep function
  */
 export async function transferImage(
 	session: GattSession,

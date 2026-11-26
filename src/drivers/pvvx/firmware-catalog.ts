@@ -20,8 +20,8 @@ export const INDEX_MAX_AGE_MS = 6 * 3600000;
 /**
  * Loads from a base URL with fetch()
  *
- * @param baseUrl
- * @param fetchImpl
+ * @param baseUrl URL that firmware.json and the image paths are relative to
+ * @param fetchImpl fetch() to use, replaceable in tests
  */
 export function createHttpFirmwareSource(
 	baseUrl: string,
@@ -49,13 +49,29 @@ export function createHttpFirmwareSource(
 					`${url} is larger than ${MAX_DOWNLOAD_SIZE} bytes`,
 				);
 			}
-			const data = Buffer.from(await response.arrayBuffer());
-			if (data.length > MAX_DOWNLOAD_SIZE) {
-				throw new Error(
-					`${url} is larger than ${MAX_DOWNLOAD_SIZE} bytes`,
-				);
+			// Read piece by piece: Content-Length may be missing or describe the compressed size
+			const reader = response.body?.getReader();
+			if (!reader) {
+				throw new Error(`${url}: empty response`);
 			}
-			return data;
+			const chunks: Uint8Array[] = [];
+			let size = 0;
+			for (;;) {
+				const { done, value } = await reader.read();
+				if (done) {
+					break;
+				}
+				size += value.length;
+				if (size > MAX_DOWNLOAD_SIZE) {
+					await reader.cancel().catch(() => {});
+					controller.abort();
+					throw new Error(
+						`${url} is larger than ${MAX_DOWNLOAD_SIZE} bytes`,
+					);
+				}
+				chunks.push(value);
+			}
+			return Buffer.concat(chunks);
 		} finally {
 			clearTimeout(timer);
 		}
@@ -68,6 +84,7 @@ export function createHttpFirmwareSource(
 	};
 }
 
+/** The parts of firmware.json the update needs */
 export interface FirmwareIndex {
 	/** Newest version, same encoding as the version byte of 0x55 (89 = 0x59 = "5.9") */
 	version: number;
@@ -75,6 +92,11 @@ export interface FirmwareIndex {
 	custom: string[];
 }
 
+/**
+ * Checks the parsed firmware.json, undefined if it does not have the expected form
+ *
+ * @param json The parsed firmware.json
+ */
 export function parseFirmwareIndex(json: unknown): FirmwareIndex | undefined {
 	if (json == null || typeof json !== "object") {
 		return undefined;
@@ -94,15 +116,23 @@ export function parseFirmwareIndex(json: unknown): FirmwareIndex | undefined {
 }
 
 export type ImageSelection =
-	| { path: string; version: number }
-	| { problem: "UNKNOWN_HARDWARE" | "NO_IMAGE" | "UP_TO_DATE" };
+	| {
+			/** Image path relative to the base URL */
+			path: string;
+			/** Version of the image, from firmware.json */
+			version: number;
+	  }
+	| {
+			/** Why no image is offered */
+			problem: "UNKNOWN_HARDWARE" | "NO_IMAGE" | "UP_TO_DATE";
+	  };
 
 /**
  * docs/pvvx-protocol.md 6.3
  *
- * @param index
- * @param hardwareId
- * @param installedVersion
+ * @param index Parsed firmware.json
+ * @param hardwareId Hardware ID reported by the device
+ * @param installedVersion Version byte of the installed firmware
  */
 export function selectImage(
 	index: FirmwareIndex,
@@ -133,6 +163,12 @@ function message(e: unknown): string {
 
 /** firmware.json and the images, cached */
 export class FirmwareCatalog {
+	/**
+	 * Creates an empty cache that loads from the given source.
+	 *
+	 * @param source Where firmware.json and the images come from
+	 * @param clock Time source for the age of firmware.json
+	 */
 	public constructor(
 		private readonly source: FirmwareSource,
 		private readonly clock: Clock,
@@ -147,7 +183,7 @@ export class FirmwareCatalog {
 	/**
 	 * firmware.json, loaded again when older than INDEX_MAX_AGE_MS or when refresh is set
 	 *
-	 * @param refresh
+	 * @param refresh Load firmware.json even if the cached copy is recent
 	 */
 	public async getIndex(refresh: boolean = false): Promise<FirmwareIndex> {
 		const now = this.clock.now();
@@ -181,7 +217,7 @@ export class FirmwareCatalog {
 	/**
 	 * The image, loaded once per path and kept in memory
 	 *
-	 * @param path
+	 * @param path Image path relative to the base URL
 	 */
 	public async getImage(
 		path: string,

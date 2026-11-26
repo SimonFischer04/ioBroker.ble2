@@ -6,6 +6,7 @@ import type { GatewayFeature } from "../lib/gateway-protocol";
 import type { GattLink, GattLinkProvider } from "./gatt-link";
 import { GattSession } from "./gatt-session";
 
+/** Options for one job run with ConnectionManager.withSession() */
 export interface SessionOptions {
 	/** High priority jobs for a device run before normal ones. Default: "normal" */
 	priority?: "normal" | "high";
@@ -15,14 +16,23 @@ export interface SessionOptions {
 	preferGateway?: string;
 	/** Only gateways with this feature are used */
 	requireFeature?: GatewayFeature;
+	/** Only gateways that receive the device at least this well (dBm) are used, also as fallback */
+	minRssi?: number;
 }
 
+/** What the ConnectionManager needs from the adapter, injected so tests can replace it */
 export interface ConnectionManagerContext {
+	/** Where connection attempts and failures are logged */
 	log: Pick<ioBroker.Logger, "debug" | "info" | "warn">;
+	/** Tells which gateways receive a device and its address type */
 	devices: DeviceRegistry;
+	/** Tells which gateways are connected and what they support */
 	gateways: GatewayRegistry;
+	/** Opens the links through the gateways */
 	provider: GattLinkProvider;
+	/** Starts a timer, the adapter's own so it is cleared when the adapter stops */
 	setTimeout(callback: () => void, ms: number): unknown;
+	/** Stops a timer started with setTimeout */
 	clearTimeout(timer: any): void;
 }
 
@@ -53,6 +63,7 @@ function stoppingError(): GatewayError {
  * gateway and makes sure the connection is closed again, whatever happens.
  */
 export class ConnectionManager {
+	/** @param ctx What the manager needs from the adapter */
 	public constructor(private readonly ctx: ConnectionManagerContext) {}
 
 	private readonly queues = new Map<string, DeviceQueue>();
@@ -61,9 +72,9 @@ export class ConnectionManager {
 	/**
 	 * Connects to the device, runs the job and disconnects again, whatever happens
 	 *
-	 * @param address
-	 * @param job
-	 * @param options
+	 * @param address MAC address of the device
+	 * @param job Runs with the open session, its result is returned
+	 * @param options How the gateway is picked and how long the job may take
 	 */
 	public withSession<T>(
 		address: string,
@@ -108,7 +119,7 @@ export class ConnectionManager {
 	/**
 	 * Starts the next waiting job for the device, if none is running
 	 *
-	 * @param address
+	 * @param address Normalized MAC address of the device
 	 */
 	private pump(address: string): void {
 		const queue = this.queues.get(address);
@@ -133,8 +144,8 @@ export class ConnectionManager {
 	/**
 	 * The gateway a session would try first, with the signal strength it receives the device with
 	 *
-	 * @param address
-	 * @param requireFeature
+	 * @param address MAC address of the device
+	 * @param requireFeature Only gateways with this feature are considered
 	 */
 	public bestGateway(
 		address: string,
@@ -161,17 +172,20 @@ export class ConnectionManager {
 	/**
 	 * The gateways to try, best first
 	 *
-	 * @param address
-	 * @param preferGateway
-	 * @param requireFeature
+	 * @param address Normalized MAC address of the device
+	 * @param preferGateway Full ID of the gateway to put first, if it qualifies
+	 * @param requireFeature Only gateways with this feature are used
+	 * @param minRssi Only gateways that receive the device at least this well (dBm) are used
 	 */
 	private getCandidates(
 		address: string,
 		preferGateway?: string,
 		requireFeature?: GatewayFeature,
+		minRssi?: number,
 	): string[] {
 		const candidates = this.ctx.devices
 			.getReceivers(address)
+			.filter((r) => minRssi === undefined || r.rssi >= minRssi)
 			.map((r) => r.gatewayId)
 			.filter((id) => {
 				const gateway = this.ctx.gateways.get(id);
@@ -198,13 +212,17 @@ export class ConnectionManager {
 			address,
 			options.preferGateway,
 			options.requireFeature,
+			options.minRssi,
 		);
 		if (candidates.length === 0) {
 			throw new GatewayError(
 				"NO_GATEWAY",
-				options.requireFeature
+				(options.requireFeature
 					? `No gateway with ${options.requireFeature} receives ${address}`
-					: `No gateway that can connect receives ${address}`,
+					: `No gateway that can connect receives ${address}`) +
+					(options.minRssi === undefined
+						? ""
+						: ` with at least ${options.minRssi} dBm`),
 			);
 		}
 		const addressType = this.ctx.devices.getAddressType(address);
@@ -285,7 +303,7 @@ export class ConnectionManager {
 	/**
 	 * Closes a session, waiting at most CLOSE_TIMEOUT_MS
 	 *
-	 * @param session
+	 * @param session The session to close
 	 */
 	private async closeSession(session: GattSession): Promise<void> {
 		let timer: unknown;

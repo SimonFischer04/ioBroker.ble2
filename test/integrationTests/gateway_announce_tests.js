@@ -23,15 +23,18 @@ const {
 	PACKETS,
 } = require("./helpers");
 
+/** @import { IntegrationTestHarness } from "@iobroker/testing" */
+/** @import { GatewayAnnouncement, GatewayInfo } from "../../src/lib/gateway-protocol" */
+
 const OG = "gateways.test_0_proxy-og";
 
 /**
  * Announces gateways like a delivering instance does
  *
- * @param {any} harness - Integration test harness
- * @param {any[]} gateways - The gateways
+ * @param {IntegrationTestHarness} harness - Integration test harness
+ * @param {GatewayAnnouncement[]} gateways - The gateways
  * @param {string} [protocol] - The protocol
- * @returns {Promise<any>} The answer of the adapter
+ * @returns {Promise<ioBroker.MessagePayload>} The answer of the adapter
  */
 function announce(harness, gateways, protocol = "ble-gateway/1") {
 	return sendToAdapter(harness, "gateway:announce", { protocol, gateways });
@@ -40,15 +43,19 @@ function announce(harness, gateways, protocol = "ble-gateway/1") {
 /**
  * Reads the gateways from the adapter, by ID
  *
- * @param {any} harness - Integration test harness
- * @returns {Promise<Record<string, any>>}
+ * @param {IntegrationTestHarness} harness - Integration test harness
+ * @returns {Promise<Record<string, GatewayInfo>>} The gateways the adapter lists
  */
 async function getGateways(harness) {
 	const response = await sendToAdapter(harness, "getGateways", {});
 	return Object.fromEntries(response.result.map((g) => [g.id, g]));
 }
 
-/** @param {(name: string, fn: (getHarness: () => any) => void) => void} suite */
+/**
+ * Defines the suites of this file
+ *
+ * @param {(name: string, fn: (getHarness: () => IntegrationTestHarness) => void) => void} suite - Defines a suite with a fresh harness
+ */
 exports.runTests = function (suite) {
 	suite("Gateway interface - announcing gateways", (getHarness) => {
 		let harness;

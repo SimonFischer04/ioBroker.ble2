@@ -209,7 +209,7 @@ describe("drivers/pvvx/pvvx-driver", () => {
 		/**
 		 * Lets time pass and runs a tick
 		 *
-		 * @param ms
+		 * @param ms Time to pass
 		 */
 		async function advance(ms: number): Promise<void> {
 			clock.nowMs += ms;

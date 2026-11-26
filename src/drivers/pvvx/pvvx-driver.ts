@@ -7,7 +7,7 @@ import { type Clock, syncTime } from "./time-sync";
 /**
  * Parses the setting pvvxDevices. Invalid entries are returned separately, duplicates are removed.
  *
- * @param setting
+ * @param setting Value of the setting, MAC addresses separated by spaces, commas or semicolons
  */
 export function parseDeviceList(setting: unknown): {
 	addresses: string[];
@@ -43,22 +43,32 @@ export const FALLBACK_INTERVAL_MS = 24 * 3600000;
 /** Time limit of one sync, connecting included */
 export const SESSION_TIMEOUT_MS = 45000;
 
+/** What the driver uses from the adapter, injected so tests can replace it */
 export interface PvvxDriverContext {
+	/** For the objects, states and log of the devices */
 	adapter: Pick<
 		ioBroker.Adapter,
 		"namespace" | "log" | "setObjectNotExistsAsync" | "setStateAsync"
 	>;
+	/** Opens the GATT sessions to the devices */
 	connections: Pick<ConnectionManager, "withSession">;
+	/** Local time and time zone the clocks are set to */
 	clock: Clock;
+	/** Calls callback after ms, returns a handle for clearTimeout() */
 	setTimeout(callback: () => void, ms: number): unknown;
+	/** Cancels a timer started with setTimeout() */
 	clearTimeout(timer: any): void;
+	/** Calls callback every ms, returns a handle for clearInterval() */
 	setInterval(callback: () => void, ms: number): unknown;
+	/** Cancels a timer started with setInterval() */
 	clearInterval(timer: any): void;
 	/** Whether a firmware update of the device is queued or running, PvvxUpdater.isBusy() */
 	isBusy?(address: string): boolean;
 }
 
+/** Settings of the time sync from the adapter configuration */
 export interface PvvxDriverOptions {
+	/** Devices whose clock is set, from parseDeviceList() */
 	addresses: string[];
 	/** Hours, 0 = no periodic sync */
 	syncIntervalHours: number;
@@ -122,6 +132,12 @@ const STATES: Record<string, ioBroker.StateCommon> = {
 
 /** Sets the clock of pvvx thermometers through the gateways that can connect */
 export class PvvxDriver {
+	/**
+	 * Registers the devices; nothing happens until start() is called.
+	 *
+	 * @param ctx Adapter, connections, clock and timers
+	 * @param options Devices and sync interval
+	 */
 	public constructor(
 		private readonly ctx: PvvxDriverContext,
 		private readonly options: PvvxDriverOptions,
@@ -330,8 +346,8 @@ export class PvvxDriver {
 	/**
 	 * Handles the button. Returns true if the state belongs to this driver.
 	 *
-	 * @param id
-	 * @param state
+	 * @param id Full ID of the changed state
+	 * @param state The new state, null or undefined if it was deleted
 	 */
 	public handleStateChange(
 		id: string,
@@ -359,7 +375,7 @@ export class PvvxDriver {
 	/**
 	 * Sets the clock of the device soon, like the button, e.g. after a firmware update
 	 *
-	 * @param address
+	 * @param address MAC address of the device
 	 */
 	public requestSync(address: string): void {
 		const device = this.devices.get(address);
@@ -372,6 +388,7 @@ export class PvvxDriver {
 		void this.tick();
 	}
 
+	/** Stops the timer when the adapter unloads; running syncs are not started again. */
 	public dispose(): void {
 		this.disposed = true;
 		if (this.interval !== undefined) {

@@ -15,8 +15,8 @@ export const CMD_TIME = 0x23;
 /**
  * Value for the device clock: local time as Unix seconds, unsigned 32 bit
  *
- * @param nowMs
- * @param timezoneOffsetMinutes
+ * @param nowMs Current time in ms
+ * @param timezoneOffsetMinutes As Date.prototype.getTimezoneOffset() returns it, positive west of UTC
  */
 export function localClockValue(
 	nowMs: number,
@@ -28,7 +28,7 @@ export function localClockValue(
 /**
  * Request to read (no value) or set (value) the clock
  *
- * @param value
+ * @param value Clock value to set, from localClockValue()
  */
 export function encodeTimeRequest(value?: number): Buffer {
 	if (value === undefined) {
@@ -43,7 +43,7 @@ export function encodeTimeRequest(value?: number): Buffer {
 /**
  * Answer to CMD_TIME. undefined if it is not one.
  *
- * @param data
+ * @param data Notification of the command characteristic
  */
 export function parseTimeResponse(
 	data: Buffer,
@@ -66,7 +66,7 @@ export function encodeConfigRequest(): Buffer {
 /**
  * Answer to CMD_CONFIG. undefined if it is not one.
  *
- * @param data
+ * @param data Notification of the command characteristic
  */
 export function parseConfigResponse(
 	data: Buffer,
@@ -95,7 +95,7 @@ export function parseConfigResponse(
 /**
  * 0x59 -> "5.9"
  *
- * @param version
+ * @param version Firmware version byte, major in the high nibble
  */
 export function formatVersion(version: number): string {
 	return `${version >> 4}.${version & 0x0f}`;
@@ -104,8 +104,8 @@ export function formatVersion(version: number): string {
 /**
  * Seconds the device clock is ahead (positive) or behind (negative)
  *
- * @param deviceClock
- * @param expectedValue
+ * @param deviceClock Clock value read from the device
+ * @param expectedValue Clock value the device should have, from localClockValue()
  */
 export function clockDeviation(
 	deviceClock: number,

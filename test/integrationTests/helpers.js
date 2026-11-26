@@ -2,6 +2,8 @@
 
 const { spawnSync } = require("node:child_process");
 
+/** @import { IntegrationTestHarness } from "@iobroker/testing" */
+
 /**
  * Helpers to talk to the adapter the way another adapter does: with sendTo
  */
@@ -24,10 +26,11 @@ function delay(ms) {
 /**
  * Polls until the check returns a truthy value
  *
- * @param {() => Promise<any>} check - Returns the result once the condition is met, a falsy value otherwise
+ * @template T
+ * @param {() => Promise<T>} check - Returns the result once the condition is met, a falsy value otherwise
  * @param {string} description - Used in the timeout error
  * @param {number} [timeoutMs] - How long to wait before giving up
- * @returns {Promise<any>} The first truthy result of check
+ * @returns {Promise<T>} The first truthy result of check
  * @throws {Error} When the condition was not met within the timeout
  */
 async function waitFor(check, description, timeoutMs = 15000) {
@@ -67,7 +70,9 @@ async function waitFor(check, description, timeoutMs = 15000) {
  */
 class MessageClient {
 	/**
-	 * @param {any} harness - Integration test harness
+	 * Starts listening to the messagebox of SENDER
+	 *
+	 * @param harness - Integration test harness, untyped because its messagebox and dbConnection are not part of its public type
 	 */
 	constructor(harness) {
 		this.harness = harness;
@@ -118,7 +123,7 @@ class MessageClient {
 
 	/**
 	 * @param {string} target - Messagebox to send to, e.g. "system.adapter.ble2.0"
-	 * @param {any} obj - The message
+	 * @param {ioBroker.SendableMessage} obj - The message
 	 */
 	push(target, obj) {
 		this.harness.dbConnection.pushMessage(target, obj, () => {});
@@ -128,9 +133,9 @@ class MessageClient {
 	 * Sends a message to the adapter and resolves with its answer
 	 *
 	 * @param {string} command - Message command
-	 * @param {any} message - Message payload
+	 * @param {ioBroker.MessagePayload} message - Message payload
 	 * @param {number} [timeoutMs] - How long to wait for the answer
-	 * @returns {Promise<any>} The answer of the adapter
+	 * @returns {Promise<ioBroker.MessagePayload>} The answer of the adapter
 	 */
 	request(command, message, timeoutMs = 15000) {
 		const id = this.nextId++;
@@ -159,7 +164,7 @@ class MessageClient {
 	/**
 	 * Sets the function that answers the requests of the adapter
 	 *
-	 * @param {((command: string, message: any) => any) | null} handler - Returns the answer (or a
+	 * @param {((command: string, message: ioBroker.MessagePayload) => ioBroker.MessagePayload) | null} handler - Returns the answer (or a
 	 *     promise for it), undefined to leave a request unanswered
 	 */
 	onRequest(handler) {
@@ -172,8 +177,8 @@ const messageClients = new WeakMap();
 /**
  * The message client of a harness. Every suite gets a new harness and with it a new client.
  *
- * @param {any} harness - Integration test harness
- * @returns {MessageClient}
+ * @param {IntegrationTestHarness} harness - Integration test harness
+ * @returns {MessageClient} The client, created on the first call
  */
 function getMessageClient(harness) {
 	let client = messageClients.get(harness);
@@ -187,11 +192,11 @@ function getMessageClient(harness) {
 /**
  * Sends a message to the adapter and resolves with its answer
  *
- * @param {any} harness - Integration test harness
+ * @param {IntegrationTestHarness} harness - Integration test harness
  * @param {string} command - Message command
- * @param {any} message - Message payload
+ * @param {ioBroker.MessagePayload} message - Message payload
  * @param {number} [timeoutMs] - How long to wait for the answer
- * @returns {Promise<any>} The answer of the adapter
+ * @returns {Promise<ioBroker.MessagePayload>} The answer of the adapter
  */
 function sendToAdapter(harness, command, message, timeoutMs = 15000) {
 	return getMessageClient(harness).request(command, message, timeoutMs);
@@ -272,10 +277,10 @@ const PACKETS = {
 /**
  * Delivers advertisements like a gateway adapter does
  *
- * @param {any} harness - Integration test harness
+ * @param {IntegrationTestHarness} harness - Integration test harness
  * @param {string} gatewayId - ID of the gateway within the sender
  * @param {{address: string, rssi?: number, data: string, addressType?: string}[]} items - The advertisements
- * @returns {Promise<any>} The answer of the adapter
+ * @returns {Promise<ioBroker.MessagePayload>} The answer of the adapter
  */
 function deliver(harness, gatewayId, items) {
 	return sendToAdapter(harness, "gateway:advertisements", {
@@ -287,7 +292,7 @@ function deliver(harness, gatewayId, items) {
 /**
  * Allows the adapter to record new devices, like the checkbox in the settings does
  *
- * @param {any} harness - Integration test harness
+ * @param {IntegrationTestHarness} harness - Integration test harness
  * @returns {Promise<void>}
  */
 async function allowNewDevices(harness) {
@@ -302,9 +307,9 @@ async function allowNewDevices(harness) {
 /**
  * Reads the value of a state of the adapter
  *
- * @param {any} harness - Integration test harness
+ * @param {IntegrationTestHarness} harness - Integration test harness
  * @param {string} id - ID of the state, relative to the namespace of the adapter
- * @returns {Promise<any>} The value, undefined if the state does not exist
+ * @returns The value, undefined if the state does not exist
  */
 async function getValue(harness, id) {
 	const state = await harness.states.getStateAsync(`${NAMESPACE}.${id}`);
@@ -314,9 +319,9 @@ async function getValue(harness, id) {
 /**
  * Waits until a state of the adapter has the expected value
  *
- * @param {any} harness - Integration test harness
+ * @param {IntegrationTestHarness} harness - Integration test harness
  * @param {string} id - ID of the state, relative to the namespace of the adapter
- * @param {any} expected - The expected value
+ * @param {ioBroker.StateValue} expected - The expected value
  * @param {number} [timeoutMs] - How long to wait before giving up
  * @returns {Promise<void>}
  */
@@ -340,8 +345,8 @@ async function waitForValue(harness, id, expected, timeoutMs) {
  * Configures the adapter and starts it. The Bluetooth adapter of the host is not used unless
  * the configuration says so, so the tests behave the same on every machine.
  *
- * @param {any} harness - Integration test harness
- * @param {Record<string, any>} [native] - Settings of the instance
+ * @param {IntegrationTestHarness} harness - Integration test harness
+ * @param {Record<string, unknown>} [native] - Settings of the instance
  * @param {Record<string, string>} [env] - Environment variables of the adapter process, e.g. TZ
  * @returns {Promise<void>}
  */
@@ -360,7 +365,7 @@ async function startAdapter(harness, native = {}, env = {}) {
 /**
  * Stops the adapter if it is running
  *
- * @param {any} harness - Integration test harness
+ * @param {IntegrationTestHarness} harness - Integration test harness
  * @returns {Promise<void>}
  */
 async function stopAdapter(harness) {

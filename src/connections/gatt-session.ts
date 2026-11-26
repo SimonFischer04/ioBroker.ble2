@@ -11,6 +11,7 @@ import type { GattLink } from "./gatt-link";
  * handles and does not tell which gateway the connection goes through.
  */
 export class GattSession {
+	/** @param link The open link the session uses and closes */
 	public constructor(private readonly link: GattLink) {
 		this.address = link.address;
 		this.gatewayId = link.gatewayId;
@@ -87,6 +88,12 @@ export class GattSession {
 		return found;
 	}
 
+	/**
+	 * Reads the value of a characteristic
+	 *
+	 * @param service UUID of the service
+	 * @param characteristic UUID of the characteristic
+	 */
 	public async read(
 		service: string,
 		characteristic: string,
@@ -99,6 +106,14 @@ export class GattSession {
 		return this.link.read(handle);
 	}
 
+	/**
+	 * Writes the value to a characteristic
+	 *
+	 * @param service UUID of the service
+	 * @param characteristic UUID of the characteristic
+	 * @param data The value to write
+	 * @param withResponse Whether the device must confirm the write
+	 */
 	public async write(
 		service: string,
 		characteristic: string,
@@ -113,6 +128,17 @@ export class GattSession {
 		return this.link.write(handle, data, withResponse);
 	}
 
+	/**
+	 * Writes the values to a characteristic in this order and reads it afterwards if readAfter is set.
+	 * Only works through gateways with the feature "writeSequence".
+	 *
+	 * @param service UUID of the service
+	 * @param characteristic UUID of the characteristic
+	 * @param data The values to write, in this order
+	 * @param withResponse Whether the device must confirm each write
+	 * @param readAfter Whether the characteristic is read after the last write
+	 * @returns The value read, undefined without readAfter
+	 */
 	public async writeSequence(
 		service: string,
 		characteristic: string,
@@ -128,6 +154,13 @@ export class GattSession {
 		return this.link.writeSequence(handle, data, withResponse, readAfter);
 	}
 
+	/**
+	 * Enables notifications of a characteristic
+	 *
+	 * @param service UUID of the service
+	 * @param characteristic UUID of the characteristic
+	 * @param listener Called with the value of every notification
+	 */
 	public async subscribe(
 		service: string,
 		characteristic: string,

@@ -4,12 +4,16 @@ const gateway_advertisement_tests = require("./gateway_advertisement_tests");
 const gateway_announce_tests = require("./gateway_announce_tests");
 const gateway_lifecycle_tests = require("./gateway_lifecycle_tests");
 const gatt_tests = require("./gatt_tests");
+const lywsd02_clock_tests = require("./lywsd02_clock_tests");
 const comet_blue_tests = require("./comet_blue_tests");
 const hub_mode_tests = require("./hub_mode_tests");
+const mi_flora_battery_tests = require("./mi_flora_battery_tests");
 const multi_gateway_tests = require("./multi_gateway_tests");
 const pvvx_ota_tests = require("./pvvx_ota_tests");
 const pvvx_time_sync_tests = require("./pvvx_time_sync_tests");
 const remote_server_tests = require("./remote_server_tests");
+
+/** @import { IntegrationTestHarness } from "@iobroker/testing" */
 
 // Every suite exports runTests(suite) and is registered here.
 //
@@ -18,7 +22,11 @@ const remote_server_tests = require("./remote_server_tests");
 // A harness cannot start the adapter again after stopAdapter(), so every scenario that needs
 // its own configuration gets its own suite.
 
-/** @param {(name: string, fn: (getHarness: () => any) => void) => void} suite */
+/**
+ * Defines all integration test suites
+ *
+ * @param {(name: string, fn: (getHarness: () => IntegrationTestHarness) => void) => void} suite - Defines a suite with a fresh harness
+ */
 exports.runTests = function (suite) {
 	// The adapter without Bluetooth hardware and without the Bluetooth driver in use
 	hub_mode_tests.runTests(suite);
@@ -37,10 +45,12 @@ exports.runTests = function (suite) {
 
 	// Connections to devices through gateways of other adapters
 	gatt_tests.runTests(suite);
+	mi_flora_battery_tests.runTests(suite);
 	comet_blue_tests.runTests(suite);
 
 	// Setting the clock of pvvx thermometers through a gateway
 	pvvx_time_sync_tests.runTests(suite);
+	lywsd02_clock_tests.runTests(suite);
 
 	// Firmware updates of pvvx thermometers through a gateway
 	pvvx_ota_tests.runTests(suite);
