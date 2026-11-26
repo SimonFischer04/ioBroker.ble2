@@ -82,6 +82,30 @@ describe("xiaomi plugin => ", () => {
 			};
 			expect(xiaomiPlugin.isHandling(peripheral as any)).to.be.false;
 		});
+
+		it("handles a pvvx event after a status-only frame from the same device", () => {
+			const peripheral = {
+				advertisement: {
+					serviceData: [
+						{
+							uuid: "fe95",
+							data: Buffer.from("10306f0601d36e14342d58", "hex"),
+						},
+					],
+				},
+				address: "58:2d:34:14:6e:d3",
+			} as PeripheralInfo;
+			expect(xiaomiPlugin.isHandling(peripheral)).to.be.false;
+			// Captured in issue #48. This packet carries a battery event.
+			peripheral.advertisement.serviceData[0].data = Buffer.from(
+				"50306f0602d36e14342d580a10016401a801",
+				"hex",
+			);
+			expect(xiaomiPlugin.isHandling(peripheral)).to.be.true;
+			expect(
+				xiaomiPlugin.getValues(xiaomiPlugin.createContext(peripheral)),
+			).to.deep.equal({ battery: 100 });
+		});
 	});
 
 	describe("mosquito repellent measurements", () => {

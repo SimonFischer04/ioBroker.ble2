@@ -11,6 +11,11 @@ declare global {
 			plugins: string;
 			xiaomiBindkeys?: string;
 			allowEmptyDevices: boolean;
+			presenceDevices?: {
+				address: string;
+				packets: number;
+				absenceSeconds: number;
+			}[];
 			rssiThrottle: number;
 		}
 	}

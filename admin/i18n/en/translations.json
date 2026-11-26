@@ -27,5 +27,9 @@
     "Local scan interval [min]": "Local scan interval [min]",
     "Minutes between scan starts. Set to 0 for continuous scanning.": "Minutes between scan starts. Set to 0 for continuous scanning.",
     "Local scan duration [s]": "Local scan duration [s]",
-    "Seconds spent scanning in each interval. Use a duration shorter than the interval.": "Seconds spent scanning in each interval. Use a duration shorter than the interval."
+    "Seconds spent scanning in each interval. Use a duration shorter than the interval.": "Seconds spent scanning in each interval. Use a duration shorter than the interval.",
+    "Presence tracking": "Presence tracking",
+    "Add Bluetooth devices that should get a present state.": "Add Bluetooth devices that should get a present state.",
+    "Packets to confirm presence": "Packets to confirm presence",
+    "Full score decay time [s]": "Full score decay time [s]"
 }
