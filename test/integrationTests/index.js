@@ -3,6 +3,7 @@
 const gateway_advertisement_tests = require("./gateway_advertisement_tests");
 const gateway_announce_tests = require("./gateway_announce_tests");
 const gateway_lifecycle_tests = require("./gateway_lifecycle_tests");
+const candela_tests = require("./candela_tests");
 const gatt_tests = require("./gatt_tests");
 const hub_mode_tests = require("./hub_mode_tests");
 const multi_gateway_tests = require("./multi_gateway_tests");
@@ -36,6 +37,7 @@ exports.runTests = function (suite) {
 
 	// Connections to devices through gateways of other adapters
 	gatt_tests.runTests(suite);
+	candela_tests.runTests(suite);
 
 	// Setting the clock of pvvx thermometers through a gateway
 	pvvx_time_sync_tests.runTests(suite);

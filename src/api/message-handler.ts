@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import type { ConnectionManager } from "../connections/connection-manager";
 import type { DeviceRegistry } from "../devices/device-registry";
+import { setCandelaBrightness } from "../drivers/candela";
 import type { GatewayRegistry } from "../gateways/gateway-registry";
 import { normalizeAddress } from "../lib/advertisement";
 import { GatewayError, toErrorResponse } from "../lib/gateway-error";
@@ -170,6 +171,44 @@ export function createMessageHandler(
 				respond({ error: null, result: {} });
 				return;
 			}
+
+			case "setCandelaBrightness":
+				void runGattCommand<{ brightness: number }>(async () => {
+					const { address } = parseGattRequest(obj.message, {
+						characteristic: false,
+						data: false,
+					});
+					const { brightness } = obj.message as {
+						brightness?: unknown;
+					};
+					if (
+						typeof brightness !== "number" ||
+						!Number.isInteger(brightness) ||
+						brightness < 0 ||
+						brightness > 100
+					) {
+						throw new GatewayError(
+							"INVALID_PAYLOAD",
+							"brightness must be a whole number from 0 to 100",
+						);
+					}
+					const device = ctx.devices
+						.getDevices()
+						.find((device) => device.address === address);
+					if (device?.name?.toLowerCase() !== "yeelight_ms") {
+						throw new GatewayError(
+							"GATT_ERROR",
+							"The device has not advertised as a Yeelight Candela",
+						);
+					}
+					await setCandelaBrightness(
+						ctx.connections,
+						address,
+						brightness,
+					);
+					return { brightness };
+				}).then(respond);
+				return;
 
 			case GatewayCommands.notification: {
 				const sender = obj.from.replace(/^system\.adapter\./, "");
