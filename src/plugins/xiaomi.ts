@@ -285,6 +285,24 @@ const plugin: Plugin<XiaomiContext> = {
 			});
 		}
 		// Create objects for unknown events
+		for (const [id, role, name] of [
+			["contactOpen", "sensor.door", "Door or window open"],
+			["doorLeftOpen", "indicator.alarm", "Door or window left open"],
+		] as const) {
+			if (id in event) {
+				stateObjects.push({
+					id,
+					common: {
+						role,
+						name,
+						type: "boolean",
+						read: true,
+						write: false,
+					},
+				});
+			}
+		}
+
 		for (const key of Object.keys(event)) {
 			if (key.startsWith("unknown ")) {
 				stateObjects.push({
