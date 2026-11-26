@@ -1,3 +1,5 @@
+import { createDecipheriv } from "node:crypto";
+
 interface BTHomeMultilevelSensorDefinition {
 	id: number;
 	label: string;
@@ -467,8 +469,16 @@ export type SpecialSensors =
 			value: Buffer;
 	  };
 
+/** Data needed to authenticate an encrypted advertisement. */
+export interface BTHomeCredentials {
+	/** Six MAC address bytes in display order. */
+	readonly mac: Buffer;
+	/** The sensor's 16-byte bindkey. */
+	readonly key: Buffer;
+}
+
 export class BTHomeAdvertisement {
-	public constructor(data: Buffer) {
+	public constructor(data: Buffer, credentials?: BTHomeCredentials) {
 		if (!data || data.length < 1) {
 			throw new Error(
 				"A BTHome v2 advertisement frame must be at least 1 byte long",
@@ -480,15 +490,43 @@ export class BTHomeAdvertisement {
 		this.triggerBased = !!(btHomeInfoByte & 0b100);
 		this.btHomeVersion = btHomeInfoByte >>> 5;
 
-		if (this.btHomeVersion === 1) {
-			throw new Error("BTHome v1 is not yet supported by this plugin");
-		} else if (this.encrypted) {
-			throw new Error(
-				"Encrypted BTHome advertisements are not yet supported by this plugin",
-			);
+		if (this.btHomeVersion !== 2) {
+			throw new Error("Only BTHome v2 advertisements are supported");
 		}
 
-		data = data.slice(1);
+		if (this.encrypted) {
+			if (!credentials || data.length < 10) {
+				throw new Error(
+					"Missing credentials or truncated encrypted BTHome frame",
+				);
+			}
+
+			// https://bthome.io/encryption/: MAC, UUID (little endian), device info, counter.
+			const counter = data.subarray(-8, -4);
+			const nonce = Buffer.concat([
+				credentials.mac,
+				Buffer.from([0xd2, 0xfc, btHomeInfoByte]),
+				counter,
+			]);
+			const decipher = createDecipheriv(
+				"aes-128-ccm",
+				credentials.key,
+				nonce,
+				{ authTagLength: 4 },
+			);
+			decipher.setAuthTag(data.subarray(-4));
+			data = Buffer.concat([
+				decipher.update(data.subarray(1, -8)),
+				decipher.final(),
+			]);
+			this.encryptionCounter = counter.readUInt32LE();
+		} else if (credentials) {
+			throw new Error(
+				"Unencrypted BTHome frame from a device with a bindkey",
+			);
+		} else {
+			data = data.subarray(1);
+		}
 
 		const multilevelSensors: BTHomeMultilevelSensorData[] = [];
 		const binarySensors: BTHomeBinarySensorData[] = [];
@@ -611,6 +649,7 @@ export class BTHomeAdvertisement {
 	public readonly btHomeVersion: number;
 	public readonly encrypted: boolean;
 	public readonly triggerBased: boolean;
+	public readonly encryptionCounter?: number;
 
 	public readonly packetId?: number;
 

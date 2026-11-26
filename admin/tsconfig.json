@@ -1,0 +1,14 @@
+{
+	"extends": "../tsconfig.json",
+	"compilerOptions": {
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
+		"lib": ["ES2022", "DOM"],
+		"jsx": "react",
+		"resolveJsonModule": true,
+		"types": ["@iobroker/types", "node", "vite/client"],
+		"noEmit": true
+	},
+	"include": ["src", "vite.config.mts", "../src/lib/adapter-config.d.ts"],
+	"exclude": ["build"]
+}
