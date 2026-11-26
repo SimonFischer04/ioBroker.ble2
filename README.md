@@ -61,6 +61,7 @@ If you have any device transmitting specially encoded information via advertisem
   * [Mijia Temperature and Humidity sensor](https://www.banggood.com/Xiaomi-Mijia-Bluetooth-Thermometer-Hygrometer-with-LCD-Screen-Magnetic-Suction-Wall-Stickers-p-1232396.html?cur_warehouse=USA)
   * [Mosquito Repellent](https://www.aliexpress.com/item/32883859984.html)
 * `"mi-flora"`: Original plugin for the flower care plant sensor, now aliased to `"xiaomi"`
+* `"eddystone"`: Eddystone UID, URL, and EID identifiers and unencrypted telemetry (`feaa`).
 * `"ruuvi-tag"`: [Ruuvi Tag](https://tag.ruuvi.com/) multisensor with firmware versions v1 and v2. **Untested, please give feedback!** 
 * `"switchbot"`: SwitchBot Meter-family temperature, humidity, and battery advertisements (`fd3d` or `0d00`).
 * `"bthome"`: Sensors using the [BTHome](https://bthome.io) protocol. For now this is limited to the `v2` revision of the protocol and does not support encrypted packets.
