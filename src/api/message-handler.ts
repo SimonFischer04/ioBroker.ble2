@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import type { ConnectionManager } from "../connections/connection-manager";
 import type { DeviceRegistry } from "../devices/device-registry";
+import { syncLywsd02Clock } from "../drivers/lywsd02-clock";
 import type { GatewayRegistry } from "../gateways/gateway-registry";
 import { normalizeAddress } from "../lib/advertisement";
 import { GatewayError, toErrorResponse } from "../lib/gateway-error";
@@ -177,6 +178,41 @@ export function createMessageHandler(
 				respond({ error: null, result: {} });
 				return;
 			}
+
+			case "syncLywsd02Clock":
+				void runGattCommand<{ timestamp: number }>(async () => {
+					const { address } = parseGattRequest(obj.message, {
+						characteristic: false,
+						data: false,
+					});
+					const timestamp = await syncLywsd02Clock(
+						ctx.connections,
+						address,
+					);
+					await adapter.setObjectNotExistsAsync(address, {
+						type: "device",
+						common: { name: address },
+						native: { address },
+					});
+					const id = `${address}.lywsd02LastTimeSync`;
+					await adapter.setObjectNotExistsAsync(id, {
+						type: "state",
+						common: {
+							name: "LYWSD02 last time sync",
+							type: "number",
+							role: "date",
+							read: true,
+							write: false,
+						},
+						native: {},
+					});
+					await adapter.setStateAsync(id, {
+						val: timestamp,
+						ack: true,
+					});
+					return { timestamp };
+				}).then(respond);
+				return;
 
 			case GatewayCommands.discoverServices:
 				void runGattCommand<GattGetServicesResult>(async () => {
