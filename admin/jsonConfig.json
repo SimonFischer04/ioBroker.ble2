@@ -96,7 +96,7 @@
                     "label": "Active plugins:",
                     "help": "Select the plugins for your sensors. Basic advertisement data is always available.",
                     "doNotSave": true,
-                    "defaultFunc": "[...new Set((Array.isArray(data.plugins) ? data.plugins : String(data.plugins || '').split(',')).map(p => p.trim().toLowerCase()).filter(p => ['xiaomi', 'mi-flora', 'ruuvi-tag', 'atc', 'bthome', 'mopeka', 'switchbot', 'eddystone', 'mi-scale', 'govee'].includes(p)))]",
+                    "defaultFunc": "[...new Set((Array.isArray(data.plugins) ? data.plugins : String(data.plugins || '').split(',')).map(p => p.trim().toLowerCase()).filter(p => ['xiaomi', 'mi-flora', 'ruuvi-tag', 'atc', 'bthome', 'mopeka', 'switchbot', 'magicswitchbot', 'eddystone', 'mi-scale', 'govee'].includes(p)))]",
                     "onChange": {
                         "calculateFunc": "const selection = data._pluginSelection || []; data.plugins = selection.join(','); return selection;"
                     },
@@ -120,6 +120,10 @@
                         {
                             "label": "ATC1441 and PVVX",
                             "value": "atc"
+                        },
+                        {
+                            "label": "MagicSwitchBot",
+                            "value": "magicswitchbot"
                         },
                         {
                             "label": "SwitchBot Meter",
@@ -161,7 +165,7 @@
                 },
                 "_xiaomiBindkeyRows": {
                     "type": "table",
-                    "help": "Enter the MAC address and bindkey for each encrypted Xiaomi MiBeacon v4 or v5 device.",
+                    "help": "Enter the MAC address and bindkey for each encrypted Xiaomi MiBeacon device.",
                     "hidden": "!['xiaomi', 'mi-flora'].some(p => (data._pluginSelection || []).includes(p))",
                     "doNotSave": true,
                     "defaultFunc": "try { const rows = JSON.parse(data.xiaomiBindkeys || '[]'); return Array.isArray(rows) ? rows : []; } catch { return []; }",
@@ -191,8 +195,8 @@
                             "attr": "key",
                             "title": "Bindkey",
                             "default": "",
-                            "validator": "/^[0-9a-f]{32}$/i.test((data.key || '').trim())",
-                            "validatorErrorText": "Enter a 32-digit hexadecimal bindkey.",
+                            "validator": "/^(?:[0-9a-f]{24}|[0-9a-f]{32})$/i.test((data.key || '').trim())",
+                            "validatorErrorText": "Enter a 24- or 32-digit hexadecimal Xiaomi bindkey.",
                             "validatorNoSaveOnError": true
                         }
                     ]
