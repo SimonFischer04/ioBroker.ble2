@@ -164,7 +164,8 @@ export class XiaomiAdvertisement {
 			this._event = readEvent(data, offset).event;
 			return;
 		}
-		if (this._version !== 4 && this._version !== 5) {
+		const legacy = this._version === 2 || this._version === 3;
+		if (!legacy && this._version !== 4 && this._version !== 5) {
 			throw new Error("Unsupported encrypted MiBeacon version");
 		}
 
@@ -182,8 +183,14 @@ export class XiaomiAdvertisement {
 			throw new Error("Invalid MAC address for encrypted MiBeacon");
 		}
 		const key = findBindkey?.(mac);
-		if (key?.length !== 16) {
+		if (!key || key.length !== (legacy ? 12 : 16)) {
 			throw new Error("No valid MiBeacon bindkey is configured");
+		}
+		if (legacy) {
+			this._event = readLegacyMeasurements(
+				decryptLegacy(data, offset, mac, key),
+			);
+			return;
 		}
 		const payload = decryptEvents(data, offset, mac, key);
 		const events: XiaomiEvent = {};
@@ -306,6 +313,84 @@ function readEvent(
 		),
 		end,
 	};
+}
+
+const legacyMeasurementLengths: Partial<
+	Record<XiaomiEventIDs_Internal, number>
+> = {
+	[XiaomiEventIDs_Internal.Temperature]: 2,
+	[XiaomiEventIDs_Internal.Humidity]: 2,
+	[XiaomiEventIDs_Internal.TemperatureAndHumidity]: 4,
+	[XiaomiEventIDs_Internal.Battery]: 1,
+};
+
+function readLegacyMeasurements(payload: Buffer): XiaomiEvent {
+	const events: XiaomiEvent = {};
+	for (let offset = 0; offset < payload.length;) {
+		if (payload.length - offset < 3) {
+			throw new Error("Truncated legacy MiBeacon measurement");
+		}
+		const id = payload.readUInt16LE(offset) as XiaomiEventIDs_Internal;
+		const length = legacyMeasurementLengths[id];
+		if (
+			length == null ||
+			payload[offset + 2] !== length ||
+			offset + 3 + length > payload.length
+		) {
+			throw new Error("Invalid legacy MiBeacon measurement");
+		}
+		const { event, end } = readEvent(payload, offset);
+		const { temperature, humidity, battery } = event;
+		if (
+			(temperature != null && (temperature < -40 || temperature > 85)) ||
+			(humidity != null && humidity > 100) ||
+			(battery != null && battery > 100)
+		) {
+			throw new Error("Legacy MiBeacon measurement outside its range");
+		}
+		Object.assign(events, event);
+		offset = end;
+	}
+	return events;
+}
+
+/**
+ * Older MiBeacon frames carry the CCM ciphertext without an authentication tag.
+ * Build the initial CCM payload counter and decrypt its counter-mode stream.
+ *
+ * @param data Complete frame.
+ * @param offset Offset of the ciphertext.
+ * @param mac Normalized advertiser MAC.
+ * @param bindkey The 12-byte legacy bindkey.
+ */
+function decryptLegacy(
+	data: Buffer,
+	offset: number,
+	mac: string,
+	bindkey: Buffer,
+): Buffer {
+	if (data.length < offset + 8) {
+		throw new Error("Truncated encrypted legacy MiBeacon advertisement");
+	}
+	const key = Buffer.concat([
+		bindkey.subarray(0, 6),
+		Buffer.from("8d3d3c97", "hex"),
+		bindkey.subarray(6),
+	]);
+	const nonce = Buffer.concat([
+		data.subarray(0, 5),
+		data.subarray(-4, -1),
+		Buffer.from(mac, "hex").reverse().subarray(0, 5),
+	]);
+	const counter = Buffer.alloc(16);
+	counter[0] = 1; // CCM with a 13-byte nonce uses a 2-byte block counter.
+	nonce.copy(counter, 1);
+	counter.writeUInt16BE(1, 14);
+	const decoder = createDecipheriv("aes-128-ctr", key, counter);
+	return Buffer.concat([
+		decoder.update(data.subarray(offset, -4)),
+		decoder.final(),
+	]);
 }
 
 // MiBeacon v4/v5 uses the reversed MAC, product and frame counter, then three extension bytes.
