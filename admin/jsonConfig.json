@@ -74,7 +74,7 @@
             "label": "Active plugins:",
             "help": "Select the plugins for your sensors. Basic advertisement data is always available.",
             "doNotSave": true,
-            "defaultFunc": "[...new Set((Array.isArray(data.plugins) ? data.plugins : String(data.plugins || '').split(',')).map(p => p.trim().toLowerCase()).filter(p => ['xiaomi', 'mi-flora', 'ruuvi-tag', 'bthome', 'mopeka'].includes(p)))]",
+            "defaultFunc": "[...new Set((Array.isArray(data.plugins) ? data.plugins : String(data.plugins || '').split(',')).map(p => p.trim().toLowerCase()).filter(p => ['xiaomi', 'mi-flora', 'ruuvi-tag', 'bthome', 'mopeka', 'switchbot'].includes(p)))]",
             "options": [
                 {
                     "label": "Xiaomi",
@@ -87,6 +87,10 @@
                 {
                     "label": "Ruuvi Tag",
                     "value": "ruuvi-tag"
+                },
+                {
+                    "label": "SwitchBot Meter",
+                    "value": "switchbot"
                 },
                 {
                     "label": "BTHome",
@@ -102,6 +106,50 @@
             "md": 6,
             "lg": 6,
             "xl": 6
+        },
+        "xiaomiBindkeys": {
+            "type": "text",
+            "hidden": true
+        },
+        "_xiaomiBindkeyHeading": {
+            "type": "header",
+            "text": "Xiaomi MiBeacon bindkeys",
+            "size": 3,
+            "hidden": "!['xiaomi', 'mi-flora'].some(p => (data._pluginSelection || []).includes(p))",
+            "xs": 12
+        },
+        "_xiaomiBindkeyRows": {
+            "type": "table",
+            "help": "Enter the MAC address and bindkey for each encrypted Xiaomi MiBeacon v4 or v5 device.",
+            "hidden": "!['xiaomi', 'mi-flora'].some(p => (data._pluginSelection || []).includes(p))",
+            "doNotSave": true,
+            "defaultFunc": "try { const rows = JSON.parse(data.xiaomiBindkeys || '[]'); return Array.isArray(rows) ? rows : []; } catch { return []; }",
+            "onChange": {
+                "calculateFunc": "const rows = data._xiaomiBindkeyRows || []; data.xiaomiBindkeys = JSON.stringify(rows); return rows;"
+            },
+            "xs": 12,
+            "useCardFor": ["xs", "sm"],
+            "uniqueColumns": ["address"],
+            "items": [
+                {
+                    "type": "text",
+                    "attr": "address",
+                    "title": "Bluetooth MAC address",
+                    "default": "",
+                    "validator": "/^(?:[0-9a-f]{12}|(?:[0-9a-f]{2}:){5}[0-9a-f]{2})$/i.test((data.address || '').trim())",
+                    "validatorErrorText": "Enter a valid Bluetooth MAC address.",
+                    "validatorNoSaveOnError": true
+                },
+                {
+                    "type": "password",
+                    "attr": "key",
+                    "title": "Bindkey",
+                    "default": "",
+                    "validator": "/^[0-9a-f]{32}$/i.test((data.key || '').trim())",
+                    "validatorErrorText": "Enter a 32-digit hexadecimal bindkey.",
+                    "validatorNoSaveOnError": true
+                }
+            ]
         },
         "allowEmptyDevices": {
             "type": "checkbox",

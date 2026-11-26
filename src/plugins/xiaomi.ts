@@ -3,6 +3,7 @@
  */
 
 import { entries } from "alcalzone-shared/objects";
+import type {} from "../lib/adapter-config";
 import { Global as _ } from "../lib/global";
 import type { PeripheralInfo } from "../lib/scanProcessInterface";
 import { XiaomiAdvertisement, type XiaomiEvent } from "./lib/xiaomi_protocol";
@@ -17,11 +18,52 @@ interface XiaomiContext {
 	event?: XiaomiEvent;
 }
 
-function parseAdvertisementEvent(data: Buffer): XiaomiEvent | undefined {
+let loadedBindkeyConfig: string | undefined;
+const bindkeys = new Map<string, Buffer>();
+
+function findBindkey(mac: string): Buffer | undefined {
+	const config = _.adapter.config.xiaomiBindkeys;
+	if (config !== loadedBindkeyConfig) {
+		loadedBindkeyConfig = config;
+		bindkeys.clear();
+		try {
+			const rows: unknown = JSON.parse(config || "[]");
+			if (Array.isArray(rows)) {
+				for (const row of rows) {
+					if (
+						typeof row?.address !== "string" ||
+						typeof row?.key !== "string"
+					) {
+						continue;
+					}
+					const address = row.address
+						.trim()
+						.replace(/[:-]/g, "")
+						.toLowerCase();
+					const key = row.key.trim();
+					if (
+						/^[0-9a-f]{12}$/.test(address) &&
+						/^[0-9a-f]{32}$/i.test(key)
+					) {
+						bindkeys.set(address, Buffer.from(key, "hex"));
+					}
+				}
+			}
+		} catch {
+			_.adapter.log.warn("Xiaomi bindkey configuration is invalid.");
+		}
+	}
+	return bindkeys.get(mac);
+}
+
+function parseAdvertisementEvent(
+	data: Buffer,
+	address: string,
+): XiaomiEvent | undefined {
 	// try to parse the data
 	let advertisement: XiaomiAdvertisement;
 	try {
-		advertisement = new XiaomiAdvertisement(data);
+		advertisement = new XiaomiAdvertisement(data, address, findBindkey);
 	} catch {
 		_.adapter.log.debug(`xiaomi >> failed to parse data`);
 		return;
@@ -61,7 +103,7 @@ const plugin: Plugin<XiaomiContext> = {
 		}
 
 		// A status or incomplete frame can precede an event from the same device.
-		if (parseAdvertisementEvent(data) == undefined) {
+		if (parseAdvertisementEvent(data, p.address) == undefined) {
 			recognizedPeripherals.delete(mac);
 			return false;
 		}
@@ -77,7 +119,7 @@ const plugin: Plugin<XiaomiContext> = {
 
 		_.adapter.log.debug(`xiaomi >> got data: ${data.toString("hex")}`);
 
-		const event = parseAdvertisementEvent(data);
+		const event = parseAdvertisementEvent(data, peripheral.address);
 		if (event == undefined) {
 			return;
 		}
