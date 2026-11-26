@@ -23,5 +23,9 @@
     "Bluetooth MAC address": "Bluetooth MAC address",
     "Bindkey": "Bindkey",
     "Enter a valid Bluetooth MAC address.": "Enter a valid Bluetooth MAC address.",
-    "Enter a 32-digit hexadecimal bindkey.": "Enter a 32-digit hexadecimal bindkey."
+    "Enter a 32-digit hexadecimal bindkey.": "Enter a 32-digit hexadecimal bindkey.",
+    "Presence tracking": "Presence tracking",
+    "Add Bluetooth devices that should get a present state.": "Add Bluetooth devices that should get a present state.",
+    "Packets to confirm presence": "Packets to confirm presence",
+    "Full score decay time [s]": "Full score decay time [s]"
 }
