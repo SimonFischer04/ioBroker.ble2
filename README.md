@@ -81,6 +81,8 @@ For a device with a bindkey, measurement and event updates require an authentica
 
 To read authenticated Xiaomi MiBeacon v4 or v5 advertisements, enable **Xiaomi** and add the device's Bluetooth MAC address and 32-digit hexadecimal bindkey under **Xiaomi MiBeacon bindkeys**. Use the bindkey assigned when the sensor was paired or configured. ioBroker encrypts the stored configuration. Admin configuration exports include the bindkeys.
 
+The Xiaomi Door and Window Sensor 2 (MCCGQ02HL) publishes `contactOpen` and `doorLeftOpen` from contact events. Configure its bindkey to decode encrypted broadcasts. A status-only packet does not carry the door state.
+
 For a Govee H5072 or H5075, enable **Govee H5072/H5075** under **Active plugins**. The scanner must deliver the `EC88` manufacturer data containing the measurements. The separate Apple iBeacon block beginning with `4c000215` contains no Govee sensor readings. Noble can report only the last manufacturer block on a platform that supplies them separately. For a supported remote scanner with service filters, forward service `ec88` or add `--manufacturerIds 60552`.
 
 For Mopeka, add `mopeka` to **Active plugins** and enable **Accept new devices** while discovering the sensor. Local scanning includes its manufacturer identifier automatically. A remote scanner with service filters also needs `--manufacturerIds 89` to forward manufacturer-only advertisements.
