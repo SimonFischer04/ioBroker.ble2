@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import type { ConnectionManager } from "../connections/connection-manager";
 import type { DeviceRegistry } from "../devices/device-registry";
+import { runSwitchBotAction } from "../drivers/switchbot-bot";
 import type { GatewayRegistry } from "../gateways/gateway-registry";
 import { normalizeAddress } from "../lib/advertisement";
 import { GatewayError, toErrorResponse } from "../lib/gateway-error";
@@ -228,6 +229,17 @@ export function createMessageHandler(
 						),
 					);
 					return {};
+				}).then(respond);
+				return;
+
+			case "switchBot":
+				void runGattCommand(async () => {
+					const { address } = parseGattRequest(obj.message, {
+						characteristic: false,
+						data: false,
+					});
+					const { action } = obj.message as { action?: unknown };
+					return runSwitchBotAction(ctx.connections, address, action);
 				}).then(respond);
 				return;
 
