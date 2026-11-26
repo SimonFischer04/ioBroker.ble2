@@ -18,6 +18,12 @@
     "Ruuvi Tag": "Ruuvi Tag",
     "BTHome": "BTHome",
     "Mopeka Pro Check": "Mopeka Pro Check",
+    "Xiaomi MiBeacon bindkeys": "Xiaomi MiBeacon bindkeys",
+    "Enter the MAC address and bindkey for each encrypted Xiaomi MiBeacon v4 or v5 device.": "Enter the MAC address and bindkey for each encrypted Xiaomi MiBeacon v4 or v5 device.",
+    "Bluetooth MAC address": "Bluetooth MAC address",
+    "Bindkey": "Bindkey",
+    "Enter a valid Bluetooth MAC address.": "Enter a valid Bluetooth MAC address.",
+    "Enter a 32-digit hexadecimal bindkey.": "Enter a 32-digit hexadecimal bindkey.",
     "Reset RSSI after inactivity [s]": "Reset RSSI after inactivity [s]",
     "Set RSSI to 0 after this many seconds without an advertisement from the device. Set to 0 to disable.": "Set RSSI to 0 after this many seconds without an advertisement from the device. Set to 0 to disable."
 }

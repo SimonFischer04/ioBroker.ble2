@@ -11,6 +11,7 @@ import {
 } from "./lib/iobroker-objects";
 import { ObjectCache } from "./lib/object-cache";
 import { RssiExpiry } from "./lib/rssi-expiry";
+import { RssiUpdates } from "./lib/rssi-updates";
 import {
 	ScanExitCodes,
 	getMessageReviver,
@@ -52,8 +53,7 @@ const ignoredNewDeviceIDs = new Set<string>();
 // /** MAC addresses of known devices */
 // let knownDevices: string[] = [];
 
-/** How frequent the RSSI of devices should be updated */
-let rssiUpdateInterval = 0;
+let rssiUpdates: RssiUpdates | undefined;
 let rssiExpiry: RssiExpiry | undefined;
 
 /** A reference to the scanning process */
@@ -111,13 +111,10 @@ const adapter = utils.adapter({
 			_.adapter.log.info(`monitored services: ${services.join(", ")}`);
 		}
 
-		// Limit RSSI updates
-		if (adapter.config.rssiThrottle != null) {
-			rssiUpdateInterval = Math.max(
-				0,
-				Math.min(10000, adapter.config.rssiThrottle),
-			);
-		}
+		rssiUpdates = new RssiUpdates(
+			adapter,
+			Math.max(0, Math.min(10000, adapter.config.rssiThrottle ?? 0)),
+		);
 		// monitor our own states and objects
 		adapter.subscribeStates("*");
 		adapter.subscribeObjects("*");
@@ -131,7 +128,9 @@ const adapter = utils.adapter({
 			timeoutSeconds > 0 &&
 			timeoutSeconds <= 86400
 		) {
-			rssiExpiry = new RssiExpiry(adapter, timeoutSeconds * 1000);
+			rssiExpiry = new RssiExpiry(adapter, timeoutSeconds * 1000, (id) =>
+				rssiUpdates?.remove(id),
+			);
 			const states = await adapter
 				.getStatesAsync("*.rssi")
 				.catch((error: unknown) => {
@@ -184,12 +183,14 @@ const adapter = utils.adapter({
 		} else {
 			// it has been deleted, so delete it from the cache
 			_.objectCache.invalidateObject(id);
+			rssiUpdates?.remove(id);
 			rssiExpiry?.remove(id);
 		}
 	},
 
 	// is called if a subscribed state changes
 	stateChange: (id, state) => {
+		rssiUpdates?.observe(id, state);
 		if (
 			/options\.allowNewDevices$/.test(id) &&
 			state != undefined &&
@@ -504,29 +505,13 @@ async function onDiscover(peripheral: PeripheralInfo): Promise<void> {
 		},
 		native: {},
 	});
-	const updateRssi = async (): Promise<void> => {
-		const rssiState = await adapter.getStateAsync(`${deviceId}.rssi`);
-		if (
-			rssiState == null ||
-			(rssiExpiry && rssiState.val === 0) ||
-			// Refresh unchanged values for users who rely on the state timestamp.
-			rssiState.ts + rssiUpdateInterval < Date.now()
-		) {
-			adapter.log.debug(`updating rssi state for ${deviceId}`);
-			await adapter.setStateAsync(
-				`${deviceId}.rssi`,
-				peripheral.rssi,
-				true,
-			);
-		}
-	};
+	const stateId = `${adapter.namespace}.${deviceId}.rssi`;
 	if (rssiExpiry) {
-		await rssiExpiry.update(
-			`${adapter.namespace}.${deviceId}.rssi`,
-			updateRssi,
-		);
+		await rssiExpiry.update(stateId, async () => {
+			await rssiUpdates?.update(stateId, peripheral.rssi, true);
+		});
 	} else {
-		await updateRssi();
+		await rssiUpdates?.update(stateId, peripheral.rssi);
 	}
 
 	// Now update device-specific objects and states

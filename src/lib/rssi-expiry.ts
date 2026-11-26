@@ -12,6 +12,7 @@ export class RssiExpiry {
 	/**
 	 * @param adapter Adapter state and timer methods.
 	 * @param timeoutMs Time without an advertisement before resetting the RSSI.
+	 * @param onReset Invalidates a cached value after a reset is stored.
 	 */
 	constructor(
 		private readonly adapter: Pick<
@@ -19,6 +20,7 @@ export class RssiExpiry {
 			"setTimeout" | "clearTimeout" | "setStateAsync" | "log"
 		>,
 		private readonly timeoutMs: number,
+		private readonly onReset?: (id: string) => void,
 	) {}
 
 	/**
@@ -105,6 +107,7 @@ export class RssiExpiry {
 					return;
 				}
 				await this.adapter.setStateAsync(id, 0, true);
+				this.onReset?.(id);
 				if (
 					device.lastSeen === timestamp &&
 					this.devices.get(id) === device
