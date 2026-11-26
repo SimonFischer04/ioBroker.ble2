@@ -266,6 +266,12 @@ The plugin creates `mopeka_level_raw` (uncalibrated ultrasonic reading), `mopeka
 
 The standard Pro Check layout is verified against [ESPHome](https://github.com/esphome/esphome/blob/dev/esphome/components/mopeka_pro_check/mopeka_pro_check.cpp) and [mopeka-iot-ble](https://github.com/Bluetooth-Devices/mopeka-iot-ble/blob/main/src/mopeka_iot_ble/parser.py). Other Mopeka sensor types are not handled by this plugin.
 
+#### Yeelight Candela YLFW01YL
+
+After a connection-capable gateway has seen the lamp advertise as `yeelight_ms`, call
+`sendTo("ble2.0", "setCandelaBrightness", { address: "AA:BB:CC:11:22:33", brightness: 70 }, callback)`.
+A brightness of 1–100 turns the lamp on and sets its intensity. Set brightness to 0 to turn it off.
+
 #### Xiaomi LYWSD03MMC temperature and humidity monitor
 
 The stock firmware can send encrypted Xiaomi measurements. For passive readings with ble2, use compatible custom firmware configured for unencrypted BTHome v2.
@@ -334,6 +340,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * Newer pvvx firmware can be installed on the thermometers through gateways that support it (`gatt:writeSequence`), after checks of battery and signal. The newest version is looked up once a day
 * Support encrypted BTHome v2 advertisements with per-device bindkeys.
 * Replace manual plugin names with a multi-select dropdown, preserving existing plugin settings.
+* Set brightness on the Yeelight Candela YLFW01YL through a Bluetooth gateway.
 * Add Mopeka Pro Check support with raw level, temperature, battery, and reading quality states.
 * Replace the custom React settings page with responsive native JSONConfig (requires admin 7.6.20 or newer), preserving settings and the live discovery switch.
 * **BREAKING:** Rename the maintained fork to `iobroker.ble2` with the `ble2` adapter namespace.
