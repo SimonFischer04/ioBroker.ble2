@@ -31,6 +31,11 @@ export const FAKE_SERVICES: GattServiceInfo[] = [
 
 /** A link that records what is called on it */
 export class FakeLink implements GattLink {
+	/**
+	 * @param gatewayId Full ID of the gateway the link pretends to go through
+	 * @param address MAC address of the device
+	 * @param mtu The MTU the link reports
+	 */
 	public constructor(
 		public readonly gatewayId: string,
 		public readonly address: string,
@@ -45,16 +50,29 @@ export class FakeLink implements GattLink {
 	private readonly listeners = new Map<number, (data: Buffer) => void>();
 	private disconnectListeners: (() => void)[] = [];
 
+	/** Returns the configured services */
 	public getServices(): Promise<GattServiceInfo[]> {
 		this.calls.push("getServices");
 		return Promise.resolve(this.services);
 	}
 
+	/**
+	 * Returns the value last written to the handle, an empty buffer if there is none
+	 *
+	 * @param handle Handle of the characteristic
+	 */
 	public read(handle: number): Promise<Buffer> {
 		this.calls.push(`read ${handle}`);
 		return Promise.resolve(this.values.get(handle) ?? Buffer.alloc(0));
 	}
 
+	/**
+	 * Stores the value so it can be read again
+	 *
+	 * @param handle Handle of the characteristic
+	 * @param data The value to store
+	 * @param withResponse Only recorded
+	 */
 	public write(
 		handle: number,
 		data: Buffer,
@@ -67,6 +85,14 @@ export class FakeLink implements GattLink {
 		return Promise.resolve();
 	}
 
+	/**
+	 * Writes the values one after the other and reads the last one back if readAfter is set
+	 *
+	 * @param handle Handle of the characteristic
+	 * @param data The values to write, in this order
+	 * @param withResponse Passed on to every write
+	 * @param readAfter Whether the value is read after the last write
+	 */
 	public async writeSequence(
 		handle: number,
 		data: Buffer[],
@@ -82,6 +108,12 @@ export class FakeLink implements GattLink {
 		return readAfter ? this.read(handle) : undefined;
 	}
 
+	/**
+	 * Remembers the listener so notify() can call it
+	 *
+	 * @param handle Handle of the characteristic
+	 * @param listener Called by notify() for this handle
+	 */
 	public subscribe(
 		handle: number,
 		listener: (data: Buffer) => void,
@@ -91,12 +123,14 @@ export class FakeLink implements GattLink {
 		return Promise.resolve();
 	}
 
+	/** Only counts the call, the listeners of onDisconnect are not called */
 	public disconnect(): Promise<void> {
 		this.calls.push("disconnect");
 		this.disconnects++;
 		return Promise.resolve();
 	}
 
+	/** @param listener Called once by simulateDisconnect() */
 	public onDisconnect(listener: () => void): void {
 		this.disconnectListeners.push(listener);
 	}
@@ -104,8 +138,8 @@ export class FakeLink implements GattLink {
 	/**
 	 * The device sends a notification
 	 *
-	 * @param handle
-	 * @param data
+	 * @param handle Handle of the subscribed characteristic
+	 * @param data The value the device sends
 	 */
 	public notify(handle: number, data: Buffer): void {
 		this.listeners.get(handle)?.(data);
@@ -130,6 +164,13 @@ export class FakeProvider implements GattLinkProvider {
 	public readonly connects: string[] = [];
 	public readonly links: FakeLink[] = [];
 
+	/**
+	 * Records the call and connects, fails or delegates as configured for the gateway
+	 *
+	 * @param gatewayId Full ID of the gateway
+	 * @param address MAC address of the device
+	 * @param addressType Address type of the device, only recorded
+	 */
 	public async connect(
 		gatewayId: string,
 		address: string,
@@ -156,7 +197,7 @@ export function createGatewayRegistry(): GatewayRegistry {
 		namespace: "ble.0",
 		FORBIDDEN_CHARS: /[^._\-/ :!#$%&()+=@^{}|~\p{Ll}\p{Lu}\p{Nd}]+/gu,
 		log: { debug() {}, info() {}, warn() {}, error() {} },
-		setState() {},
+		setState: () => Promise.resolve(),
 		setStateAsync: () => Promise.resolve(),
 		setObjectNotExistsAsync: () => Promise.resolve(),
 		getStatesAsync: () => Promise.resolve({}),

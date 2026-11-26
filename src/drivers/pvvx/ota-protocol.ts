@@ -20,7 +20,7 @@ const ZIGBEE_MAGIC = Buffer.from([0x1e, 0xf1, 0xee, 0x0b]);
 /**
  * CRC-16/MODBUS: start 0xFFFF, reflected polynomial 0xA001, no final XOR
  *
- * @param data
+ * @param data Bytes to check
  */
 export function crc16Modbus(data: Uint8Array): number {
 	let crc = 0xffff;
@@ -48,7 +48,7 @@ const CRC32_TABLE = (() => {
 /**
  * CRC-32 of the Telink images: polynomial 0xEDB88320, start 0xFFFFFFFF, no final XOR
  *
- * @param data
+ * @param data Bytes to check
  */
 export function crc32Telink(data: Uint8Array): number {
 	// Own table: zlib.crc32 only exists from Node.js 20.15
@@ -70,7 +70,7 @@ export type ImageProblem =
 /**
  * Checks an image as in docs/pvvx-protocol.md 6.2. Returns the length n of the image or the problem.
  *
- * @param image
+ * @param image Content of the firmware file
  */
 export function validateImage(
 	image: Buffer,
@@ -107,8 +107,8 @@ export function validateImage(
 /**
  * The first n bytes of the image, padded with 0xFF to a multiple of 16, as blocks of 16 bytes
  *
- * @param image
- * @param length
+ * @param image Firmware image
+ * @param length Length n from validateImage()
  */
 export function toBlocks(image: Buffer, length: number): Buffer[] {
 	const count = Math.ceil(length / BLOCK_SIZE);
@@ -124,8 +124,8 @@ export function toBlocks(image: Buffer, length: number): Buffer[] {
 /**
  * Data packet: index (2 bytes LE), 16 bytes, CRC-16 over both (2 bytes LE)
  *
- * @param index
- * @param block
+ * @param index Number of the block, from 0
+ * @param block 16 bytes of the image
  */
 export function encodeDataPacket(index: number, block: Buffer): Buffer {
 	const packet = Buffer.alloc(2 + BLOCK_SIZE + 2);
@@ -138,7 +138,7 @@ export function encodeDataPacket(index: number, block: Buffer): Buffer {
 /**
  * End packet: 02 ff, last index (LE), last index inverted (LE)
  *
- * @param lastIndex
+ * @param lastIndex Index of the last data packet
  */
 export function encodeEndPacket(lastIndex: number): Buffer {
 	const packet = Buffer.from([0x02, 0xff, 0, 0, 0, 0]);
@@ -150,7 +150,7 @@ export function encodeEndPacket(lastIndex: number): Buffer {
 /**
  * Text for a status byte of the update, docs/pvvx-protocol.md 6.6
  *
- * @param status
+ * @param status Status byte reported by the device
  */
 export function otaStatusText(status: number): string {
 	switch (status) {

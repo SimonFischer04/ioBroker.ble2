@@ -1,5 +1,6 @@
 import type { GatewayFeature, GatewayInfo } from "../lib/gateway-protocol";
 
+/** Timings of the GatewayRegistry, can be shortened for tests */
 export interface GatewayRegistryOptions {
 	/** A remote gateway is offline when it delivered nothing for this long */
 	remoteTimeoutMs: number;
@@ -34,6 +35,12 @@ export type GatewayDescription = Pick<GatewayInfo, "id" | "type" | "sender">;
  * Mirrors that to the states `gateways.<id>.*` and `info.connection`.
  */
 export class GatewayRegistry {
+	/**
+	 * Creates an empty registry; call init() before reporting gateways
+	 *
+	 * @param adapter Writes the gateway states and logs
+	 * @param options Missing options are taken from the defaults
+	 */
 	public constructor(
 		private readonly adapter: ioBroker.Adapter,
 		options: Partial<GatewayRegistryOptions> = {},
@@ -70,6 +77,7 @@ export class GatewayRegistry {
 		this.timer = setInterval(() => this.checkTimeouts(), interval);
 	}
 
+	/** Stops the timeout check and drops all pending state writes */
 	public dispose(): void {
 		this.disposed = true;
 		if (this.timer) {
@@ -88,7 +96,7 @@ export class GatewayRegistry {
 	/**
 	 * The gateway with this (full) ID
 	 *
-	 * @param id
+	 * @param id Full ID of the gateway, e.g. "esphome.0:proxy-og"
 	 */
 	public get(id: string): GatewayInfo | undefined {
 		const gateway = this.gateways.get(id);
@@ -110,13 +118,13 @@ export class GatewayRegistry {
 	/**
 	 * Reports what a gateway can do. This also marks it as active.
 	 *
-	 * @param description
-	 * @param capabilities
-	 * @param capabilities.connect
-	 * @param capabilities.freeSlots
-	 * @param capabilities.slotLimit
-	 * @param capabilities.features
-	 * @param now
+	 * @param description Which gateway it is
+	 * @param capabilities What the gateway reported
+	 * @param capabilities.connect Whether connections to devices can be opened through it
+	 * @param capabilities.freeSlots How many more connections it can open right now, if known
+	 * @param capabilities.slotLimit How many connections it can have at the same time, if known
+	 * @param capabilities.features Optional commands it supports
+	 * @param now Current time, can be set by tests
 	 */
 	public announce(
 		description: GatewayDescription,
@@ -173,8 +181,8 @@ export class GatewayRegistry {
 	/**
 	 * Reports whether a gateway is active
 	 *
-	 * @param description
-	 * @param connected
+	 * @param description Which gateway it is
+	 * @param connected Whether it is active
 	 */
 	public setConnected(
 		description: GatewayDescription,
@@ -187,9 +195,9 @@ export class GatewayRegistry {
 	/**
 	 * Reports that a gateway received advertisements. This also marks it as active.
 	 *
-	 * @param description
-	 * @param count
-	 * @param now
+	 * @param description Which gateway it is
+	 * @param count How many advertisements it received
+	 * @param now Current time, can be set by tests
 	 */
 	public recordAdvertisements(
 		description: GatewayDescription,
@@ -220,7 +228,7 @@ export class GatewayRegistry {
 	/**
 	 * Reports that an advertisement was skipped because another gateway delivered it first
 	 *
-	 * @param gatewayId
+	 * @param gatewayId Full ID of the gateway whose advertisement was skipped
 	 */
 	public recordDuplicate(gatewayId: string): void {
 		const gateway = this.gateways.get(gatewayId);
@@ -232,7 +240,7 @@ export class GatewayRegistry {
 	/**
 	 * Marks all gateways of an instance as offline, e.g. because that instance was stopped
 	 *
-	 * @param sender
+	 * @param sender The instance, e.g. "esphome.0"
 	 */
 	public senderOffline(sender: string): void {
 		for (const gateway of this.gateways.values()) {
@@ -302,7 +310,13 @@ export class GatewayRegistry {
 		);
 		if (anyConnected !== this.anyConnected) {
 			this.anyConnected = anyConnected;
-			this.adapter.setState("info.connection", anyConnected, true);
+			this.adapter
+				.setState("info.connection", anyConnected, true)
+				.catch((error: unknown) => {
+					this.adapter.log.warn(
+						`Could not update info.connection: ${String(error)}`,
+					);
+				});
 		}
 
 		if (!connected && this.onGatewayOffline) {

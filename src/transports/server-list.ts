@@ -3,7 +3,9 @@ export const DEFAULT_SERVER_PORT = 8734;
 
 /** A remote scan server, see bin/blerp.js */
 export interface RemoteServer {
+	/** Host name or IP address, lowercase, IPv6 without brackets */
 	host: string;
+	/** TCP port the server listens on */
 	port: number;
 	/** ID of the gateway: "server:<host>:<port>" */
 	gatewayId: string;
@@ -25,7 +27,7 @@ function parsePort(text: string): number | undefined {
  * Parses one entry: "host", "host:port", "[ipv6]" or "[ipv6]:port".
  * Returns undefined if the entry is not valid.
  *
- * @param entry
+ * @param entry One entry of the setting
  */
 export function parseServer(entry: string): RemoteServer | undefined {
 	let host: string;
@@ -71,7 +73,7 @@ export function parseServer(entry: string): RemoteServer | undefined {
  * Parses the setting with the remote scan servers. Entries are separated by commas, semicolons,
  * spaces or line breaks. Duplicates are removed, invalid entries are returned separately.
  *
- * @param setting
+ * @param setting The setting "remoteServers" as stored, anything but a string counts as empty
  */
 export function parseServerList(setting: unknown): {
 	servers: RemoteServer[];
@@ -101,7 +103,9 @@ export function parseServerList(setting: unknown): {
 export interface ServerSettings {
 	/** Up to version 0.14: a single remote scan server, which disabled the local Bluetooth adapter */
 	server?: unknown;
+	/** The remote scan servers, see parseServerList */
 	remoteServers?: unknown;
+	/** Whether the local Bluetooth adapter is used */
 	localScanner?: unknown;
 }
 
@@ -111,14 +115,15 @@ export interface ServerSettings {
  * work alongside the local Bluetooth adapter.
  *
  * Returns the changes that keep the behaviour of such a configuration, undefined if there is nothing
- * to migrate.
+ * to migrate. A leftover "server" next to "remoteServers" is only removed: otherwise it would come back
+ * as soon as the user empties "remoteServers".
  *
- * @param native
+ * @param native The native settings of the instance
  */
 export function migrateServerSettings(
 	native: ServerSettings,
 ):
-	| { server: string; remoteServers: string; localScanner: boolean }
+	| { server: string; remoteServers?: string; localScanner?: boolean }
 	| undefined {
 	const legacy =
 		typeof native.server === "string" ? native.server.trim() : "";
@@ -131,7 +136,7 @@ export function migrateServerSettings(
 			: "";
 	// Both set: the new setting was saved by the new admin UI, the old one is a leftover
 	if (current !== "") {
-		return undefined;
+		return { server: "" };
 	}
 	return { server: "", remoteServers: legacy, localScanner: false };
 }

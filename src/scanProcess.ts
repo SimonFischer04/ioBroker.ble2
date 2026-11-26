@@ -258,6 +258,20 @@ function maybeStartServer(): Promise<void> {
 		server = createServer((socket) => {
 			console.log("Client connected");
 			clients.add(socket);
+			// A new client needs to know whether the server is scanning right now, the messages
+			// "connected" and "disconnected" are only sent when that changes
+			const snapshot: ScanMessage[] = [
+				{ type: isScanning ? "connected" : "disconnected" },
+			];
+			if (noble) {
+				snapshot.push({
+					type: "driverState",
+					driverState: noble.state,
+				});
+			}
+			for (const message of snapshot) {
+				socket.write(`${JSON.stringify(message)}\n`);
+			}
 
 			// when the connection is closed, unpipe the streams
 			socket.on("close", () => {
@@ -302,8 +316,21 @@ async function loadNoble(): Promise<void> {
 			// https://github.com/stoprocent/noble/commit/b67eea246f719947fc45b1b52b856e61637a8a8e
 			noble = (noble as any)({ extended: false });
 		}
-	} catch (error: any) {
-		await sendAsync({ type: "fatal", error });
+	} catch (error) {
+		const reason = error instanceof Error ? error.message : "Unknown error";
+		const diagnostic = new Error(
+			`Could not load the Bluetooth scanner on Node.js ${process.version} (${process.platform}/${process.arch}): ${reason}`,
+		);
+		if (process.send) {
+			await sendAsync({
+				type: "driverState",
+				driverState: "driverError",
+			});
+			await sendAsync({ type: "fatal", error: diagnostic });
+		} else {
+			// The TCP server has not started, so there is no client to notify.
+			console.error(diagnostic.message);
+		}
 		process.exit(ScanExitCodes.RequireNobleFailed);
 	}
 }

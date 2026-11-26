@@ -4,7 +4,7 @@ import { matchesScanFilter } from "../lib/scan-filter";
 /**
  * Brings a configured service name into the form used in advertisements
  *
- * @param name
+ * @param name The service name from the configuration
  */
 export function fixServiceName(name: string | null | undefined): string {
 	if (name == null) {
@@ -24,9 +24,9 @@ export function fixServiceName(name: string | null | undefined): string {
 /**
  * Apply the same scan filters to advertisements from other gateways.
  *
- * @param peripheral
- * @param services
- * @param manufacturerIds
+ * @param peripheral The advertising device
+ * @param services The allowed service UUIDs, an empty list allows all
+ * @param manufacturerIds The allowed manufacturer IDs
  */
 export function matchesServiceFilter(
 	peripheral: PeripheralInfo,

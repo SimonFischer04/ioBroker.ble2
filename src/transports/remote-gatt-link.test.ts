@@ -46,7 +46,7 @@ class FakeAdapter {
 	/**
 	 * The last request with this command
 	 *
-	 * @param command
+	 * @param command The gatt:* command to look for
 	 */
 	public last(command: string): SentRequest {
 		const request = [...this.sent]
@@ -393,6 +393,13 @@ describe("transports/remote-gateway => links through gateways of other adapters"
 		const link = await connect();
 		const result = link.writeSequence(42, [Buffer.from([1])], false, true);
 		adapter.answer("gatt:writeSequence", { written: 1 });
+		expect((await rejection(result)).code).to.equal("GATT_ERROR");
+	});
+
+	it("rejects a read answer that is not base64", async () => {
+		const link = await connect();
+		const result = link.read(32);
+		adapter.answer("gatt:read", { data: "%%%" });
 		expect((await rejection(result)).code).to.equal("GATT_ERROR");
 	});
 });

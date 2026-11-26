@@ -6,20 +6,37 @@ export const MIN_BATTERY_PERCENT = 40;
 export const MAX_BATTERY_AGE_MS = 3600000;
 export const MIN_RSSI = -80;
 
+/** What checkPreconditions() needs to decide whether an update may start */
 export interface PreconditionInput {
 	/** The device, for the messages */
 	address: string;
+	/** Current time in ms, to judge the age of the battery value */
 	now: number;
 	/** The state <mac>.battery, undefined if it does not exist */
-	battery: { val: unknown; ts: number } | null | undefined;
+	battery:
+		| {
+				/** Battery level in percent */
+				val: unknown;
+				/** Time the value was written, in ms */
+				ts: number;
+		  }
+		| null
+		| undefined;
 	/** From ConnectionManager.bestGateway(address, "writeSequence") */
-	bestGateway: { gatewayId: string; rssi: number } | undefined;
+	bestGateway:
+		| {
+				/** The gateway that would run the update */
+				gatewayId: string;
+				/** Signal strength of the device at this gateway, in dBm */
+				rssi: number;
+		  }
+		| undefined;
 }
 
 /**
  * Throws PvvxUpdateError if the device must not be updated now
  *
- * @param input
+ * @param input Device, battery state and best gateway
  */
 export function checkPreconditions(input: PreconditionInput): void {
 	const { address, now, battery, bestGateway } = input;

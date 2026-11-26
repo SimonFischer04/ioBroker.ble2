@@ -324,6 +324,58 @@ describe("connections/connection-manager => ConnectionManager", () => {
 			expect(provider.connects).to.deep.equal([]);
 		});
 
+		it("with minRssi, does not fall back to a gateway that receives the device worse", async () => {
+			announceWithFeature(OG);
+			announceWithFeature(KELLER);
+			provider.behaviour.set(OG, "CONNECT_FAILED");
+
+			const error = await rejection(
+				manager.withSession(DEVICE, async () => {}, {
+					requireFeature: "writeSequence",
+					minRssi: -80,
+				}),
+			);
+
+			// KELLER (-85 dBm) is not tried
+			expect(provider.connects).to.deep.equal([`${OG} ${DEVICE} public`]);
+			expect(error.code).to.equal("CONNECT_FAILED");
+		});
+
+		it("with minRssi, NO_GATEWAY when no gateway receives the device well enough", async () => {
+			announceWithFeature(KELLER);
+			const error = await rejection(
+				manager.withSession(DEVICE, async () => {}, {
+					requireFeature: "writeSequence",
+					minRssi: -80,
+				}),
+			);
+			expect(error.code).to.equal("NO_GATEWAY");
+			expect(error.message).to.equal(
+				`No gateway with writeSequence receives ${DEVICE} with at least -80 dBm`,
+			);
+			expect(provider.connects).to.deep.equal([]);
+		});
+
+		it("a named gateway must also meet minRssi", async () => {
+			const error = await rejection(
+				manager.withSession(DEVICE, async () => {}, {
+					gatewayId: KELLER,
+					minRssi: -80,
+				}),
+			);
+			expect(error.code).to.equal("NO_GATEWAY");
+			expect(error.message).to.equal(
+				`Gateway ${KELLER} does not receive ${DEVICE} with at least -80 dBm`,
+			);
+			expect(provider.connects).to.deep.equal([]);
+
+			await manager.withSession(DEVICE, async () => {}, {
+				gatewayId: OG,
+				minRssi: -80,
+			});
+			expect(provider.connects).to.deep.equal([`${OG} ${DEVICE} public`]);
+		});
+
 		it("bestGateway() tells the first candidate and its signal", () => {
 			expect(manager.bestGateway(DEVICE)).to.deep.equal({
 				gatewayId: OG,

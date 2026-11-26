@@ -21,13 +21,16 @@ const {
 	waitFor,
 } = require("./helpers");
 
+/** @import { IntegrationTestHarness } from "@iobroker/testing" */
+/** @import { ReadCharacteristicMessage } from "../../src/lib/gateway-protocol" */
+
 const DEVICE = "a4:c1:38:12:34:56";
 const VALUE = "2301020304";
 
 /**
  * Announces the gateways and delivers an advertisement of the device through each of them
  *
- * @param {any} harness - Integration test harness
+ * @param {IntegrationTestHarness} harness - Integration test harness
  * @param {{gatewayId: string, rssi: number, connect?: boolean, freeSlots?: number}[]} gateways - The gateways
  * @param {string} [address] - The device
  * @returns {Promise<number>} The epoch the adapter answered with
@@ -53,9 +56,9 @@ async function prepare(harness, gateways, address = DEVICE) {
 }
 
 /**
- * @param {any} harness - Integration test harness
- * @param {Record<string, any>} [message] - Changes to the request
- * @returns {Promise<any>} The answer
+ * @param {IntegrationTestHarness} harness - Integration test harness
+ * @param {Partial<ReadCharacteristicMessage>} [message] - Changes to the request
+ * @returns {Promise<ioBroker.MessagePayload>} The answer
  */
 function read(harness, message = {}) {
 	return sendToAdapter(
@@ -76,7 +79,11 @@ const TWO_GATEWAYS = [
 	{ gatewayId: "proxy-keller", rssi: -85 },
 ];
 
-/** @param {(name: string, fn: (getHarness: () => any) => void) => void} suite */
+/**
+ * Defines the suites of this file
+ *
+ * @param {(name: string, fn: (getHarness: () => IntegrationTestHarness) => void) => void} suite - Defines a suite with a fresh harness
+ */
 exports.runTests = function (suite) {
 	suite("GATT - reading and writing through a gateway", (getHarness) => {
 		let harness;
