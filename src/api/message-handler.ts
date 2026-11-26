@@ -1,5 +1,8 @@
 import { execFile } from "node:child_process";
-import type { ConnectionManager } from "../connections/connection-manager";
+import type {
+	ConnectionManager,
+	SessionOptions,
+} from "../connections/connection-manager";
 import type { DeviceRegistry } from "../devices/device-registry";
 import type { GatewayRegistry } from "../gateways/gateway-registry";
 import { normalizeAddress } from "../lib/advertisement";
@@ -32,6 +35,7 @@ interface GattRequest {
 	characteristic: string;
 	data: Buffer;
 	withResponse: boolean;
+	options: SessionOptions;
 }
 
 /**
@@ -52,12 +56,32 @@ function parseGattRequest(
 	if (payload == null || typeof payload !== "object") {
 		throw invalid("The message must be an object");
 	}
-	const { address, service, characteristic, data, withResponse } =
-		payload as Record<string, unknown>;
+	const {
+		address,
+		service,
+		characteristic,
+		data,
+		withResponse,
+		gatewayId,
+		addressType,
+	} = payload as Record<string, unknown>;
 
 	const normalizedAddress = normalizeAddress(address);
 	if (!normalizedAddress) {
 		throw invalid(`"address" must be a MAC address`);
+	}
+	if (
+		gatewayId !== undefined &&
+		(typeof gatewayId !== "string" || !gatewayId.trim())
+	) {
+		throw invalid('"gatewayId" must be a gateway identifier');
+	}
+	if (
+		addressType !== undefined &&
+		addressType !== "public" &&
+		addressType !== "random"
+	) {
+		throw invalid('"addressType" must be public or random');
 	}
 	const request: GattRequest = {
 		address: normalizedAddress,
@@ -65,6 +89,7 @@ function parseGattRequest(
 		characteristic: "",
 		data: Buffer.alloc(0),
 		withResponse: true,
+		options: { gatewayId, addressType },
 	};
 	if (fields.characteristic) {
 		const serviceUuid = normalizeUuid(service);
@@ -180,13 +205,14 @@ export function createMessageHandler(
 
 			case GatewayCommands.discoverServices:
 				void runGattCommand<GattGetServicesResult>(async () => {
-					const { address } = parseGattRequest(obj.message, {
+					const { address, options } = parseGattRequest(obj.message, {
 						characteristic: false,
 						data: false,
 					});
 					const services = await ctx.connections.withSession(
 						address,
 						(session) => session.getServices(),
+						options,
 					);
 					return { services };
 				}).then(respond);
@@ -194,7 +220,7 @@ export function createMessageHandler(
 
 			case GatewayCommands.readCharacteristic:
 				void runGattCommand<GattReadResult>(async () => {
-					const { address, service, characteristic } =
+					const { address, service, characteristic, options } =
 						parseGattRequest(obj.message, {
 							characteristic: true,
 							data: false,
@@ -202,6 +228,7 @@ export function createMessageHandler(
 					const value = await ctx.connections.withSession(
 						address,
 						(session) => session.read(service, characteristic),
+						options,
 					);
 					return { data: value.toString("base64") };
 				}).then(respond);
@@ -215,17 +242,21 @@ export function createMessageHandler(
 						characteristic,
 						data,
 						withResponse,
+						options,
 					} = parseGattRequest(obj.message, {
 						characteristic: true,
 						data: true,
 					});
-					await ctx.connections.withSession(address, (session) =>
-						session.write(
-							service,
-							characteristic,
-							data,
-							withResponse,
-						),
+					await ctx.connections.withSession(
+						address,
+						(session) =>
+							session.write(
+								service,
+								characteristic,
+								data,
+								withResponse,
+							),
+						options,
 					);
 					return {};
 				}).then(respond);
