@@ -24,6 +24,8 @@
     "Bindkey": "Bindkey",
     "Enter a valid Bluetooth MAC address.": "Enter a valid Bluetooth MAC address.",
     "Enter a 32-digit hexadecimal bindkey.": "Enter a 32-digit hexadecimal bindkey.",
+    "Reset RSSI after inactivity [s]": "Reset RSSI after inactivity [s]",
+    "Set RSSI to 0 after this many seconds without an advertisement from the device. Set to 0 to disable.": "Set RSSI to 0 after this many seconds without an advertisement from the device. Set to 0 to disable.",
     "Settings": "Settings",
     "Bluetooth device map": "Bluetooth device map",
     "Recorded BLE devices": "Recorded BLE devices",
