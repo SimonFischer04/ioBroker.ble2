@@ -23,5 +23,9 @@
     "Bluetooth MAC address": "Bluetooth-MAC-Adresse",
     "Bindkey": "Bindkey",
     "Enter a valid Bluetooth MAC address.": "Eine gültige Bluetooth-MAC-Adresse eingeben.",
-    "Enter a 32-digit hexadecimal bindkey.": "Einen 32-stelligen hexadezimalen Bindkey eingeben."
+    "Enter a 32-digit hexadecimal bindkey.": "Einen 32-stelligen hexadezimalen Bindkey eingeben.",
+    "Presence tracking": "Anwesenheitserkennung",
+    "Add Bluetooth devices that should get a present state.": "Bluetooth-Geräte mit Anwesenheitsdatenpunkt hinzufügen.",
+    "Packets to confirm presence": "Pakete zur Bestätigung der Anwesenheit",
+    "Full score decay time [s]": "Abbauzeit bei vollem Punktestand [s]"
 }

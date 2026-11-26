@@ -45,6 +45,8 @@ The admin interface is provided by ioBroker JSONConfig (`admin/jsonConfig.json`)
 
 Choose one or more entries from the **Active plugins** dropdown. Existing plugin settings are loaded automatically; the basic advertisement handler stays enabled even when no plugin is selected.
 
+Add a device's MAC address to **Presence tracking** to create a boolean `present` state for that recorded device. Each advertisement adds a point to a score. The score loses one point for each elapsed share of the decay time. Presence becomes true at the configured packet count and returns to false when the score reaches zero. The defaults are three packets and 60 seconds for a full score to decay.
+
 Run `npm run lint` to check the adapter, tests, and JavaScript helpers using the shared ioBroker ESLint configuration. Use `npm run lint -- --fix` to apply automatic fixes.
 
 The adapter supports extension via plugins. Those define which advertised services should be listened to and how to translate the data. The plugin structure is defined in https://github.com/SimonFischer04/ioBroker.ble2/blob/master/src/plugins/plugin.ts and an example of a working plugin is defined here https://github.com/SimonFischer04/ioBroker.ble2/blob/master/src/plugins/_default.ts
