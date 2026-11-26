@@ -197,7 +197,7 @@ export function createGatewayRegistry(): GatewayRegistry {
 		namespace: "ble.0",
 		FORBIDDEN_CHARS: /[^._\-/ :!#$%&()+=@^{}|~\p{Ll}\p{Lu}\p{Nd}]+/gu,
 		log: { debug() {}, info() {}, warn() {}, error() {} },
-		setState() {},
+		setState: () => Promise.resolve(),
 		setStateAsync: () => Promise.resolve(),
 		setObjectNotExistsAsync: () => Promise.resolve(),
 		getStatesAsync: () => Promise.resolve({}),

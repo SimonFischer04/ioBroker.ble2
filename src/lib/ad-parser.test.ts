@@ -5,7 +5,7 @@ import { normalizeAddress } from "./advertisement";
 /**
  * Builds the payload of an advertisement from [type, hex data] pairs
  *
- * @param structures
+ * @param structures The AD structures, each as type and data in hex
  */
 function ad(...structures: [type: number, hex: string][]): Buffer {
 	return Buffer.concat(

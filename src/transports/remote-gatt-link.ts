@@ -29,6 +29,18 @@ const BASE64_REGEX =
  * adapter as gatt:* messages.
  */
 export class RemoteGattLink implements GattLink {
+	/**
+	 * Wraps a connection the gateway has already opened
+	 *
+	 * @param sender Sends the gatt:* messages to the instance
+	 * @param log Logs failed disconnects
+	 * @param gatewayId Full ID of the gateway, e.g. "esphome.0:proxy-og"
+	 * @param instance The instance that owns the gateway, e.g. "esphome.0"
+	 * @param localGatewayId ID of the gateway within that instance, e.g. "proxy-og"
+	 * @param address MAC address of the connected device
+	 * @param mtu The MTU the gateway negotiated
+	 * @param onEnd Called once when the link ends, however that happens
+	 */
 	public constructor(
 		private readonly sender: RequestSender,
 		private readonly log: Pick<ioBroker.Logger, "debug">,
@@ -59,9 +71,9 @@ export class RemoteGattLink implements GattLink {
 	/**
 	 * Sends a command for this link. Rejects at once when the link ends.
 	 *
-	 * @param command
-	 * @param payload
-	 * @param timeoutMs
+	 * @param command The gatt:* command
+	 * @param payload Sent together with the gateway ID and address of the link
+	 * @param timeoutMs How long to wait for the answer
 	 */
 	private request<T>(
 		command: string,
@@ -99,6 +111,7 @@ export class RemoteGattLink implements GattLink {
 		});
 	}
 
+	/** Sends gatt:getServices and checks that the answer contains a list of services */
 	public async getServices(): Promise<GattServiceInfo[]> {
 		const result = await this.request<GattGetServicesResult>(
 			GattCommands.getServices,
@@ -114,6 +127,11 @@ export class RemoteGattLink implements GattLink {
 		return result.services;
 	}
 
+	/**
+	 * Sends gatt:read and decodes the base64 value of the answer
+	 *
+	 * @param handle Handle of the characteristic or descriptor
+	 */
 	public async read(handle: number): Promise<Buffer> {
 		const result = await this.request<GattReadResult>(
 			GattCommands.read,
@@ -133,6 +151,13 @@ export class RemoteGattLink implements GattLink {
 		return Buffer.from(result.data, "base64");
 	}
 
+	/**
+	 * Sends gatt:write with the value base64 encoded
+	 *
+	 * @param handle Handle of the characteristic or descriptor
+	 * @param data The value to write
+	 * @param withResponse Whether the device must confirm the write
+	 */
 	public async write(
 		handle: number,
 		data: Buffer,
@@ -145,6 +170,14 @@ export class RemoteGattLink implements GattLink {
 		);
 	}
 
+	/**
+	 * Sends gatt:writeSequence. Only for gateways with the feature "writeSequence".
+	 *
+	 * @param handle Handle of the characteristic
+	 * @param data The values to write, in this order
+	 * @param withResponse Whether the device must confirm each write
+	 * @param readAfter Whether to read the handle after the last write
+	 */
 	public async writeSequence(
 		handle: number,
 		data: Buffer[],
@@ -182,6 +215,13 @@ export class RemoteGattLink implements GattLink {
 		return Buffer.from(result.data, "base64");
 	}
 
+	/**
+	 * Sends gatt:subscribe. The listener is registered first, so no notification is missed,
+	 * and removed again if the subscription fails.
+	 *
+	 * @param handle Handle of the characteristic
+	 * @param listener Called with the value of every notification
+	 */
 	public async subscribe(
 		handle: number,
 		listener: (data: Buffer) => void,
@@ -204,6 +244,7 @@ export class RemoteGattLink implements GattLink {
 		}
 	}
 
+	/** Ends the link at once and tells the gateway; if that fails, it is only logged */
 	public async disconnect(): Promise<void> {
 		if (this.ended) {
 			return;
@@ -226,6 +267,11 @@ export class RemoteGattLink implements GattLink {
 		}
 	}
 
+	/**
+	 * Registers a listener for when the link ends without disconnect() being called
+	 *
+	 * @param listener Called once
+	 */
 	public onDisconnect(listener: () => void): void {
 		this.disconnectListeners.push(listener);
 	}
@@ -233,8 +279,8 @@ export class RemoteGattLink implements GattLink {
 	/**
 	 * The gateway delivered a notification for this link
 	 *
-	 * @param handle
-	 * @param data
+	 * @param handle Handle of the characteristic
+	 * @param data The value
 	 */
 	public handleNotification(handle: number, data: Buffer): void {
 		this.listeners.get(handle)?.(data);

@@ -8,7 +8,7 @@ import type { AdvertisementData, ServiceData } from "./advertisement";
  * The payload may be the advertisement and the scan response concatenated.
  * Malformed trailing data is ignored, everything parsed up to that point is returned.
  *
- * @param raw
+ * @param raw The AD structures as received
  */
 export function parseAdvertisementData(raw: Buffer): AdvertisementData {
 	const serviceUuids: string[] = [];
@@ -79,7 +79,7 @@ export function parseAdvertisementData(raw: Buffer): AdvertisementData {
 /**
  * UUIDs are transmitted in little endian, the string form is big endian
  *
- * @param bytes
+ * @param bytes The UUID as received
  */
 function uuidToString(bytes: Buffer): string {
 	return Buffer.from(bytes).reverse().toString("hex");

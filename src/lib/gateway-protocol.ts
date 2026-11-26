@@ -60,6 +60,7 @@ export type GatewayFeature = (typeof GATEWAY_FEATURES)[number];
 /** Most entries in one "gatt:writeSequence" */
 export const MAX_WRITE_SEQUENCE_LENGTH = 64;
 
+/** One received advertisement in "gateway:advertisements" */
 export interface GatewayAdvertisement {
 	/** MAC address of the sending device, e.g. "a4:c1:38:12:34:56". Upper case and "-" are accepted. */
 	address: string;
@@ -72,6 +73,7 @@ export interface GatewayAdvertisement {
 	 * optionally followed by those of the scan response.
 	 */
 	data: string;
+	/** Whether the device accepts connections, if the gateway knows */
 	connectable?: boolean;
 }
 
@@ -97,9 +99,11 @@ export interface GatewayAdvertisementsResult {
 export interface GatewayInfo {
 	/** "local" for the Bluetooth adapter of the host, otherwise "<sender>:<gatewayId>" */
 	id: string;
+	/** "local" = Bluetooth adapter of the host, "server" = remote scan server, "remote" = gateway of another adapter */
 	type: "local" | "server" | "remote";
 	/** The instance that delivers the advertisements, e.g. "esphome.0". Only for type "remote". */
 	sender?: string;
+	/** Whether the gateway is active right now */
 	connected: boolean;
 	/** Timestamp of the last received advertisement */
 	lastAdvertisement?: number;
@@ -119,7 +123,9 @@ export interface GatewayInfo {
 
 /** An entry of the result of "getDevices" */
 export interface DeviceInfo {
+	/** MAC address of the device */
 	address: string;
+	/** The name the device advertises, if known */
 	name?: string;
 	/** The gateways that recently received the device, strongest signal first */
 	gateways: { id: string; rssi: number; lastSeen: number }[];
@@ -165,6 +171,7 @@ export interface GatewayAnnounceMessage {
 
 /** Result of "gateway:announce" */
 export interface GatewayAnnounceResult {
+	/** Always GATEWAY_PROTOCOL */
 	protocol: typeof GATEWAY_PROTOCOL;
 	/** When this adapter was started (ms since 1970). A new value means it was restarted. */
 	epoch: number;
@@ -172,6 +179,7 @@ export interface GatewayAnnounceResult {
 
 /** Identifies a device behind a gateway. gatewayId is the ID within the instance that owns the gateway. */
 export interface GattTarget {
+	/** ID of the gateway within the instance that owns it */
 	gatewayId: string;
 	/** MAC address in lowercase with colons */
 	address: string;
@@ -179,6 +187,7 @@ export interface GattTarget {
 
 /** Payload of "gateway:connectionState" */
 export interface GatewayConnectionStateMessage extends GattTarget {
+	/** Always false: only ended connections are reported */
 	connected: false;
 	/** Error code of the gateway, if it reported one */
 	error?: number;
@@ -194,6 +203,7 @@ export interface GatewayNotificationMessage extends GattTarget {
 
 /** Payload of "gatt:connect" */
 export interface GattConnectRequest extends GattTarget {
+	/** Address type of the device, needed to connect to it */
 	addressType: "public" | "random";
 	/** See GatewayAnnounceResult.epoch */
 	epoch: number;
@@ -205,30 +215,39 @@ export interface GattConnectResult {
 	mtu: number;
 }
 
+/** A descriptor of a characteristic in the result of "gatt:getServices" */
 export interface GattDescriptorInfo {
 	/** 128 bit, lowercase, with dashes */
 	uuid: string;
+	/** Handle of the descriptor */
 	handle: number;
 }
 
+/** A characteristic of a service in the result of "gatt:getServices" */
 export interface GattCharacteristicInfo {
 	/** 128 bit, lowercase, with dashes */
 	uuid: string;
+	/** Handle of the characteristic, used to read, write and subscribe */
 	handle: number;
 	/** Bit mask: 0x02 read, 0x04 write without response, 0x08 write, 0x10 notify, 0x20 indicate */
 	properties: number;
+	/** The descriptors of the characteristic */
 	descriptors: GattDescriptorInfo[];
 }
 
+/** A service of a device in the result of "gatt:getServices" */
 export interface GattServiceInfo {
 	/** 128 bit, lowercase, with dashes */
 	uuid: string;
+	/** Handle of the service */
 	handle: number;
+	/** The characteristics of the service */
 	characteristics: GattCharacteristicInfo[];
 }
 
 /** Result of "gatt:getServices" and of "discoverServices" */
 export interface GattGetServicesResult {
+	/** All services of the device */
 	services: GattServiceInfo[];
 }
 
@@ -257,9 +276,11 @@ export interface GattWriteRequest extends GattTarget {
 
 /** Payload of "gatt:writeSequence" */
 export interface GattWriteSequenceRequest extends GattTarget {
+	/** Handle of the characteristic */
 	handle: number;
 	/** The values to write, in this order, base64 encoded */
 	data: string[];
+	/** true = wait for the device to confirm each write */
 	withResponse: boolean;
 	/** Read the handle after the last write */
 	readAfter: boolean;

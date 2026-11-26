@@ -46,7 +46,7 @@ class FakeAdapter {
 	/**
 	 * The last request with this command
 	 *
-	 * @param command
+	 * @param command The gatt:* command to look for
 	 */
 	public last(command: string): SentRequest {
 		const request = [...this.sent]

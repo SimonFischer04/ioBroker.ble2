@@ -9,6 +9,7 @@ import {
 import { classifyScanError } from "./scan-errors";
 import type { Transport, TransportContext } from "./transport";
 
+/** Settings for the scanner process of the local Bluetooth adapter */
 export interface NobleLocalOptions {
 	/** Which BLE services to scan for. Empty = all. */
 	services: string[];
@@ -27,6 +28,12 @@ const HUB_HINT =
  * cannot bring down the adapter.
  */
 export class NobleLocalTransport implements Transport {
+	/**
+	 * Prepares the scanner; the process is only started by start()
+	 *
+	 * @param ctx The adapter and where advertisements and gateway states go
+	 * @param options What to scan for and with which HCI device
+	 */
 	public constructor(
 		private readonly ctx: TransportContext,
 		private readonly options: NobleLocalOptions,
@@ -41,6 +48,7 @@ export class NobleLocalTransport implements Transport {
 	/** Whether the scanner was stopped for good */
 	private stopped = false;
 
+	/** Starts the scanner process, unless the scanner was stopped for good */
 	public start(): void {
 		if (this.stopped) {
 			return;
@@ -120,6 +128,7 @@ export class NobleLocalTransport implements Transport {
 		);
 	}
 
+	/** Stops the scanner for good and kills its process */
 	public stop(): void {
 		this.stopped = true;
 		try {
@@ -149,7 +158,13 @@ export class NobleLocalTransport implements Transport {
 				});
 				break;
 			case "driverState":
-				adapter.setState("info.driverState", message.driverState, true);
+				adapter
+					.setState("info.driverState", message.driverState, true)
+					.catch((e) =>
+						adapter.log.warn(
+							`Could not update info.driverState: ${(e as Error).message}`,
+						),
+					);
 				break;
 			case "error": // fall through
 			case "fatal":
@@ -165,7 +180,7 @@ export class NobleLocalTransport implements Transport {
 	 * A problem with the local Bluetooth adapter must not stop the adapter:
 	 * it may still receive advertisements from external gateways.
 	 *
-	 * @param err
+	 * @param err The error the scanner process reported
 	 */
 	private handleError(err: Error): void {
 		const { adapter } = this.ctx;

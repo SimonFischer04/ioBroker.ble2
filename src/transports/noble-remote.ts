@@ -16,6 +16,11 @@ export const MAX_PENDING_FRAME = 1024 * 1024;
  * message until the rest arrives, but not beyond maxPending characters.
  */
 export class FrameReader {
+	/**
+	 * Starts with no pending text
+	 *
+	 * @param maxPending Longest incomplete message kept, in characters
+	 */
 	public constructor(
 		private readonly maxPending: number = MAX_PENDING_FRAME,
 	) {}
@@ -39,6 +44,7 @@ export class FrameReader {
 	}
 }
 
+/** Settings for the connection to one remote scan server */
 export interface NobleRemoteOptions {
 	/**
 	 * Whether the state of the Bluetooth driver on the server goes to info.driverState.
@@ -54,6 +60,13 @@ export interface NobleRemoteOptions {
  * and serves them via TCP (bin/blerp.js, setting "remoteServers").
  */
 export class NobleRemoteTransport implements Transport {
+	/**
+	 * Prepares the connection; it is only opened by start()
+	 *
+	 * @param ctx The adapter and where advertisements and gateway states go
+	 * @param server Where the scan server listens
+	 * @param options How to report the server
+	 */
 	public constructor(
 		private readonly ctx: TransportContext,
 		private readonly server: RemoteServer,
@@ -77,6 +90,7 @@ export class NobleRemoteTransport implements Transport {
 			: `${this.server.host}:${this.server.port}`;
 	}
 
+	/** Connects to the server and keeps reconnecting until stop() is called */
 	public start(): void {
 		this.stopped = false;
 		this.connect();
@@ -163,6 +177,7 @@ export class NobleRemoteTransport implements Transport {
 		socket.connect({ host: this.server.host, port: this.server.port });
 	}
 
+	/** Closes the connection and stops reconnecting */
 	public stop(): void {
 		this.stopped = true;
 		if (this.reconnectTimer) {
@@ -202,11 +217,13 @@ export class NobleRemoteTransport implements Transport {
 					);
 				}
 				if (this.options.reportDriverState) {
-					adapter.setState(
-						"info.driverState",
-						message.driverState,
-						true,
-					);
+					adapter
+						.setState("info.driverState", message.driverState, true)
+						.catch((e) =>
+							adapter.log.warn(
+								`Could not update info.driverState: ${(e as Error).message}`,
+							),
+						);
 				}
 				break;
 			case "error": // fall through
