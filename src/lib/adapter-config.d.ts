@@ -10,6 +10,11 @@ declare global {
 			xiaomiBindkeys?: string;
 			bthomeBindkeys?: string;
 			allowEmptyDevices: boolean;
+			presenceDevices?: {
+				address: string;
+				packets: number;
+				absenceSeconds: number;
+			}[];
 			rssiThrottle: number;
 		}
 	}

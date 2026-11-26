@@ -45,6 +45,8 @@ The admin interface is provided by ioBroker JSONConfig (`admin/jsonConfig.json`)
 
 Choose one or more entries from the **Active plugins** dropdown. Existing plugin settings are loaded automatically; the basic advertisement handler stays enabled even when no plugin is selected.
 
+Add a device's MAC address to **Presence tracking** to create a boolean `present` state for that recorded device. Each advertisement adds a point to a score. The score loses one point for each elapsed share of the decay time. Presence becomes true at the configured packet count and returns to false when the score reaches zero. The defaults are three packets and 60 seconds for a full score to decay.
+
 Run `npm run lint` to check the adapter, tests, and JavaScript helpers using the shared ioBroker ESLint configuration. Use `npm run lint -- --fix` to apply automatic fixes.
 
 The adapter supports extension via plugins. Those define which advertised services should be listened to and how to translate the data. The plugin structure is defined in https://github.com/SimonFischer04/ioBroker.ble2/blob/master/src/plugins/plugin.ts and an example of a working plugin is defined here https://github.com/SimonFischer04/ioBroker.ble2/blob/master/src/plugins/_default.ts
@@ -59,9 +61,11 @@ If you have any device transmitting specially encoded information via advertisem
   * [Mijia Temperature and Humidity sensor](https://www.banggood.com/Xiaomi-Mijia-Bluetooth-Thermometer-Hygrometer-with-LCD-Screen-Magnetic-Suction-Wall-Stickers-p-1232396.html?cur_warehouse=USA)
   * [Mosquito Repellent](https://www.aliexpress.com/item/32883859984.html)
 * `"mi-flora"`: Original plugin for the flower care plant sensor, now aliased to `"xiaomi"`
+* `"eddystone"`: Eddystone UID, URL, and EID identifiers and unencrypted telemetry (`feaa`).
 * `"ruuvi-tag"`: [Ruuvi Tag](https://tag.ruuvi.com/) multisensor with firmware versions v1 and v2. **Untested, please give feedback!** 
 * `"switchbot"`: SwitchBot Meter-family temperature, humidity, and battery advertisements (`fd3d` or `0d00`).
 * `"bthome"`: Sensors using [BTHome v2](https://bthome.io), including encrypted advertisements.
+* `"mi-scale"`: Mi Scale V1 and V2 broadcast weight in kilograms and a stabilized flag (`181d` and `181b`).
 * `"mopeka"`: Mopeka Pro Check LPG tank sensors (standard sensor type `0x03`).
 
 For an encrypted BTHome sensor, select **BTHome** under **Active plugins** and add its Bluetooth MAC address and bindkey under **BTHome bindkeys**. Enter the 16-byte key as 32 hexadecimal digits or in UUID format. Enable **Accept new devices** when adding a new sensor. A remote scanner using service filters must forward service `fcd2`. Decryption requires the actual Bluetooth MAC address, which some local scanners (such as macOS CoreBluetooth) do not expose.
