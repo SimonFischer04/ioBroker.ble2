@@ -6,6 +6,7 @@ const gateway_lifecycle_tests = require("./gateway_lifecycle_tests");
 const gatt_tests = require("./gatt_tests");
 const hub_mode_tests = require("./hub_mode_tests");
 const multi_gateway_tests = require("./multi_gateway_tests");
+const skyrc_mc3000_tests = require("./skyrc_mc3000_tests");
 const pvvx_ota_tests = require("./pvvx_ota_tests");
 const pvvx_time_sync_tests = require("./pvvx_time_sync_tests");
 const remote_server_tests = require("./remote_server_tests");
@@ -45,4 +46,5 @@ exports.runTests = function (suite) {
 
 	// Remote scan servers (bin/blerp.js), played by a fake TCP server
 	remote_server_tests.runTests(suite);
+	skyrc_mc3000_tests.runTests(suite);
 };
