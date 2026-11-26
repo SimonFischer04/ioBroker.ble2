@@ -50,5 +50,13 @@
     "Loading Bluetooth devices": "Bluetooth-Geräte werden geladen",
     "Could not load Bluetooth devices.": "Bluetooth-Geräte konnten nicht geladen werden.",
     "Retry": "Erneut laden",
-    "No BLE devices have been recorded yet.": "Diese Instanz hat noch keine BLE-Geräte erfasst."
+    "No BLE devices have been recorded yet.": "Diese Instanz hat noch keine BLE-Geräte erfasst.",
+    "Local scan interval [min]": "Lokales Scanintervall [min]",
+    "Minutes between scan starts. Set to 0 for continuous scanning.": "Minuten zwischen Scanstarts. 0 scannt kontinuierlich.",
+    "Local scan duration [s]": "Lokale Scandauer [s]",
+    "Seconds spent scanning in each interval. Use a duration shorter than the interval.": "Scandauer pro Intervall in Sekunden. Die Dauer muss kürzer als das Intervall sein.",
+    "Presence tracking": "Anwesenheitserkennung",
+    "Add Bluetooth devices that should get a present state.": "Bluetooth-Geräte mit Anwesenheitsdatenpunkt hinzufügen.",
+    "Packets to confirm presence": "Pakete zur Bestätigung der Anwesenheit",
+    "Full score decay time [s]": "Abbauzeit bei vollem Punktestand [s]"
 }

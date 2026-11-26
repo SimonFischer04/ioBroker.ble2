@@ -7,6 +7,7 @@ import {
 	type Socket,
 } from "node:net";
 import { pick } from "./lib/misc";
+import { ScanCycle } from "./lib/scan-cycle";
 import { matchesScanFilter } from "./lib/scan-filter";
 import {
 	ScanExitCodes,
@@ -41,6 +42,16 @@ const argv = yargs
 			desc: "Bluetooth company identifiers to scan for in addition to services",
 			default: [],
 		},
+		scanInterval: {
+			type: "number",
+			desc: "Seconds between scan starts (0 for continuous scanning)",
+			default: 0,
+		},
+		scanDuration: {
+			type: "number",
+			desc: "Seconds spent scanning during each interval",
+			default: 10,
+		},
 		listenInterface: {
 			alias: "-i",
 			type: "string",
@@ -52,6 +63,22 @@ const argv = yargs
 			desc: "If not spawned as a child process, the port to listen on.",
 			default: 8734,
 		},
+	})
+	.check(({ scanInterval, scanDuration }) => {
+		if (
+			!Number.isInteger(scanInterval) ||
+			scanInterval < 0 ||
+			scanInterval > 86400 ||
+			!Number.isInteger(scanDuration) ||
+			scanDuration <= 0 ||
+			scanDuration > 3600 ||
+			(scanInterval > 0 && scanDuration >= scanInterval)
+		) {
+			throw new Error(
+				"Scan interval must be 0–86400 seconds and a scan window of 1–3600 seconds must be shorter than a nonzero interval.",
+			);
+		}
+		return true;
 	})
 	.parseSync();
 
@@ -120,22 +147,6 @@ process.on("unhandledRejection", (error) => {
 	});
 });
 
-// This will be called when an IPC channel exists
-process.on("message", (msg) => {
-	handleMessage(msg as InboundMessage);
-});
-
-function handleMessage(msg: InboundMessage): void {
-	switch (msg.type) {
-		case "startScanning":
-			startScanning();
-			break;
-		case "stopScanning":
-			stopScanning();
-			break;
-	}
-}
-
 function serializePeripheral(peripheral: Noble.Peripheral): PeripheralInfo {
 	return pick(peripheral, [
 		"id",
@@ -177,27 +188,65 @@ async function startScanning(): Promise<void> {
 	noble.on("discover", onDiscover);
 	// Noble's service filter drops manufacturer-only advertisements. Apply the
 	// combined filter in onDiscover when a plugin needs manufacturer data.
-	await noble.startScanningAsync(
-		argv.manufacturerIds.length > 0 ? [] : argv.services,
-		true,
-	);
+	try {
+		await noble.startScanningAsync(
+			argv.manufacturerIds.length > 0 ? [] : argv.services,
+			true,
+		);
+	} catch (error) {
+		noble.removeListener("discover", onDiscover);
+		await sendAsync({ type: "disconnected" });
+		throw error;
+	}
 	isScanning = true;
 }
 
-// Keep the scanner lifecycle API promise-based.
-// eslint-disable-next-line @typescript-eslint/require-await
 async function stopScanning(): Promise<void> {
 	if (!isScanning) {
 		return;
 	}
-	noble.removeAllListeners("discover");
-	sendAsync({
+	noble.removeListener("discover", onDiscover);
+	await sendAsync({
 		type: "log",
 		message: `stopping scan`,
 	});
-	noble.stopScanning();
-	sendAsync({ type: "disconnected" });
 	isScanning = false;
+	try {
+		await noble.stopScanningAsync();
+	} finally {
+		await sendAsync({ type: "disconnected" });
+	}
+}
+
+function reportScanError(error: unknown): void {
+	void sendAsync({
+		type: "error",
+		error: error instanceof Error ? error : new Error(String(error)),
+	});
+}
+
+const scanCycle = new ScanCycle(
+	argv.scanInterval * 1000,
+	argv.scanDuration * 1000,
+	startScanning,
+	stopScanning,
+	reportScanError,
+);
+
+// This will be called when an IPC channel exists
+process.on("message", (msg) => {
+	handleMessage(msg as InboundMessage);
+});
+
+function handleMessage(msg: InboundMessage): void {
+	switch (msg.type) {
+		case "startScanning":
+			void scanCycle.start().catch(reportScanError);
+			break;
+		case "stopScanning":
+			void scanCycle.stop().catch(reportScanError);
+			break;
+	}
 }
 
 function maybeStartServer(): Promise<void> {
@@ -268,17 +317,17 @@ async function main(): Promise<void> {
 	noble.on("stateChange", (state) => {
 		switch (state) {
 			case "poweredOn":
-				startScanning();
+				void scanCycle.start().catch(reportScanError);
 				break;
 			case "poweredOff":
-				stopScanning();
+				void scanCycle.stop().catch(reportScanError);
 				break;
 		}
 		console.log(`driver state is ${state}`);
 		sendAsync({ type: "driverState", driverState: state });
 	});
 	if (noble.state === "poweredOn") {
-		startScanning();
+		void scanCycle.start().catch(reportScanError);
 	}
 	sendAsync({ type: "driverState", driverState: noble.state });
 }

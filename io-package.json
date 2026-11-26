@@ -111,10 +111,13 @@
 	"native": {
 		"services": "",
 		"hciDevice": 0,
+		"scanIntervalMinutes": 0,
+		"scanWindowSeconds": 10,
 		"server": "",
 		"plugins": "",
 		"xiaomiBindkeys": "",
 		"allowEmptyDevices": false,
+		"presenceDevices": [],
 		"rssiThrottle": 0
 	},
 	"objects": [],
