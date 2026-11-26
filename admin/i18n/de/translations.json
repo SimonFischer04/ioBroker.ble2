@@ -75,6 +75,8 @@
     "Enter the Bluetooth MAC address and bindkey for each encrypted BTHome device.": "Gib für jedes verschlüsselte BTHome-Gerät die Bluetooth-MAC-Adresse und den Bindkey ein.",
     "Reset RSSI after inactivity [s]": "RSSI nach Inaktivität zurücksetzen [s]",
     "Set RSSI to 0 after this many seconds without an advertisement from the device. Set to 0 to disable.": "Setzt RSSI nach dieser Zeit ohne Werbepaket vom Gerät auf 0. 0 deaktiviert die Funktion.",
+    "Mi Flora battery polling (MAC addresses)": "Mi-Flora-Batterieabfrage (MAC-Adressen)",
+    "Add one address per line. A gateway that can connect is required.": "Eine Adresse pro Zeile eintragen. Ein verbindungsfähiges Gateway ist erforderlich.",
     "Enter the MAC address and bindkey for each encrypted Xiaomi MiBeacon device.": "MAC-Adresse und Bindkey für jedes verschlüsselte Xiaomi-MiBeacon-Gerät eingeben.",
     "Enter a 24- or 32-digit hexadecimal Xiaomi bindkey.": "Einen 24- oder 32-stelligen hexadezimalen Xiaomi-Bindkey eingeben."
 }

@@ -2,6 +2,7 @@ import * as utils from "@iobroker/adapter-core";
 import { createMessageHandler } from "./api/message-handler";
 import { ConnectionManager } from "./connections/connection-manager";
 import { DeviceRegistry } from "./devices/device-registry";
+import { MiFloraBattery } from "./drivers/mi-flora-battery";
 import {
 	createHttpFirmwareSource,
 	DEFAULT_FIRMWARE_URL,
@@ -36,6 +37,7 @@ let gateways: GatewayRegistry | undefined;
 let remoteGateway: RemoteGatewayTransport | undefined;
 let connections: ConnectionManager | undefined;
 let pvvx: PvvxDriver | undefined;
+let miFloraBattery: MiFloraBattery | undefined;
 let pvvxUpdater: PvvxUpdater | undefined;
 let handleMessage: ((obj: ioBroker.Message) => void) | undefined;
 /** The sources of advertisements that are in use */
@@ -233,6 +235,7 @@ const adapter = utils.adapter({
 			onAdvertisement: (peripheral) => {
 				// Connections need to know every device in range, also the ones that are not decoded
 				devices.track(peripheral);
+				miFloraBattery?.observe(peripheral);
 				if (
 					matchesServiceFilter(peripheral, services, manufacturerIds)
 				) {
@@ -256,6 +259,18 @@ const adapter = utils.adapter({
 			setTimeout: (callback, ms) => adapter.setTimeout(callback, ms),
 			clearTimeout: (timer) => adapter.clearTimeout(timer),
 		});
+
+		const plants = parseDeviceList(adapter.config.miFloraBatteryDevices);
+		for (const address of plants.invalid) {
+			adapter.log.warn(`Ignoring invalid Mi Flora address "${address}"`);
+		}
+		if (plants.addresses.length > 0) {
+			miFloraBattery = new MiFloraBattery(
+				adapter,
+				connections,
+				plants.addresses,
+			);
+		}
 
 		// Sets the clock of pvvx thermometers through the gateways
 		const pvvxList = parseDeviceList(adapter.config.pvvxDevices);
@@ -370,6 +385,7 @@ const adapter = utils.adapter({
 			// No new jobs for the connections
 			pvvxUpdater?.dispose();
 			pvvx?.dispose();
+			miFloraBattery?.dispose();
 			// Before the transports, so the sessions can still say goodbye to their gateways
 			connections?.dispose();
 			for (const transport of transports) {
