@@ -165,6 +165,33 @@
             "lg": 6,
             "xl": 6
         },
+        "scanIntervalMinutes": {
+            "type": "number",
+            "label": "Local scan interval [min]",
+            "help": "Minutes between scan starts. Set to 0 for continuous scanning.",
+            "min": 0,
+            "max": 1440,
+            "step": 1,
+            "xs": 12,
+            "sm": 6,
+            "md": 4,
+            "lg": 4,
+            "xl": 4
+        },
+        "scanWindowSeconds": {
+            "type": "number",
+            "label": "Local scan duration [s]",
+            "help": "Seconds spent scanning in each interval. Use a duration shorter than the interval.",
+            "hidden": "!data.scanIntervalMinutes",
+            "min": 1,
+            "max": 3600,
+            "step": 1,
+            "xs": 12,
+            "sm": 6,
+            "md": 4,
+            "lg": 4,
+            "xl": 4
+        },
         "presenceDevices": {
             "type": "table",
             "label": "Presence tracking",
