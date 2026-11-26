@@ -60,15 +60,29 @@ If you have any device transmitting specially encoded information via advertisem
   * [Mosquito Repellent](https://www.aliexpress.com/item/32883859984.html)
 * `"mi-flora"`: Original plugin for the flower care plant sensor, now aliased to `"xiaomi"`
 * `"ruuvi-tag"`: [Ruuvi Tag](https://tag.ruuvi.com/) multisensor with firmware versions v1 and v2. **Untested, please give feedback!** 
+* `"switchbot"`: SwitchBot Meter-family temperature, humidity, and battery advertisements (`fd3d` or `0d00`).
 * `"bthome"`: Sensors using the [BTHome](https://bthome.io) protocol. For now this is limited to the `v2` revision of the protocol and does not support encrypted packets.
 * `"mi-scale"`: Mi Scale V1 and V2 broadcast weight in kilograms and a stabilized flag (`181d` and `181b`).
 * `"mopeka"`: Mopeka Pro Check LPG tank sensors (standard sensor type `0x03`).
+
+To read authenticated Xiaomi MiBeacon v4 or v5 advertisements, enable **Xiaomi** and add the device's Bluetooth MAC address and 32-digit hexadecimal bindkey under **Xiaomi MiBeacon bindkeys**. Use the bindkey assigned when the sensor was paired or configured. ioBroker encrypts the stored configuration. Admin configuration exports include the bindkeys.
 
 For Mopeka, add `mopeka` to **Active plugins** and enable **Accept new devices** while discovering the sensor. Local scanning includes its manufacturer identifier automatically. A remote scanner with service filters also needs `--manufacturerIds 89` to forward manufacturer-only advertisements.
 
 The plugin creates `mopeka_level_raw` (uncalibrated ultrasonic reading), `mopeka_temperature` (°C), `mopeka_battery_v` (V), `mopeka_battery_percent` (CR2032 estimate), and `mopeka_reading_quality` (0: no valid echo, 1: low, 2: medium, 3: high). A reading with quality 0 clears the raw level to `null`; battery and temperature still update. Converting the raw reading to fill percentage, volume, or weight requires calibration for the tank and its contents.
 
 The standard Pro Check layout is verified against [ESPHome](https://github.com/esphome/esphome/blob/dev/esphome/components/mopeka_pro_check/mopeka_pro_check.cpp) and [mopeka-iot-ble](https://github.com/Bluetooth-Devices/mopeka-iot-ble/blob/main/src/mopeka_iot_ble/parser.py). Other Mopeka sensor types are not handled by this plugin.
+
+#### Xiaomi LYWSD03MMC temperature and humidity monitor
+
+The stock firmware can send encrypted Xiaomi measurements. For passive readings with ble2, use compatible custom firmware configured for unencrypted BTHome v2.
+
+1. Check the sensor's hardware revision against the [pvvx ATC_MiThermometer device list](https://github.com/pvvx/ATC_MiThermometer). Follow the firmware project's instructions for that revision, including any special steps for the first update.
+2. On a device with Bluetooth, open [TelinkMiFlasher](https://pvvx.github.io/ATC_MiThermometer/TelinkMiFlasher.html) in a Web Bluetooth browser. Connect to the thermometer and follow the [firmware update instructions](https://github.com/pvvx/ATC_MiThermometer#flashing-or-updating-the-firmware-ota).
+3. Reconnect in the flasher after the sensor restarts. Set the advertising type to **BTHome v2**, leave advertising encryption disabled, and save the settings.
+4. In the ble2 instance settings, enable **BTHome** under **Active plugins** and save. Turn on **Accept new devices** and wait for the sensor's next advertisement. ble2 creates the temperature, humidity, and battery states under the device's Bluetooth address as the readings arrive.
+
+Keep the sensor near the scanner during discovery. If you run a remote scanner with an explicit service filter, include `fcd2` so BTHome advertisements reach the adapter.
 
 ## Publishing releases
 
