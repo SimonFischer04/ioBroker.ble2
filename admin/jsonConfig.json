@@ -245,6 +245,16 @@
                     "lg": 6,
                     "xl": 6
                 },
+                "_pauseLocalScan": {
+                    "type": "state",
+                    "label": "Pause local Bluetooth scanning",
+                    "oid": "options.pauseLocalScan",
+                    "control": "switch",
+                    "foreign": false,
+                    "hidden": "!!data.server",
+                    "xs": 12,
+                    "sm": 6
+                },
                 "scanIntervalMinutes": {
                     "type": "number",
                     "label": "Local scan interval [min]",

@@ -60,6 +60,10 @@ let rssiExpiry: RssiExpiry | undefined;
 
 /** A reference to the scanning process */
 let scanProcess: ChildProcess | undefined;
+let localScanPaused = false;
+let stoppingLocalScan = false;
+let unloading = false;
+const pauseState = "options.pauseLocalScan";
 let socket: Socket | undefined;
 
 // Adapter-Objekt erstellen
@@ -127,6 +131,7 @@ const adapter = utils.adapter({
 		// Beim Start des Adapters sicher stellen, dass keine neuen Geräte erfasst werden,
 		// bis der User es explizit erlaubt.
 		await adapter.setStateAsync("options.allowNewDevices", false, true);
+		await adapter.setStateAsync(pauseState, false, true);
 		const timeoutSeconds = adapter.config.rssiTimeoutSeconds ?? 0;
 		if (
 			Number.isInteger(timeoutSeconds) &&
@@ -206,6 +211,7 @@ const adapter = utils.adapter({
 
 	// is called when adapter shuts down - callback has to be called under any circumstances!
 	unload: (callback) => {
+		unloading = true;
 		try {
 			rssiExpiry?.stop();
 			devicePresence?.stop();
@@ -239,6 +245,29 @@ const adapter = utils.adapter({
 
 	// is called if a subscribed state changes
 	stateChange: (id, state) => {
+		if (
+			id === `${adapter.namespace}.${pauseState}` &&
+			state &&
+			!state.ack &&
+			typeof state.val === "boolean"
+		) {
+			localScanPaused = state.val;
+			if (localScanPaused && scanProcess && !stoppingLocalScan) {
+				stoppingLocalScan = true;
+				scanProcess.kill();
+			}
+			if (!stoppingLocalScan) {
+				if (
+					!localScanPaused &&
+					!adapter.config.server &&
+					!process.env.TESTING
+				) {
+					startScanProcess();
+				}
+				adapter.setState(pauseState, localScanPaused, true);
+			}
+			return;
+		}
 		rssiUpdates?.observe(id, state);
 		if (
 			/options\.allowNewDevices$/.test(id) &&
@@ -339,6 +368,9 @@ const adapter = utils.adapter({
 });
 
 function startScanProcess(): void {
+	if (scanProcess || localScanPaused || unloading) {
+		return;
+	}
 	const args: string[] = ["-s", ...services];
 	const manufacturerIds = [
 		...new Set(enabledPlugins.flatMap((p) => p.manufacturerIds ?? [])),
@@ -372,21 +404,41 @@ function startScanProcess(): void {
 		}
 	}
 	adapter.log.info("starting scanner process...");
-	scanProcess = fork(path.join(__dirname, "scanProcess"), args, {
+	const child = fork(path.join(__dirname, "scanProcess"), args, {
 		stdio: ["pipe", "pipe", "pipe", "ipc"],
-	}).on("exit", (code, signal) => {
-		if (
+	});
+	scanProcess = child;
+	child.once("exit", (code, signal) => {
+		const wasPaused = stoppingLocalScan;
+		scanProcess = undefined;
+		stoppingLocalScan = false;
+		if (unloading) {
+			return;
+		}
+		adapter.setState("info.connection", false, true);
+		if (wasPaused) {
+			if (!localScanPaused) {
+				startScanProcess();
+			}
+			// Acknowledge only after the child released the local Bluetooth controller.
+			adapter.setState(pauseState, localScanPaused, true);
+		} else if (
 			!signal &&
 			code !== 0 &&
 			code !== ScanExitCodes.RequireNobleFailed
 		) {
 			adapter.log.warn("scanner process crashed, restarting...");
 			setImmediate(startScanProcess);
-		} else {
-			scanProcess = undefined;
 		}
 	});
-	scanProcess.on("message", getMessageReviver(handleMessage));
+	child.on(
+		"message",
+		getMessageReviver<ScanMessage>((message) => {
+			if (!unloading && !stoppingLocalScan && scanProcess === child) {
+				handleMessage(message);
+			}
+		}),
+	);
 }
 
 function connectToBLEServer(): void {

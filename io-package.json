@@ -168,6 +168,19 @@
 			"native": {}
 		},
 		{
+			"_id": "options.pauseLocalScan",
+			"type": "state",
+			"common": {
+				"name": "Pause local Bluetooth scanning",
+				"type": "boolean",
+				"role": "switch.enable",
+				"read": true,
+				"write": true,
+				"def": false
+			},
+			"native": {}
+		},
+		{
 			"_id": "options.allowNewDevices",
 			"type": "state",
 			"common": {
