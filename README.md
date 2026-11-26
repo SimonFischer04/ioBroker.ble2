@@ -71,6 +71,7 @@ If you have any device transmitting specially encoded information via advertisem
 * `"eddystone"`: Eddystone UID, URL, and EID identifiers and unencrypted telemetry (`feaa`).
 * `"ruuvi-tag"`: [Ruuvi Tag](https://tag.ruuvi.com/) multisensor with firmware versions v1 and v2. **Untested, please give feedback!** 
 * `"atc"`: Temperature, humidity, battery level, and voltage from unencrypted ATC1441 and PVVX Custom advertisements (`181a`).
+* `"magicswitchbot"`: Battery level and password status from MagicSwitchBot advertisements. For remote scanners with filters, include manufacturer ID 1282.
 * `"switchbot"`: SwitchBot Meter-family temperature, humidity, and battery advertisements (`fd3d` or `0d00`).
 * `"bthome"`: Sensors using [BTHome v2](https://bthome.io), including encrypted advertisements.
 * `"mi-scale"`: Mi Scale V1 and V2 broadcast weight in kilograms and a stabilized flag (`181d` and `181b`).
