@@ -156,6 +156,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * **BREAKING:** Rename the maintained fork to `iobroker.ble2` with the `ble2` adapter namespace.
 * **BREAKING:** Require Node.js 22.19 or newer; test Node.js 22, 24, and 26 on Linux, Windows, and macOS.
 * Added BTHome signed counters, signed power, volume storage, and direction measurements.
+* Use the latest Xiaomi measurements when one scan result contains multiple MiBeacon frames.
 * Fixed discovery and decoding of Ruuvi Tag manufacturer-only advertisements, including packets received after empty or unrelated frames.
 * Ignore invalid Mi Flora soil moisture readings above 100% to preserve the last valid measurement.
 
