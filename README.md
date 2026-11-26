@@ -24,6 +24,8 @@ sudo setcap cap_net_raw+eip $(eval readlink -f `which node`)
 ```
 which requires `libcap2-bin` to be installed.
 
+If `info.driverState` is `driverError`, check the instance log for the scanner's Node.js version, OS, architecture, and load error. A missing native file or a `NODE_MODULE_VERSION` mismatch indicates a driver built for a different environment or an incomplete installation. On Linux, install the packages above and reinstall the `ble2` adapter through ioBroker using the Node.js installation that runs js-controller. A standalone scanner prints the same diagnosis to stderr.
+
 ## Configuration
 
 **Reset RSSI after inactivity [s]** sets a device's `rssi` to `0` after the configured time without an advertisement. A fresh advertisement restores the measured value. Use a timeout longer than the device's normal advertising interval. The default `0` disables the reset.
