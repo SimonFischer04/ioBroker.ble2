@@ -245,6 +245,17 @@
                     "lg": 6,
                     "xl": 6
                 },
+                "scannerIdleRestartMinutes": {
+                    "type": "number",
+                    "label": "Restart an idle local scanner [min]",
+                    "help": "Count only active scan time without any Bluetooth packets. Set to 0 to disable.",
+                    "hidden": "!!data.server",
+                    "min": 0,
+                    "max": 1440,
+                    "step": 1,
+                    "xs": 12,
+                    "sm": 6
+                },
                 "scanIntervalMinutes": {
                     "type": "number",
                     "label": "Local scan interval [min]",

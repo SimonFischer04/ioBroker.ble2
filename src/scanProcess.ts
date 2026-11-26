@@ -42,6 +42,11 @@ const argv = yargs
 			desc: "Bluetooth company identifiers to scan for in addition to services",
 			default: [],
 		},
+		reportScanActivity: {
+			type: "boolean",
+			desc: "Report filtered packets to the parent scanner watchdog",
+			default: false,
+		},
 		scanInterval: {
 			type: "number",
 			desc: "Seconds between scan starts (0 for continuous scanning)",
@@ -161,11 +166,21 @@ function serializePeripheral(peripheral: Noble.Peripheral): PeripheralInfo {
 	]);
 }
 
+let lastActivityReport = -Infinity;
+
 function onDiscover(peripheral?: Noble.Peripheral): void {
 	if (peripheral == undefined) {
 		return;
 	}
 	if (!matchesScanFilter(peripheral, argv.services, argv.manufacturerIds)) {
+		if (
+			process.send &&
+			argv.reportScanActivity &&
+			performance.now() - lastActivityReport >= 1000
+		) {
+			lastActivityReport = performance.now();
+			void sendAsync({ type: "scanActivity" });
+		}
 		return;
 	}
 	sendAsync({
@@ -190,7 +205,9 @@ async function startScanning(): Promise<void> {
 	// combined filter in onDiscover when a plugin needs manufacturer data.
 	try {
 		await noble.startScanningAsync(
-			argv.manufacturerIds.length > 0 ? [] : argv.services,
+			argv.reportScanActivity || argv.manufacturerIds.length > 0
+				? []
+				: argv.services,
 			true,
 		);
 	} catch (error) {

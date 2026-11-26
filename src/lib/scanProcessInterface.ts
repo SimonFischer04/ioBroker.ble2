@@ -23,6 +23,9 @@ export type ScanMessage =
 			error: Error;
 	  }
 	| {
+			type: "scanActivity";
+	  }
+	| {
 			type: "connected";
 	  }
 	| {

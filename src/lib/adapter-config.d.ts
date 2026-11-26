@@ -8,6 +8,7 @@ declare global {
 			hciDevice: number | string;
 			scanIntervalMinutes?: number;
 			scanWindowSeconds?: number;
+			scannerIdleRestartMinutes?: number;
 			plugins: string;
 			xiaomiBindkeys?: string;
 			bthomeBindkeys?: string;

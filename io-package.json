@@ -113,6 +113,7 @@
 		"hciDevice": 0,
 		"scanIntervalMinutes": 0,
 		"scanWindowSeconds": 10,
+		"scannerIdleRestartMinutes": 0,
 		"server": "",
 		"plugins": "",
 		"xiaomiBindkeys": "",

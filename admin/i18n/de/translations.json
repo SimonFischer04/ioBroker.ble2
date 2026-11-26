@@ -62,5 +62,7 @@
     "Packets to confirm presence": "Pakete zur Bestätigung der Anwesenheit",
     "Full score decay time [s]": "Abbauzeit bei vollem Punktestand [s]",
     "BTHome bindkeys": "BTHome-Bindkeys",
-    "Enter the Bluetooth MAC address and bindkey for each encrypted BTHome device.": "Gib für jedes verschlüsselte BTHome-Gerät die Bluetooth-MAC-Adresse und den Bindkey ein."
+    "Enter the Bluetooth MAC address and bindkey for each encrypted BTHome device.": "Gib für jedes verschlüsselte BTHome-Gerät die Bluetooth-MAC-Adresse und den Bindkey ein.",
+    "Restart an idle local scanner [min]": "Inaktiven lokalen Scanner neu starten [min]",
+    "Count only active scan time without any Bluetooth packets. Set to 0 to disable.": "Nur aktive Scanzeit ohne Bluetooth-Pakete zählen. Zum Deaktivieren 0 einstellen."
 }

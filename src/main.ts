@@ -13,6 +13,7 @@ import {
 import { ObjectCache } from "./lib/object-cache";
 import { RssiExpiry } from "./lib/rssi-expiry";
 import { RssiUpdates } from "./lib/rssi-updates";
+import { ScannerIdleMonitor } from "./lib/scanner-idle-monitor";
 import {
 	ScanExitCodes,
 	getMessageReviver,
@@ -60,6 +61,7 @@ let rssiExpiry: RssiExpiry | undefined;
 
 /** A reference to the scanning process */
 let scanProcess: ChildProcess | undefined;
+let unloading = false;
 let socket: Socket | undefined;
 
 // Adapter-Objekt erstellen
@@ -206,6 +208,7 @@ const adapter = utils.adapter({
 
 	// is called when adapter shuts down - callback has to be called under any circumstances!
 	unload: (callback) => {
+		unloading = true;
 		try {
 			rssiExpiry?.stop();
 			devicePresence?.stop();
@@ -339,6 +342,9 @@ const adapter = utils.adapter({
 });
 
 function startScanProcess(): void {
+	if (unloading || scanProcess) {
+		return;
+	}
 	const args: string[] = ["-s", ...services];
 	const manufacturerIds = [
 		...new Set(enabledPlugins.flatMap((p) => p.manufacturerIds ?? [])),
@@ -371,22 +377,68 @@ function startScanProcess(): void {
 			);
 		}
 	}
+	const idleMinutes = adapter.config.scannerIdleRestartMinutes ?? 0;
+	const recoveryEnabled =
+		Number.isInteger(idleMinutes) && idleMinutes > 0 && idleMinutes <= 1440;
+	if (recoveryEnabled) {
+		args.push("--reportScanActivity");
+	}
 	adapter.log.info("starting scanner process...");
-	scanProcess = fork(path.join(__dirname, "scanProcess"), args, {
+	const child = fork(path.join(__dirname, "scanProcess"), args, {
 		stdio: ["pipe", "pipe", "pipe", "ipc"],
-	}).on("exit", (code, signal) => {
+	});
+	scanProcess = child;
+	let restartRequested = false;
+	const monitor = recoveryEnabled
+		? new ScannerIdleMonitor(adapter, idleMinutes * 60_000, () => {
+				if (!unloading && scanProcess === child) {
+					adapter.log.warn(
+						"No Bluetooth packets during active scanning. Restarting the local scanner.",
+					);
+					restartRequested = child.kill();
+				}
+			})
+		: undefined;
+	child.once("exit", (code, signal) => {
+		monitor?.stop();
+		scanProcess = undefined;
+		if (unloading) {
+			return;
+		}
+		void adapter.setState("info.connection", false, true);
 		if (
-			!signal &&
-			code !== 0 &&
-			code !== ScanExitCodes.RequireNobleFailed
+			restartRequested ||
+			(!signal && code !== 0 && code !== ScanExitCodes.RequireNobleFailed)
 		) {
-			adapter.log.warn("scanner process crashed, restarting...");
+			if (!restartRequested) {
+				adapter.log.warn("scanner process crashed, restarting...");
+			}
 			setImmediate(startScanProcess);
-		} else {
-			scanProcess = undefined;
 		}
 	});
-	scanProcess.on("message", getMessageReviver(handleMessage));
+	child.on(
+		"message",
+		getMessageReviver<ScanMessage>((message) => {
+			if (unloading || scanProcess !== child) {
+				return;
+			}
+			switch (message.type) {
+				case "connected":
+					monitor?.startWindow();
+					break;
+				case "disconnected":
+					monitor?.endWindow();
+					break;
+				case "discover":
+					monitor?.packet();
+					break;
+				case "scanActivity":
+					monitor?.packet();
+					return;
+			}
+			handleMessage(message);
+		}),
+	);
 }
 
 function connectToBLEServer(): void {

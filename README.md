@@ -43,6 +43,8 @@ Remote scanner command-line flags and the TCP protocol are unchanged. For scanne
 
 Set **Local scan interval [min]** and **Local scan duration [s]** to leave the Bluetooth adapter idle between scan windows. The first scan starts immediately. The duration must be shorter than the interval. An interval of `0` keeps continuous scanning. The scanner's connection indicator follows the active scan windows. On a standalone remote scanner, use `--scanInterval` and `--scanDuration`, both in seconds.
 
+Set **Restart an idle local scanner [min]** to recover the local scanner after a period without Bluetooth packets. The timer only counts active scan time. Any packet counts as activity, including packets excluded by service filters. Set the value to 0 to disable recovery. Remote scanners have their own lifecycle.
+
 ## Plugin system
 Build the adapter from source with `npm ci` followed by `npm run build`. The generated backend `build/` directory is not tracked in Git. Published npm packages include the generated files; installation directly from Git is disabled with `common.nogit`.
 
