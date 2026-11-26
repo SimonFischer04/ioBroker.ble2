@@ -55,7 +55,7 @@ exports.runTests = function (suite) {
 				this.timeout(60000);
 				harness = getHarness();
 				await startAdapter(harness, {
-					plugins: "xiaomi, ruuvi-tag, bthome",
+					plugins: "xiaomi, ruuvi-tag, bthome, govee",
 					// Not every device advertises a service, e.g. the RuuviTag
 					services: "*",
 				});
@@ -63,6 +63,54 @@ exports.runTests = function (suite) {
 			});
 
 			after(() => stopAdapter(harness));
+
+			it("decodes the Govee block before a separate Apple block", async function () {
+				this.timeout(30000);
+				const address = "aa:bb:cc:dd:55:01";
+				const apple =
+					"4c000215494e54454c4c495f524f434b535f48575075f2ff0c";
+				const send = (packed) =>
+					deliver(harness, GATEWAY, [
+						{
+							address,
+							data: buildAdvertisement(
+								[0xff, `88ec00${packed}64ff`],
+								[0xff, apple],
+							),
+						},
+					]);
+
+				await send("03e823");
+				await waitForValue(harness, `${address}.temperature`, 25.6);
+				await send("03ec0b");
+				await waitForValue(harness, `${address}.temperature`, 25.7);
+			});
+
+			it("shows every raw manufacturer block for an unhandled device", async function () {
+				this.timeout(30000);
+				const address = "aa:bb:cc:dd:55:02";
+				const blocks = ["ab1201", "cd3402"];
+				await deliver(harness, GATEWAY, [
+					{
+						address,
+						data: buildAdvertisement(
+							[0xff, blocks[0]],
+							[0xff, blocks[1]],
+						),
+					},
+				]);
+				await waitForValue(
+					harness,
+					`${address}.services.manufacturerDataBlocks`,
+					JSON.stringify(blocks),
+				);
+				expect(
+					await getValue(
+						harness,
+						`${address}.services.manufacturerData`,
+					),
+				).to.equal(blocks[1]);
+			});
 
 			it("decodes a BTHome thermometer", async function () {
 				this.timeout(30000);

@@ -48,6 +48,20 @@ describe("lib/ad-parser => parseAdvertisementData()", () => {
 		);
 	});
 
+	it("keeps separate manufacturer blocks in wire order", () => {
+		const packet = parseAdvertisementData(
+			ad([0xff, "88ec0003e82364ff"], [0xff, "4c000215"]),
+		);
+		expect(packet.manufacturerData).to.deep.equal(
+			Buffer.from("4c000215", "hex"),
+		);
+		expect(
+			packet.manufacturerDataBlocks?.map((block) =>
+				block.toString("hex"),
+			),
+		).to.deep.equal(["88ec0003e82364ff", "4c000215"]);
+	});
+
 	it("parses the local name, the TX power and the service lists", () => {
 		const parsed = parseAdvertisementData(
 			ad(

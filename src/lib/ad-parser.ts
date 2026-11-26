@@ -69,6 +69,7 @@ export function parseAdvertisementData(raw: Buffer): AdvertisementData {
 			case 0xff: // Manufacturer specific data
 				// Copy, so the result does not keep the whole input alive
 				ret.manufacturerData = Buffer.from(data);
+				(ret.manufacturerDataBlocks ??= []).push(ret.manufacturerData);
 				break;
 		}
 	}
