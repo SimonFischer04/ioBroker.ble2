@@ -106,6 +106,8 @@
 			]
 		}
 	},
+	"encryptedNative": ["xiaomiBindkeys"],
+	"protectedNative": ["xiaomiBindkeys"],
 	"native": {
 		"services": "",
 		"hciDevice": 0,
@@ -113,6 +115,7 @@
 		"scanWindowSeconds": 10,
 		"server": "",
 		"plugins": "",
+		"xiaomiBindkeys": "",
 		"allowEmptyDevices": false,
 		"rssiThrottle": 0
 	},

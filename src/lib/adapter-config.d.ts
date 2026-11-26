@@ -9,6 +9,7 @@ declare global {
 			scanIntervalMinutes?: number;
 			scanWindowSeconds?: number;
 			plugins: string;
+			xiaomiBindkeys?: string;
 			allowEmptyDevices: boolean;
 			rssiThrottle: number;
 		}
