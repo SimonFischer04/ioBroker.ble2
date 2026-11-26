@@ -18,10 +18,14 @@
     "Ruuvi Tag": "Ruuvi Tag",
     "BTHome": "BTHome",
     "Mopeka Pro Check": "Mopeka Pro Check",
+    "Xiaomi MiBeacon bindkeys": "Xiaomi MiBeacon bindkeys",
+    "Enter the MAC address and bindkey for each encrypted Xiaomi MiBeacon v4 or v5 device.": "Enter the MAC address and bindkey for each encrypted Xiaomi MiBeacon v4 or v5 device.",
+    "Bluetooth MAC address": "Bluetooth MAC address",
+    "Bindkey": "Bindkey",
+    "Enter a valid Bluetooth MAC address.": "Enter a valid Bluetooth MAC address.",
+    "Enter a 32-digit hexadecimal bindkey.": "Enter a 32-digit hexadecimal bindkey.",
     "Presence tracking": "Presence tracking",
     "Add Bluetooth devices that should get a present state.": "Add Bluetooth devices that should get a present state.",
-    "Bluetooth MAC address": "Bluetooth MAC address",
-    "Enter a valid Bluetooth MAC address.": "Enter a valid Bluetooth MAC address.",
     "Packets to confirm presence": "Packets to confirm presence",
     "Full score decay time [s]": "Full score decay time [s]"
 }

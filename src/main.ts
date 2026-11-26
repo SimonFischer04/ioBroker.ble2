@@ -11,6 +11,7 @@ import {
 	extendState,
 } from "./lib/iobroker-objects";
 import { ObjectCache } from "./lib/object-cache";
+import { RssiUpdates } from "./lib/rssi-updates";
 import {
 	ScanExitCodes,
 	getMessageReviver,
@@ -53,8 +54,7 @@ const ignoredNewDeviceIDs = new Set<string>();
 // /** MAC addresses of known devices */
 // let knownDevices: string[] = [];
 
-/** How frequent the RSSI of devices should be updated */
-let rssiUpdateInterval = 0;
+let rssiUpdates: RssiUpdates | undefined;
 
 /** A reference to the scanning process */
 let scanProcess: ChildProcess | undefined;
@@ -111,13 +111,10 @@ const adapter = utils.adapter({
 			_.adapter.log.info(`monitored services: ${services.join(", ")}`);
 		}
 
-		// Limit RSSI updates
-		if (adapter.config.rssiThrottle != null) {
-			rssiUpdateInterval = Math.max(
-				0,
-				Math.min(10000, adapter.config.rssiThrottle),
-			);
-		}
+		rssiUpdates = new RssiUpdates(
+			adapter,
+			Math.max(0, Math.min(10000, adapter.config.rssiThrottle ?? 0)),
+		);
 		// monitor our own states and objects
 		adapter.subscribeStates("*");
 		adapter.subscribeObjects("*");
@@ -192,6 +189,7 @@ const adapter = utils.adapter({
 		} else {
 			// it has been deleted, so delete it from the cache
 			_.objectCache.invalidateObject(id);
+			rssiUpdates?.remove(id);
 			if (devicePresence && id.startsWith(`${adapter.namespace}.`)) {
 				devicePresence.remove(
 					id
@@ -204,6 +202,7 @@ const adapter = utils.adapter({
 
 	// is called if a subscribed state changes
 	stateChange: (id, state) => {
+		rssiUpdates?.observe(id, state);
 		if (
 			/options\.allowNewDevices$/.test(id) &&
 			state != undefined &&
@@ -518,16 +517,11 @@ async function onDiscover(peripheral: PeripheralInfo): Promise<void> {
 		},
 		native: {},
 	});
-	// update RSSI information
-	const rssiState = await adapter.getStateAsync(`${deviceId}.rssi`);
-	if (
-		rssiState == null ||
-		// Allow updating the unchanged state because some people use it for presence detection
-		rssiState.ts + rssiUpdateInterval < Date.now() // But don't update too frequently
-	) {
-		_.adapter.log.debug(`updating rssi state for ${deviceId}`);
-		await adapter.setStateAsync(`${deviceId}.rssi`, peripheral.rssi, true);
-	}
+	// Refresh unchanged values too for users who rely on the state timestamp.
+	await rssiUpdates?.update(
+		`${adapter.namespace}.${deviceId}.rssi`,
+		peripheral.rssi,
+	);
 
 	// Now update device-specific objects and states
 	const context = plugin.createContext(peripheral);
