@@ -124,6 +124,19 @@ An adapter that provides such gateways announces them with `gateway:announce` (`
 
 Enter the addresses of your Mi Flora sensors in **Mi Flora battery polling (MAC addresses)**. When a connection-capable gateway sees a configured plant, the adapter reads its battery level and writes `<mac>.battery`. The first reading is due immediately. After a successful read, another is due the next day. A failed read can be retried after 15 minutes when the gateway sees the sensor again.
 
+## Controlling a SwitchBot Bot
+
+Use the `switchBot` command to press, switch on, switch off, or stop a SwitchBot Bot that a connection-capable gateway can reach. The supported actions are `press`, `on`, `off`, and `stop`. This command uses the standard unencrypted Bot protocol.
+
+```js
+const result = await adapter.sendToAsync("ble2.0", "switchBot", {
+    address: "aa:bb:cc:dd:ee:ff",
+    action: "press",
+});
+```
+
+A successful reply contains `{ error: null, result: {} }` after the Bot confirms the action. Rejection and timeout return a gateway error. For protected or other devices, the gateway interface also provides generic `discoverServices`, `readCharacteristic`, and `writeCharacteristic` commands.
+
 ## Setting the clock of pvvx thermometers
 Thermometers with the [pvvx firmware](https://github.com/pvvx/ATC_MiThermometer) (e.g. Xiaomi LYWSD03MMC) have a clock that drifts and does not know summer time. The adapter can set it to the local time of the ioBroker host, through a gateway that can connect, e.g. an ESPHome Bluetooth proxy with `bluetooth_proxy: active: true` and ioBroker.esphome.
 
@@ -290,6 +303,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 -->
 ### __WORK IN PROGRESS__
 * Read Mi Flora battery levels through a connecting gateway.
+* Add the SwitchBot Bot `switchBot` command for external GATT gateways.
 * Other adapters can deliver BLE advertisements they received, e.g. from ESPHome Bluetooth proxies (`gateway:advertisements`). Several receivers can be used at the same time.
 * The adapter can run without Bluetooth hardware: the Bluetooth adapter of the host can be disabled in the settings, and the Bluetooth driver is an optional dependency now
 * A problem with the Bluetooth adapter of the host no longer terminates the adapter
