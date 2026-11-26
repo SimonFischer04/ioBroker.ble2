@@ -99,6 +99,19 @@ export class NobleLocalTransport implements Transport {
 				this.scanProcess = undefined;
 			}
 		});
+		const child = this.scanProcess;
+		// fork() reports a process that could not be started (e.g. EAGAIN) with "error", not "exit".
+		// Unhandled, that event would stop the adapter, and gateways of other adapters with it.
+		child.on("error", (error) => {
+			adapter.log.error(`Scanner process: ${error.message}`);
+			if (child.pid === undefined && this.scanProcess === child) {
+				this.ctx.gateways.setConnected(
+					NobleLocalTransport.gateway,
+					false,
+				);
+				this.scanProcess = undefined;
+			}
+		});
 		this.scanProcess.on(
 			"message",
 			getMessageReviver<ScanMessage>((message) =>

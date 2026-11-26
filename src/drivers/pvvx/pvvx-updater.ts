@@ -1,7 +1,7 @@
 import type { ConnectionManager } from "../../connections/connection-manager";
 import { PvvxCommandChannel } from "./command-channel";
 import { type FirmwareCatalog, selectImage } from "./firmware-catalog";
-import { checkPreconditions } from "./ota-checks";
+import { checkPreconditions, MIN_RSSI } from "./ota-checks";
 import { transferImage } from "./ota-transfer";
 import {
 	encodeConfigRequest,
@@ -449,6 +449,8 @@ export class PvvxUpdater {
 					priority: "high",
 					timeoutMs: OTA_SESSION_TIMEOUT_MS,
 					requireFeature: "writeSequence",
+					// Not through a weaker gateway either, if the best one cannot connect
+					minRssi: MIN_RSSI,
 				},
 			);
 

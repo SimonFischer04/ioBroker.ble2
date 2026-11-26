@@ -128,9 +128,9 @@ describe("transports/server-list => migrateServerSettings()", () => {
 		expect(migrateServerSettings({ remoteServers: "pi" })).to.be.undefined;
 	});
 
-	it("does nothing when the new setting is already used", () => {
+	it("only removes the leftover old setting when the new one is already used", () => {
 		expect(
 			migrateServerSettings({ server: "old:8734", remoteServers: "pi" }),
-		).to.be.undefined;
+		).to.deep.equal({ server: "" });
 	});
 });

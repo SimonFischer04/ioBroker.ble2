@@ -8,6 +8,34 @@ import type { RemoteServer } from "./server-list";
 import type { Transport, TransportContext } from "./transport";
 
 const RECONNECT_INTERVAL_MS = 10000;
+/** Longest incomplete message kept while waiting for its newline */
+export const MAX_PENDING_FRAME = 1024 * 1024;
+
+/**
+ * Splits the text stream of a scan server into its messages, one per line. Keeps an incomplete
+ * message until the rest arrives, but not beyond maxPending characters.
+ */
+export class FrameReader {
+	public constructor(
+		private readonly maxPending: number = MAX_PENDING_FRAME,
+	) {}
+
+	private pending = "";
+
+	/**
+	 * @param chunk Text as received
+	 * @returns The complete lines, and whether the incomplete rest got too long
+	 */
+	public push(chunk: string): { lines: string[]; overflow: boolean } {
+		this.pending += chunk;
+		const lines = this.pending.split("\n");
+		// The last part is the start of the next message
+		this.pending = lines.pop() ?? "";
+		const overflow = this.pending.length > this.maxPending;
+		if (overflow) this.pending = "";
+		return { lines, overflow };
+	}
+}
 
 export interface NobleRemoteOptions {
 	/**
@@ -60,8 +88,10 @@ export class NobleRemoteTransport implements Transport {
 		const reviver = getMessageReviver<ScanMessage>((message) =>
 			this.handleMessage(message),
 		);
-		let receiveBuffer = "";
+		const frames = new FrameReader();
 		let connected = false;
+		// Characters split across two chunks are only decoded once complete
+		socket.setEncoding("utf8");
 
 		socket
 			.on("close", () => {
@@ -98,16 +128,22 @@ export class NobleRemoteTransport implements Transport {
 				connected = true;
 				this.failing = false;
 				adapter.log.info(`Connected to BLE server ${this.name}`);
-				gateways.setConnected(this.gateway, true);
+				// The gateway is active once the server reports that it scans ("connected", sent
+				// to every new client) or delivers an advertisement, not with the TCP connection
 			})
-			.on("data", (data) => {
+			.on("data", (data: string) => {
 				// Each message ends with a newline. We might receive multiple messages at once,
 				// and we might also receive incomplete messages.
-				receiveBuffer += data.toString();
-				let newlineIndex: number;
-				while ((newlineIndex = receiveBuffer.indexOf("\n")) > -1) {
-					const line = receiveBuffer.slice(0, newlineIndex);
-					receiveBuffer = receiveBuffer.slice(newlineIndex + 1);
+				const { lines, overflow } = frames.push(data);
+				if (overflow) {
+					adapter.log.warn(
+						`BLE server ${this.name} sent a message longer than ${MAX_PENDING_FRAME} characters, connecting again`,
+					);
+					socket.destroy();
+					return;
+				}
+				for (const line of lines) {
+					if (line === "") continue;
 					try {
 						const msg = JSON.parse(line);
 						reviver(msg);

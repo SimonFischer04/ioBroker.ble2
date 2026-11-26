@@ -395,4 +395,11 @@ describe("transports/remote-gateway => links through gateways of other adapters"
 		adapter.answer("gatt:writeSequence", { written: 1 });
 		expect((await rejection(result)).code).to.equal("GATT_ERROR");
 	});
+
+	it("rejects a read answer that is not base64", async () => {
+		const link = await connect();
+		const result = link.read(32);
+		adapter.answer("gatt:read", { data: "%%%" });
+		expect((await rejection(result)).code).to.equal("GATT_ERROR");
+	});
 });

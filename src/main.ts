@@ -61,10 +61,16 @@ const adapter = utils.adapter({
 
 		// Up to 0.14 there was a single remote scan server, which disabled the local Bluetooth adapter
 		const migration = migrateServerSettings(adapter.config);
-		if (migration) {
+		if (migration?.remoteServers !== undefined) {
 			adapter.log.info(
 				`Moving the remote scan server "${migration.remoteServers}" to the list of remote scan servers. The local Bluetooth adapter stays disabled as before.`,
 			);
+		} else if (migration) {
+			adapter.log.debug(
+				'Removing the obsolete setting "server", "remoteServers" is set',
+			);
+		}
+		if (migration) {
 			Object.assign(adapter.config, migration);
 			try {
 				await adapter.extendForeignObjectAsync(

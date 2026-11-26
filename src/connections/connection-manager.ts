@@ -15,6 +15,8 @@ export interface SessionOptions {
 	preferGateway?: string;
 	/** Only gateways with this feature are used */
 	requireFeature?: GatewayFeature;
+	/** Only gateways that receive the device at least this well (dBm) are used, also as fallback */
+	minRssi?: number;
 }
 
 export interface ConnectionManagerContext {
@@ -169,9 +171,11 @@ export class ConnectionManager {
 		address: string,
 		preferGateway?: string,
 		requireFeature?: GatewayFeature,
+		minRssi?: number,
 	): string[] {
 		const candidates = this.ctx.devices
 			.getReceivers(address)
+			.filter((r) => minRssi === undefined || r.rssi >= minRssi)
 			.map((r) => r.gatewayId)
 			.filter((id) => {
 				const gateway = this.ctx.gateways.get(id);
@@ -198,13 +202,17 @@ export class ConnectionManager {
 			address,
 			options.preferGateway,
 			options.requireFeature,
+			options.minRssi,
 		);
 		if (candidates.length === 0) {
 			throw new GatewayError(
 				"NO_GATEWAY",
-				options.requireFeature
+				(options.requireFeature
 					? `No gateway with ${options.requireFeature} receives ${address}`
-					: `No gateway that can connect receives ${address}`,
+					: `No gateway that can connect receives ${address}`) +
+					(options.minRssi === undefined
+						? ""
+						: ` with at least ${options.minRssi} dBm`),
 			);
 		}
 		const addressType = this.ctx.devices.getAddressType(address);

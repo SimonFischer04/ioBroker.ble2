@@ -258,6 +258,20 @@ function maybeStartServer(): Promise<void> {
 		server = createServer((socket) => {
 			console.log("Client connected");
 			clients.add(socket);
+			// A new client needs to know whether the server is scanning right now, the messages
+			// "connected" and "disconnected" are only sent when that changes
+			const snapshot: ScanMessage[] = [
+				{ type: isScanning ? "connected" : "disconnected" },
+			];
+			if (noble) {
+				snapshot.push({
+					type: "driverState",
+					driverState: noble.state,
+				});
+			}
+			for (const message of snapshot) {
+				socket.write(`${JSON.stringify(message)}\n`);
+			}
 
 			// when the connection is closed, unpipe the streams
 			socket.on("close", () => {

@@ -59,6 +59,27 @@ describe("devices/device-registry => DeviceRegistry", () => {
 			.to.be.false;
 	});
 
+	it("recognizes several packets one gateway delivered before the other", () => {
+		const registry = new DeviceRegistry();
+		expect(registry.observe(peripheral("a", -80, "4000a5"), 1000).duplicate)
+			.to.be.false;
+		expect(registry.observe(peripheral("a", -80, "4000a6"), 1100).duplicate)
+			.to.be.false;
+		// Gateway b delivers the same pair later, within the window: no old measurement again
+		expect(registry.observe(peripheral("b", -60, "4000a5"), 1200).duplicate)
+			.to.be.true;
+		expect(registry.observe(peripheral("b", -60, "4000a6"), 1300).duplicate)
+			.to.be.true;
+	});
+
+	it("still passes on retransmissions of the same gateway with other packets in between", () => {
+		const registry = new DeviceRegistry();
+		registry.observe(peripheral("a", -80, "4000a5"), 1000);
+		registry.observe(peripheral("a", -80, "4000a6"), 1100);
+		expect(registry.observe(peripheral("a", -80, "4000a5"), 1200).duplicate)
+			.to.be.false;
+	});
+
 	it("does not mix up devices", () => {
 		const registry = new DeviceRegistry();
 		registry.observe(peripheral("a", -80), 1000);

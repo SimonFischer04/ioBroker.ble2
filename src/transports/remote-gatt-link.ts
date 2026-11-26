@@ -120,7 +120,11 @@ export class RemoteGattLink implements GattLink {
 			{ handle },
 			GATT_TIMEOUTS_MS.read,
 		);
-		if (typeof result?.data !== "string") {
+		// Buffer.from() would turn invalid base64 into an empty value without complaint
+		if (
+			typeof result?.data !== "string" ||
+			!BASE64_REGEX.test(result.data)
+		) {
 			throw new GatewayError(
 				"GATT_ERROR",
 				`Unexpected answer to ${GattCommands.read}`,

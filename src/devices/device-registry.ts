@@ -31,13 +31,19 @@ interface DeviceEntry {
 	lastSeen: number;
 	/** The address type the device last reported, if it was known */
 	addressType?: "public" | "random";
-	/** The payload that was last passed on to the decoders... */
-	processedFingerprint?: string;
-	/** ...when... */
-	processedAt: number;
-	/** ...and which gateway delivered it */
-	processedGateway?: string;
+	/** The payloads passed on to the decoders within the dedupe window, oldest first */
+	processed: ProcessedPacket[];
 }
+
+interface ProcessedPacket {
+	fingerprint: string;
+	/** The gateway that delivered it */
+	gateway: string;
+	at: number;
+}
+
+/** Most packets per device remembered for the deduplication */
+const MAX_PROCESSED_PACKETS = 16;
 
 export interface Observation {
 	/** Whether another gateway already delivered this packet, so it must not be decoded again */
@@ -81,7 +87,7 @@ export class DeviceRegistry {
 				address: peripheral.address,
 				gateways: new Map(),
 				lastSeen: now,
-				processedAt: 0,
+				processed: [],
 			};
 			this.devices.set(peripheral.address, device);
 		}
@@ -122,15 +128,20 @@ export class DeviceRegistry {
 		// A packet is a duplicate when a different gateway delivered the same payload just before.
 		// The same gateway delivering it again is a retransmission of the device and treated as
 		// before: it is passed on.
+		// Several packets are remembered: gateway A may deliver P1 and P2 before gateway B
+		// delivers the same pair.
 		const fingerprint = getFingerprint(peripheral);
-		const duplicate =
-			device.processedFingerprint === fingerprint &&
-			device.processedGateway !== gatewayId &&
-			now - device.processedAt < this.options.dedupeWindowMs;
+		device.processed = device.processed.filter(
+			(p) => now - p.at < this.options.dedupeWindowMs,
+		);
+		const duplicate = device.processed.some(
+			(p) => p.fingerprint === fingerprint && p.gateway !== gatewayId,
+		);
 		if (!duplicate) {
-			device.processedFingerprint = fingerprint;
-			device.processedGateway = gatewayId;
-			device.processedAt = now;
+			device.processed.push({ fingerprint, gateway: gatewayId, at: now });
+			if (device.processed.length > MAX_PROCESSED_PACKETS) {
+				device.processed.shift();
+			}
 		}
 
 		let bestRssi = peripheral.rssi;

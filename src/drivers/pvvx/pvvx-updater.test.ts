@@ -13,6 +13,7 @@ import {
 	VERIFY_DELAY_MS,
 	VERIFY_RETRY_MS,
 } from "./pvvx-updater";
+import { MIN_RSSI } from "./ota-checks";
 import { buildTestImage } from "./test-image";
 
 const FIRST = "a4:c1:38:12:34:56";
@@ -401,6 +402,7 @@ describe("drivers/pvvx/pvvx-updater => PvvxUpdater", () => {
 				priority: "high",
 				timeoutMs: OTA_SESSION_TIMEOUT_MS,
 				requireFeature: "writeSequence",
+				minRssi: MIN_RSSI,
 			});
 			// The update session, then one to read the new version
 			expect(connections.sessions).to.have.lengthOf(2);

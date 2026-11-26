@@ -111,14 +111,15 @@ export interface ServerSettings {
  * work alongside the local Bluetooth adapter.
  *
  * Returns the changes that keep the behaviour of such a configuration, undefined if there is nothing
- * to migrate.
+ * to migrate. A leftover "server" next to "remoteServers" is only removed: otherwise it would come back
+ * as soon as the user empties "remoteServers".
  *
  * @param native
  */
 export function migrateServerSettings(
 	native: ServerSettings,
 ):
-	| { server: string; remoteServers: string; localScanner: boolean }
+	| { server: string; remoteServers?: string; localScanner?: boolean }
 	| undefined {
 	const legacy =
 		typeof native.server === "string" ? native.server.trim() : "";
@@ -131,7 +132,7 @@ export function migrateServerSettings(
 			: "";
 	// Both set: the new setting was saved by the new admin UI, the old one is a leftover
 	if (current !== "") {
-		return undefined;
+		return { server: "" };
 	}
 	return { server: "", remoteServers: legacy, localScanner: false };
 }

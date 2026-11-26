@@ -49,13 +49,25 @@ export function createHttpFirmwareSource(
 					`${url} is larger than ${MAX_DOWNLOAD_SIZE} bytes`,
 				);
 			}
-			const data = Buffer.from(await response.arrayBuffer());
-			if (data.length > MAX_DOWNLOAD_SIZE) {
-				throw new Error(
-					`${url} is larger than ${MAX_DOWNLOAD_SIZE} bytes`,
-				);
+			// Read piece by piece: Content-Length may be missing or describe the compressed size
+			const reader = response.body?.getReader();
+			if (!reader) throw new Error(`${url}: empty response`);
+			const chunks: Uint8Array[] = [];
+			let size = 0;
+			for (;;) {
+				const { done, value } = await reader.read();
+				if (done) break;
+				size += value.length;
+				if (size > MAX_DOWNLOAD_SIZE) {
+					await reader.cancel().catch(() => {});
+					controller.abort();
+					throw new Error(
+						`${url} is larger than ${MAX_DOWNLOAD_SIZE} bytes`,
+					);
+				}
+				chunks.push(value);
 			}
-			return data;
+			return Buffer.concat(chunks);
 		} finally {
 			clearTimeout(timer);
 		}
