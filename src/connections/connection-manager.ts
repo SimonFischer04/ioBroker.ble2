@@ -14,6 +14,10 @@ export interface SessionOptions {
 	timeoutMs?: number;
 	/** Full ID of the gateway to try first */
 	preferGateway?: string;
+	/** Route to this gateway even when it has never reported the device. */
+	gatewayId?: string;
+	/** Override the address type when it is known by the caller. */
+	addressType?: "public" | "random";
 	/** Only gateways with this feature are used */
 	requireFeature?: GatewayFeature;
 	/** Only gateways that receive the device at least this well (dBm) are used, also as fallback */
@@ -187,16 +191,7 @@ export class ConnectionManager {
 			.getReceivers(address)
 			.filter((r) => minRssi === undefined || r.rssi >= minRssi)
 			.map((r) => r.gatewayId)
-			.filter((id) => {
-				const gateway = this.ctx.gateways.get(id);
-				return (
-					gateway?.connected === true &&
-					gateway.connect === true &&
-					gateway.freeSlots !== 0 &&
-					(!requireFeature ||
-						gateway.features.includes(requireFeature))
-				);
-			});
+			.filter((id) => this.canConnect(id, requireFeature));
 		if (preferGateway && candidates.includes(preferGateway)) {
 			candidates.splice(candidates.indexOf(preferGateway), 1);
 			candidates.unshift(preferGateway);
@@ -204,16 +199,50 @@ export class ConnectionManager {
 		return candidates;
 	}
 
+	private canConnect(id: string, requireFeature?: GatewayFeature): boolean {
+		const gateway = this.ctx.gateways.get(id);
+		return (
+			gateway?.connected === true &&
+			gateway.connect === true &&
+			gateway.freeSlots !== 0 &&
+			(!requireFeature || gateway.features.includes(requireFeature))
+		);
+	}
+
 	private async connect(
 		address: string,
 		options: SessionOptions,
 	): Promise<GattLink> {
-		const candidates = this.getCandidates(
-			address,
-			options.preferGateway,
-			options.requireFeature,
-			options.minRssi,
-		);
+		let candidates: string[];
+		if (options.gatewayId !== undefined) {
+			const reception = this.ctx.devices
+				.getReceivers(address)
+				.find((r) => r.gatewayId === options.gatewayId);
+			if (!this.canConnect(options.gatewayId, options.requireFeature)) {
+				throw new GatewayError(
+					"NO_GATEWAY",
+					`Gateway ${options.gatewayId} cannot connect`,
+				);
+			}
+			// A named gateway must meet the signal requirement as well
+			if (
+				options.minRssi !== undefined &&
+				(reception === undefined || reception.rssi < options.minRssi)
+			) {
+				throw new GatewayError(
+					"NO_GATEWAY",
+					`Gateway ${options.gatewayId} does not receive ${address} with at least ${options.minRssi} dBm`,
+				);
+			}
+			candidates = [options.gatewayId];
+		} else {
+			candidates = this.getCandidates(
+				address,
+				options.preferGateway,
+				options.requireFeature,
+				options.minRssi,
+			);
+		}
 		if (candidates.length === 0) {
 			throw new GatewayError(
 				"NO_GATEWAY",
@@ -225,7 +254,8 @@ export class ConnectionManager {
 						: ` with at least ${options.minRssi} dBm`),
 			);
 		}
-		const addressType = this.ctx.devices.getAddressType(address);
+		const addressType =
+			options.addressType ?? this.ctx.devices.getAddressType(address);
 		let lastError: unknown;
 		for (const gatewayId of candidates) {
 			try {

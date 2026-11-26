@@ -116,6 +116,8 @@ For every gateway the states `gateways.<id>.connected` and `gateways.<id>.lastAd
 ### Connecting to devices
 `discoverServices`, `readCharacteristic` and `writeCharacteristic` connect to a device, do their work and disconnect again. UUIDs can be given short (`"1f10"`, `"0x1F10"`) or in full, with or without dashes. The adapter connects through the gateway that receives the device best and can connect, tries the next one if that fails, and runs only one request per device at a time. Errors come as `{ error: { code, message } }`, e.g. `NO_GATEWAY` when no gateway that can connect receives the device.
 
+For a device that has not been observed, include the full `gatewayId` from `getGateways` in a `discoverServices`, `readCharacteristic`, or `writeCharacteristic` request. You can also pass `addressType: "public"` or `addressType: "random"`. This directs the connection attempt to the specified gateway while the device is connectable. Requests without a gateway ID still use the strongest receiver.
+
 So far, only gateways of other adapters can connect, e.g. ESPHome Bluetooth proxies through ioBroker.esphome, not the Bluetooth adapter of the host or the remote scan servers.
 
 An adapter that provides such gateways announces them with `gateway:announce` (`{ protocol: "ble-gateway/1", gateways: [{ gatewayId, connect: true, freeSlots, slotLimit, features }] }`). `features` lists optional commands, so far `"writeSequence"`: `gatt:writeSequence` writes up to 64 values to one handle and reads it afterwards, the firmware update needs it. The providing adapter answers the `gatt:*` commands this adapter sends to it and reports ended connections and notifications with `gateway:connectionState` and `gateway:notification`. The details are in [`docs/spec-phase-2-gatt.md`](docs/spec-phase-2-gatt.md), part A, for `gatt:writeSequence` in [`docs/spec-phase-4-pvvx-ota.md`](docs/spec-phase-4-pvvx-ota.md), part A, and the types in `src/lib/gateway-protocol.ts`.
@@ -311,6 +313,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 -->
 ### __WORK IN PROGRESS__
 * Read Mi Flora battery levels through a connecting gateway.
+* Allow a named GATT gateway for devices that have not been observed.
 * Read calibrated Parrot Flower Power data through a connecting gateway.
 * Read protected temperature and battery data from Comet Blue thermostats.
 * Add the SwitchBot Bot `switchBot` command for external GATT gateways.

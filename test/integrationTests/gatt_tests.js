@@ -103,6 +103,57 @@ exports.runTests = function (suite) {
 
 		after(() => stopAdapter(harness));
 
+		it("routes an unseen device to a named gateway with its address type", async function () {
+			this.timeout(15000);
+			const unseen = "ca:fe:00:00:00:33";
+			await sendToAdapter(harness, "gateway:announce", {
+				protocol: "ble-gateway/1",
+				gateways: [{ gatewayId: "manual", connect: true }],
+			});
+			expect(
+				(await read(harness, { address: unseen })).error.code,
+			).to.equal("NO_GATEWAY");
+			expect(
+				(
+					await read(harness, {
+						address: unseen,
+						gatewayId: "test.0:unknown",
+					})
+				).error.code,
+			).to.equal("NO_GATEWAY");
+			expect(
+				(
+					await read(harness, {
+						address: unseen,
+						gatewayId: "test.0:manual",
+						addressType: "wrong",
+					})
+				).error.code,
+			).to.equal("INVALID_PAYLOAD");
+			expect(
+				await read(harness, {
+					address: unseen,
+					gatewayId: "test.0:manual",
+					addressType: "random",
+				}),
+			).to.deep.equal({
+				error: null,
+				result: { data: Buffer.from(VALUE, "hex").toString("base64") },
+			});
+			const writes = gateway.commands.filter(
+				({ command }) => command === "gatt:connect",
+			);
+			expect(
+				writes.map(({ message }) => ({
+					address: message.address,
+					addressType: message.addressType,
+					gatewayId: message.gatewayId,
+				})),
+			).to.deep.equal([
+				{ address: unseen, addressType: "random", gatewayId: "manual" },
+			]);
+		});
+
 		it("reads a characteristic", async function () {
 			this.timeout(30000);
 			const epoch = await prepare(harness, TWO_GATEWAYS);

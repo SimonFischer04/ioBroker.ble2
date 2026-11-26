@@ -356,6 +356,26 @@ describe("connections/connection-manager => ConnectionManager", () => {
 			expect(provider.connects).to.deep.equal([]);
 		});
 
+		it("a named gateway must also meet minRssi", async () => {
+			const error = await rejection(
+				manager.withSession(DEVICE, async () => {}, {
+					gatewayId: KELLER,
+					minRssi: -80,
+				}),
+			);
+			expect(error.code).to.equal("NO_GATEWAY");
+			expect(error.message).to.equal(
+				`Gateway ${KELLER} does not receive ${DEVICE} with at least -80 dBm`,
+			);
+			expect(provider.connects).to.deep.equal([]);
+
+			await manager.withSession(DEVICE, async () => {}, {
+				gatewayId: OG,
+				minRssi: -80,
+			});
+			expect(provider.connects).to.deep.equal([`${OG} ${DEVICE} public`]);
+		});
+
 		it("bestGateway() tells the first candidate and its signal", () => {
 			expect(manager.bestGateway(DEVICE)).to.deep.equal({
 				gatewayId: OG,
