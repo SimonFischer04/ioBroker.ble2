@@ -20,8 +20,8 @@ Dieses Dokument beschreibt **Architektur und Entscheidungen**. Es ist keine Arbe
 | 0, 1a | umgesetzt (dieses Repo) | – |
 | 1b | umgesetzt (`DrozmotiX/ioBroker.esphome`, Branch `ccr-ble-gateway-forwarding`) | – |
 | 2 | umgesetzt (dieses Repo, Teil A/B; `DrozmotiX/ioBroker.esphome`, Branch `ccr-ble-gateway-gatt` auf `main`, Teil C). Nicht an Hardware geprüft: Verbindungen über einen echten ESP32, CCCD-Schreiben nach Notify | `docs/spec-phase-2-gatt.md` |
-| 3 | umgesetzt (dieses Repo, `src/drivers/pvvx/`). Nicht an Hardware geprüft: ganzer Ablauf mit echtem Thermometer über echten Proxy, Schreibart `withResponse: false` | `docs/spec-phase-3-pvvx-time.md` |
-| 4 | umgesetzt (dieses Repo, `src/drivers/pvvx/`; `ioBroker.esphome`, Branch `ccr-ble-gateway-gatt`: `gatt:writeSequence`). Vor dem Hardware-Test umgesetzt: H1 bis H5 haben die Annahmen aus der Spezifikation, Abschnitt 0. Nicht an Hardware geprüft | `docs/spec-phase-4-pvvx-ota.md` |
+| 3 | umgesetzt (dieses Repo, `src/plugins/atc/pvvx/`). Nicht an Hardware geprüft: ganzer Ablauf mit echtem Thermometer über echten Proxy, Schreibart `withResponse: false` | `docs/spec-phase-3-pvvx-time.md` |
+| 4 | umgesetzt (dieses Repo, `src/plugins/atc/pvvx/`; `ioBroker.esphome`, Branch `ccr-ble-gateway-gatt`: `gatt:writeSequence`). Vor dem Hardware-Test umgesetzt: H1 bis H5 haben die Annahmen aus der Spezifikation, Abschnitt 0. Nicht an Hardware geprüft | `docs/spec-phase-4-pvvx-ota.md` |
 | 5, 6 | offen | fehlt |
 
 Eine Phase ohne Spezifikation wird nicht umgesetzt.
@@ -108,6 +108,8 @@ Pro MAC-Adresse speichert die Registry `{ gateways: Map<gatewayId, { rssi, lastS
 - Ein Session-Objekt kapselt `discoverServices`, `read`, `write(withResponse)`, `subscribe(notify)` und `close`. Wer es nutzt, sieht nie, welcher Transport dahintersteht.
 
 **E5: Gerätelogik läuft im Adapter (`drivers/`). Die externe API ist zusätzlich da, nicht der Hauptweg.**
+
+> Stand 2026-11-27: Es gibt kein eigenes `drivers/` mehr. Die Gerätelogik ist der optionale aktive Teil eines Plugins (`Plugin.start`, `src/plugins/plugin.ts`), ein Plugin pro Hersteller oder Gerätefamilie. Der Kern (`main.ts`, `message-handler.ts`, `src/lib/plugin-host.ts`) kennt keinen Hersteller.
 Ein pvvx-OTA-Update dauert laut pvvx etwa 4 Minuten und besteht aus Tausenden kleinen Writes. Die Gerätelogik kommt deshalb als **Driver** in `ble`, analog zu den Decoder-Plugins, und nicht in Fremdadapter, die jeden Schritt per `sendTo` anstoßen. Weil der Weg zum ESP aber selbst über `sendTo` zum `esphome`-Adapter führt, braucht die Gateway-Schnittstelle eine **Sammel-Schreiboperation** (`gatt:writeSequence`, siehe §4a). Damit läuft nicht jeder 20-Byte-Write einzeln durch die States-DB. Die `sendTo`-API (Abschnitt 4) bleibt für Fremdadapter mit einfachen GATT-Operationen gedacht.
 
 **E6: ESPHome-Proxies sind das erste neue Backend. Lokale GATT-Verbindungen kommen später.**

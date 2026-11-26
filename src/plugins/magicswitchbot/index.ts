@@ -1,5 +1,6 @@
 import type { PeripheralInfo } from "../../lib/scanProcessInterface";
 import type { Plugin } from "../plugin";
+import { startMagicSwitchBot } from "./active";
 
 const companyId = 0x0502;
 
@@ -62,6 +63,8 @@ const plugin: Plugin<BotReading> = {
 		],
 	}),
 	getValues: (reading) => ({ ...reading }),
+	// Actions over a gateway
+	start: startMagicSwitchBot,
 };
 
 export = plugin;

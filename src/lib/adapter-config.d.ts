@@ -35,23 +35,7 @@ declare global {
 			localScanner?: boolean;
 			/** After how many seconds without advertisements an external gateway is offline */
 			gatewayTimeout?: number;
-			/**
-			 * MAC addresses of pvvx thermometers whose clock is set, separated by commas, semicolons,
-			 * spaces or line breaks. Missing in old configurations.
-			 */
-			pvvxDevices?: string;
-			miFloraBatteryDevices?: string;
-			flowerPowerDevices?: string;
-			cyclingPowerDevices?: string;
-			/** Hours between two time syncs of a pvvx device, 0 = no periodic sync. Missing in old configurations = 24. */
-			pvvxSyncInterval?: number;
-			/** Whether the newest pvvx firmware is looked up once a day. Missing in old configurations = true. */
-			pvvxFirmwareCheck?: boolean;
-			/**
-			 * Base URL of firmware.json and the images of the pvvx firmware. Not in the admin, for
-			 * tests and mirrors. Missing or empty = GitHub.
-			 */
-			pvvxFirmwareUrl?: string;
+			// Settings of the plugins are declared in their folders (src/plugins/*/config.d.ts)
 		}
 	}
 }

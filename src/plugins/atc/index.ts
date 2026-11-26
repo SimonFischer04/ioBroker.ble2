@@ -1,5 +1,6 @@
 import type { PeripheralInfo } from "../../lib/scanProcessInterface";
 import { getServiceData, type Plugin } from "../plugin";
+import { startPvvx } from "./pvvx";
 
 const service = "181a";
 
@@ -80,6 +81,8 @@ const plugin: Plugin<AtcReading> = {
 		})),
 	}),
 	getValues: (reading) => reading,
+	// Thermometers with the pvvx firmware: clock and firmware updates over a gateway
+	start: startPvvx,
 };
 
 export = plugin;

@@ -1,18 +1,7 @@
 import * as utils from "@iobroker/adapter-core";
-import { createMessageHandler } from "./api/message-handler";
+import { CORE_COMMANDS, createMessageHandler } from "./api/message-handler";
 import { ConnectionManager } from "./connections/connection-manager";
 import { DeviceRegistry } from "./devices/device-registry";
-import { MiFloraBattery } from "./plugins/xiaomi/mi-flora-battery";
-import { FlowerPower } from "./plugins/parrot/flower-power";
-import { CyclingPower } from "./plugins/cycling-power/cycling-power";
-import {
-	createHttpFirmwareSource,
-	DEFAULT_FIRMWARE_URL,
-	FirmwareCatalog,
-} from "./plugins/atc/pvvx/firmware-catalog";
-import { parseDeviceList, PvvxDriver } from "./plugins/atc/pvvx/pvvx-driver";
-import { PvvxUpdater } from "./plugins/atc/pvvx/pvvx-updater";
-import { systemClock } from "./plugins/atc/pvvx/time-sync";
 import { GatewayRegistry } from "./gateways/gateway-registry";
 import type { PeripheralInfo } from "./lib/advertisement";
 import { DevicePresence } from "./lib/device-presence";
@@ -20,6 +9,7 @@ import { Global as _ } from "./lib/global";
 import { parseHciIndex } from "./lib/hci-ports";
 import { extendState } from "./lib/iobroker-objects";
 import { ObjectCache } from "./lib/object-cache";
+import { PluginHost } from "./lib/plugin-host";
 // Load all registered plugins
 import plugins from "./plugins";
 import { AdvertisementProcessor } from "./scanner/advertisement-processor";
@@ -38,11 +28,8 @@ let processor: AdvertisementProcessor | undefined;
 let gateways: GatewayRegistry | undefined;
 let remoteGateway: RemoteGatewayTransport | undefined;
 let connections: ConnectionManager | undefined;
-let pvvx: PvvxDriver | undefined;
-let miFloraBattery: MiFloraBattery | undefined;
-let flowerPower: FlowerPower | undefined;
-let cyclingPower: CyclingPower | undefined;
-let pvvxUpdater: PvvxUpdater | undefined;
+/** Runs the active parts of the plugins, e.g. the connections to a manufacturer's devices */
+let pluginHost: PluginHost | undefined;
 let handleMessage: ((obj: ioBroker.Message) => void) | undefined;
 /** The sources of advertisements that are in use */
 const transports: Transport[] = [];
@@ -239,9 +226,8 @@ const adapter = utils.adapter({
 			onAdvertisement: (peripheral) => {
 				// Connections need to know every device in range, also the ones that are not decoded
 				devices.track(peripheral);
-				miFloraBattery?.observe(peripheral);
-				flowerPower?.observe(peripheral);
-				cyclingPower?.observe(peripheral);
+				// Plugins that connect to devices need to know when they are in range
+				pluginHost?.observe(peripheral);
 				if (
 					matchesServiceFilter(peripheral, services, manufacturerIds)
 				) {
@@ -266,106 +252,8 @@ const adapter = utils.adapter({
 			clearTimeout: (timer) => adapter.clearTimeout(timer),
 		});
 
-		const plants = parseDeviceList(adapter.config.miFloraBatteryDevices);
-		for (const address of plants.invalid) {
-			adapter.log.warn(`Ignoring invalid Mi Flora address "${address}"`);
-		}
-		if (plants.addresses.length > 0) {
-			miFloraBattery = new MiFloraBattery(
-				adapter,
-				connections,
-				plants.addresses,
-			);
-		}
-
-		const flowerSensors = parseDeviceList(
-			adapter.config.flowerPowerDevices,
-		);
-		for (const address of flowerSensors.invalid) {
-			adapter.log.warn(
-				`Ignoring invalid Flower Power sensor address "${address}"`,
-			);
-		}
-		if (flowerSensors.addresses.length > 0) {
-			flowerPower = new FlowerPower(
-				adapter,
-				connections,
-				flowerSensors.addresses,
-			);
-		}
-
-		const powerSensors = parseDeviceList(
-			adapter.config.cyclingPowerDevices,
-		);
-		for (const address of powerSensors.invalid) {
-			adapter.log.warn(
-				`Ignoring invalid Cycling Power sensor address "${address}"`,
-			);
-		}
-		if (powerSensors.addresses.length > 0) {
-			cyclingPower = new CyclingPower(
-				adapter,
-				connections,
-				powerSensors.addresses,
-			);
-		}
-
-		// Sets the clock of pvvx thermometers through the gateways
-		const pvvxList = parseDeviceList(adapter.config.pvvxDevices);
-		for (const entry of pvvxList.invalid) {
-			adapter.log.warn(
-				`Ignoring the invalid pvvx device address "${entry}"`,
-			);
-		}
-		const pvvxInterval = adapter.config.pvvxSyncInterval;
-		pvvx = new PvvxDriver(
-			{
-				adapter,
-				connections,
-				clock: systemClock,
-				setTimeout: (callback, ms) => adapter.setTimeout(callback, ms),
-				clearTimeout: (timer) => adapter.clearTimeout(timer),
-				setInterval: (callback, ms) =>
-					adapter.setInterval(callback, ms),
-				clearInterval: (timer) => adapter.clearInterval(timer),
-				isBusy: (address) => pvvxUpdater?.isBusy(address) ?? false,
-			},
-			{
-				addresses: pvvxList.addresses,
-				syncIntervalHours:
-					typeof pvvxInterval === "number" && pvvxInterval >= 0
-						? pvvxInterval
-						: 24,
-			},
-		);
-
-		// Installs newer firmware on the pvvx thermometers
-		const firmwareUrl = adapter.config.pvvxFirmwareUrl;
-		pvvxUpdater = new PvvxUpdater(
-			{
-				adapter,
-				connections,
-				catalog: new FirmwareCatalog(
-					createHttpFirmwareSource(
-						typeof firmwareUrl === "string" && firmwareUrl !== ""
-							? firmwareUrl
-							: DEFAULT_FIRMWARE_URL,
-					),
-					systemClock,
-				),
-				clock: systemClock,
-				setTimeout: (callback, ms) => adapter.setTimeout(callback, ms),
-				clearTimeout: (timer) => adapter.clearTimeout(timer),
-				setInterval: (callback, ms) =>
-					adapter.setInterval(callback, ms),
-				clearInterval: (timer) => adapter.clearInterval(timer),
-				requestTimeSync: (address) => pvvx?.requestSync(address),
-			},
-			{
-				addresses: pvvxList.addresses,
-				dailyCheck: adapter.config.pvvxFirmwareCheck !== false,
-			},
-		);
+		// The active parts of the plugins, started once the transports run
+		pluginHost = new PluginHost(adapter.log);
 
 		handleMessage = createMessageHandler({
 			adapter,
@@ -373,6 +261,7 @@ const adapter = utils.adapter({
 			devices,
 			remoteGateway,
 			connections,
+			plugins: pluginHost,
 		});
 
 		// And start scanning: with the Bluetooth adapter of this host and with the remote scan
@@ -413,19 +302,19 @@ const adapter = utils.adapter({
 			transport.start();
 		}
 
-		await pvvx.start();
-		await pvvxUpdater.start();
+		// The plugins decide themselves whether they have something to do, e.g. a list of devices
+		await pluginHost.start(
+			plugins,
+			{ adapter, connections, devices },
+			CORE_COMMANDS,
+		);
 	},
 
 	// is called when adapter shuts down - callback has to be called under any circumstances!
 	unload: (callback) => {
 		try {
 			// No new jobs for the connections
-			pvvxUpdater?.dispose();
-			pvvx?.dispose();
-			miFloraBattery?.dispose();
-			flowerPower?.dispose();
-			cyclingPower?.dispose();
+			pluginHost?.dispose();
 			// Before the transports, so the sessions can still say goodbye to their gateways
 			connections?.dispose();
 			for (const transport of transports) {
@@ -478,12 +367,8 @@ const adapter = utils.adapter({
 			return;
 		}
 
-		// The button pvvx.syncTime
-		if (pvvx?.handleStateChange(id, state)) {
-			return;
-		}
-		// The buttons of the firmware update
-		if (pvvxUpdater?.handleStateChange(id, state)) {
+		// States of the plugins, e.g. buttons
+		if (pluginHost?.handleStateChange(id, state)) {
 			return;
 		}
 

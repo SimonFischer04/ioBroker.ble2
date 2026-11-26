@@ -50,16 +50,17 @@ src/connections/test-fakes.ts         FakeLink, FakeProvider for the unit tests 
 src/transports/remote-gatt-link.ts    a link through a gateway of another adapter (gatt:* commands)
 src/lib/uuid.ts, gateway-error.ts     normalizeUuid(), GatewayError / toErrorResponse()
 src/lib/send-request.ts               sendTo with timeout and the answer format of the gateway interface
-src/drivers/pvvx/                     time sync of pvvx thermometers: protocol.ts (pure functions), command-channel.ts
-                                      (command -> notification with the same first byte), time-sync.ts, pvvx-driver.ts
-                                      (settings pvvxDevices / pvvxSyncInterval, timers, states <mac>.pvvx.*).
-                                      fake-pvvx-device.ts is for the unit tests only.
-                                      Firmware update (phase 4): ota-protocol.ts (Telink OTA, pure functions),
-                                      firmware-catalog.ts (firmware.json, images), ota-checks.ts, ota-transfer.ts,
-                                      pvvx-updater.ts (queue, states <mac>.pvvx.firmware*, pvvx.updateAll,
-                                      pvvx.checkFirmware), update-error.ts. test-image.ts is for the tests only
-src/api/message-handler.ts            all sendTo commands the adapter accepts
-src/plugins/                          decoder plugins. Do not change them unless the task is about a decoder.
+src/api/message-handler.ts            sendTo commands of the core; unknown commands go to the plugins
+src/lib/plugin-host.ts                starts the active parts of the plugins, hands them advertisements, own state changes
+                                      and their sendTo commands. The core knows no manufacturer.
+src/lib/gatt-request.ts, device-list.ts  parseGattRequest() and parseDeviceList(), also for plugins
+src/plugins/                          one plugin per manufacturer or device family (plugin.ts: the interface). A plugin
+                                      has a decoder for advertisements and optionally an active part (start(): GATT,
+                                      timers, buttons, commands). Plugins with an active part have their own folder:
+                                      atc/ (decoder + pvvx/: time sync and firmware update of the pvvx firmware),
+                                      xiaomi/ (Mi Flora battery, LYWSD02 clock), switchbot/, magicswitchbot/, parrot/,
+                                      cycling-power/, comet-blue/, yeelight/, skyrc/. Their settings are typed in
+                                      <folder>/config.d.ts. Do not change a decoder unless the task is about it.
 admin/jsonConfig.json                 native settings UI, translations in admin/i18n
 test/integration.js                   entry point of the integration tests
 test/integrationTests/                integration suites, see below
