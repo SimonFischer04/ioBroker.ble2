@@ -321,3 +321,49 @@ describe("xiaomi protocol => ", () => {
 		});
 	});
 });
+
+describe("legacy encrypted MiBeacon measurements", () => {
+	const key = Buffer.from("000102030405060708090a0b", "hex");
+	const decode = (hex: string, bindkey = key) =>
+		new XiaomiAdvertisement(
+			Buffer.from(hex, "hex"),
+			"11:22:33:44:55:66",
+			() => bindkey,
+		);
+
+	it("reads v2 and v3 temperature, humidity and battery", () => {
+		// Generated independently with Python AESCCM and a synthetic bindkey.
+		expect(
+			decode("58306f0601665544332211d64c3aeedaf68dae3c7256a5404001020399")
+				.event,
+		).to.deep.equal({
+			temperature: -2.5,
+			humidity: 61,
+			battery: 100,
+		});
+		expect(
+			decode("58206f06026655443322111670d350bbaffd01020399").event,
+		).to.deep.equal({
+			temperature: -2.5,
+			humidity: 61,
+		});
+	});
+
+	it("rejects contact events, implausible and truncated measurements", () => {
+		for (const frame of [
+			"58306f0603665544332211a6dba06265cc8a1501020399",
+			"58306f06046655443322112fe871e82001020399",
+			"58306f06056655443322111c97099701020399",
+		]) {
+			expect(() => decode(frame)).to.throw(
+				/legacy MiBeacon measurement/i,
+			);
+		}
+		expect(() =>
+			decode(
+				"58306f0601665544332211d64c3aeedaf68dae3c7256a5404001020399",
+				Buffer.alloc(16),
+			),
+		).to.throw("bindkey");
+	});
+});
