@@ -13,6 +13,7 @@ import { RssiExpiry } from "../lib/rssi-expiry";
 import { RssiUpdates } from "../lib/rssi-updates";
 import type { Plugin } from "../plugins/plugin";
 
+/** The configuration of the AdvertisementProcessor */
 export interface AdvertisementProcessorOptions {
 	/** The plugins that may handle advertisements, in the order they are asked */
 	plugins: Plugin[];
@@ -20,7 +21,9 @@ export interface AdvertisementProcessorOptions {
 	allowEmptyDevices: boolean;
 	/** How frequent the RSSI of devices should be updated, in ms */
 	rssiUpdateInterval: number;
+	/** After how many seconds without an advertisement the RSSI is set to 0, only used if between 1 and 86400 */
 	rssiTimeoutSeconds: number;
+	/** Is told about every device whose advertisement was handled */
 	devicePresence?: DevicePresence;
 }
 
@@ -32,6 +35,11 @@ const ALLOW_NEW_DEVICES_TIMEOUT = 5 * 60000;
  * the device, lets it decode the advertisement and writes the result.
  */
 export class AdvertisementProcessor {
+	/**
+	 * @param options The configuration
+	 * @param devices Tells which gateway receives a device best and filters duplicate packets
+	 * @param gateways Counts the duplicate packets per gateway
+	 */
 	public constructor(
 		private readonly options: AdvertisementProcessorOptions,
 		private readonly devices: DeviceRegistry,
@@ -52,6 +60,7 @@ export class AdvertisementProcessor {
 	private readonly rssiUpdates: RssiUpdates;
 	private readonly rssiExpiry?: RssiExpiry;
 
+	/** Restarts the RSSI timeouts for the RSSI states that are set, so they are reset after a restart, too */
 	public async restoreRssiTimers(): Promise<void> {
 		if (!this.rssiExpiry) {
 			return;
@@ -79,6 +88,12 @@ export class AdvertisementProcessor {
 		}
 	}
 
+	/**
+	 * Passes a state change on, so the RSSI throttling knows when each RSSI was last written
+	 *
+	 * @param id Full ID of the state
+	 * @param state The new state, null or undefined if it was deleted
+	 */
 	public observeState(
 		id: string,
 		state: ioBroker.State | null | undefined,
@@ -86,6 +101,11 @@ export class AdvertisementProcessor {
 		this.rssiUpdates.observe(id, state);
 	}
 
+	/**
+	 * Forgets everything remembered about a state that was deleted
+	 *
+	 * @param id Full ID of the state
+	 */
 	public removeState(id: string): void {
 		this.rssiUpdates.remove(id);
 		this.rssiExpiry?.remove(id);
@@ -97,6 +117,7 @@ export class AdvertisementProcessor {
 	/** Cache of new devices we already ignored */
 	private readonly ignoredNewDeviceIDs = new Set<string>();
 
+	/** Stops all timers. To be called when the adapter stops. */
 	public dispose(): void {
 		this.rssiExpiry?.stop();
 		if (this.resetAllowNewDevicesTimeout) {
@@ -107,7 +128,7 @@ export class AdvertisementProcessor {
 	/**
 	 * Enables or disables recording new devices
 	 *
-	 * @param allow
+	 * @param allow Whether new devices may be recorded
 	 */
 	public setAllowNewDevices(allow: boolean): void {
 		if (allow === this.allowNewDevices) {
@@ -137,7 +158,13 @@ export class AdvertisementProcessor {
 		// After 5 minutes, reset it to false
 		this.resetAllowNewDevicesTimeout = _.adapter.setTimeout(() => {
 			this.allowNewDevices = false;
-			_.adapter.setState("options.allowNewDevices", false, true);
+			_.adapter
+				.setState("options.allowNewDevices", false, true)
+				.catch((error: unknown) => {
+					_.adapter.log.warn(
+						`Could not reset options.allowNewDevices: ${String(error)}`,
+					);
+				});
 			this.resetAllowNewDevicesTimeout = undefined;
 
 			_.adapter.log.info(
@@ -146,6 +173,11 @@ export class AdvertisementProcessor {
 		}, ALLOW_NEW_DEVICES_TIMEOUT);
 	}
 
+	/**
+	 * Handles a received advertisement: creates the objects of the device and writes its values
+	 *
+	 * @param peripheral The received advertisement
+	 */
 	public async process(peripheral: PeripheralInfo): Promise<void> {
 		if (peripheral == null) {
 			return;

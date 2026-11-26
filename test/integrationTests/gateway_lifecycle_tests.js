@@ -22,6 +22,8 @@ const {
 	waitForValue,
 } = require("./helpers");
 
+/** @import { IntegrationTestHarness } from "@iobroker/testing" */
+
 const DEVICE = "a4:c1:38:12:34:56";
 const OG = "gateways.test_0_proxy-og";
 const EG = "gateways.test_0_proxy-eg";
@@ -29,7 +31,7 @@ const EG = "gateways.test_0_proxy-eg";
 /**
  * Whether the adapter lists the gateway as active
  *
- * @param {any} harness - Integration test harness
+ * @param {IntegrationTestHarness} harness - Integration test harness
  * @param {string} id - ID of the gateway
  * @returns {Promise<boolean | undefined>} undefined if the gateway is not listed
  */
@@ -39,7 +41,11 @@ async function isConnected(harness, id) {
 	return gateway ? gateway.connected : undefined;
 }
 
-/** @param {(name: string, fn: (getHarness: () => any) => void) => void} suite */
+/**
+ * Defines the suites of this file
+ *
+ * @param {(name: string, fn: (getHarness: () => IntegrationTestHarness) => void) => void} suite - Defines a suite with a fresh harness
+ */
 exports.runTests = function (suite) {
 	suite(
 		"Gateway lifecycle - appearing, going offline and coming back",

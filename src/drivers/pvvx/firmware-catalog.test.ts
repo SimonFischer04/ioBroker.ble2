@@ -202,28 +202,79 @@ describe("drivers/pvvx/firmware-catalog", () => {
 	});
 
 	describe("createHttpFirmwareSource()", () => {
+		const CHUNK = 16 * 1024;
+
+		/**
+		 * A fetch that answers every URL with the body, streamed in chunks of 16 KiB
+		 *
+		 * @param status HTTP status of every answer
+		 * @param body Content of every answer
+		 * @param headers Headers of every answer
+		 */
 		function fakeFetch(
 			status: number,
 			body: Buffer,
 			headers: Record<string, string> = {},
-		): typeof fetch & { urls: string[] } {
-			const urls: string[] = [];
+		): typeof fetch & {
+			urls: string[];
+			chunksRead: number;
+			cancelled: boolean;
+		} {
+			const state = {
+				urls: [] as string[],
+				chunksRead: 0,
+				cancelled: false,
+			};
 			const impl = (url: unknown): Promise<Response> => {
-				urls.push(String(url));
+				state.urls.push(String(url));
+				let offset = 0;
+				const stream = new ReadableStream<Uint8Array>(
+					{
+						pull(controller) {
+							if (offset >= body.length) {
+								controller.close();
+								return;
+							}
+							state.chunksRead++;
+							controller.enqueue(
+								new Uint8Array(
+									body.subarray(offset, offset + CHUNK),
+								),
+							);
+							offset += CHUNK;
+						},
+						cancel() {
+							state.cancelled = true;
+						},
+					},
+					// No chunk is read ahead, so the test can count them
+					{ highWaterMark: 0 },
+				);
 				return Promise.resolve({
 					status,
 					headers: new Headers(headers),
-					arrayBuffer: () =>
-						Promise.resolve(
-							body.buffer.slice(
-								body.byteOffset,
-								body.byteOffset + body.length,
-							),
-						),
-				} as Response);
+					body: stream,
+				} as unknown as Response);
 			};
-			return Object.assign(impl as typeof fetch, { urls });
+			// Getters, so the test sees the current values
+			return Object.defineProperties(impl, {
+				urls: { get: () => state.urls },
+				chunksRead: { get: () => state.chunksRead },
+				cancelled: { get: () => state.cancelled },
+			}) as typeof fetch & typeof state;
 		}
+
+		it("stops reading as soon as a download without Content-Length gets too large", async () => {
+			const impl = fakeFetch(200, Buffer.alloc(4 * 1024 * 1024));
+			const source = createHttpFirmwareSource("http://host/", impl);
+
+			const error = await rejects(source.getImage("bin/a.bin"));
+
+			expect(error.message).to.include("larger than");
+			expect(impl.cancelled).to.equal(true);
+			// 256 KiB are 16 chunks, the 17th is one too many: the rest is never read
+			expect(impl.chunksRead).to.equal(17);
+		});
 
 		it("builds the URLs with and without a slash at the end", async () => {
 			const json = Buffer.from(

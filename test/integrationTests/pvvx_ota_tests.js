@@ -28,6 +28,8 @@ const {
 	waitFor,
 } = require("./helpers");
 
+/** @import { IntegrationTestHarness } from "@iobroker/testing" */
+
 const DEVICE = "a4:c1:38:12:34:56";
 const IMAGE = buildTestImage(4100);
 const FIRMWARE_JSON = JSON.stringify({
@@ -73,7 +75,7 @@ async function startFirmwareServer() {
  */
 class Advertiser {
 	/**
-	 * @param {any} harness - Integration test harness
+	 * @param {IntegrationTestHarness} harness - Integration test harness
 	 */
 	constructor(harness) {
 		this.harness = harness;
@@ -97,7 +99,7 @@ class Advertiser {
 /**
  * Announces proxy-og and lets it deliver the advertisements of the thermometer
  *
- * @param {any} harness - Integration test harness
+ * @param {IntegrationTestHarness} harness - Integration test harness
  * @param {string[] | undefined} features - Features of the gateway
  * @returns {Promise<Advertiser>} Delivers the advertisements until it is stopped
  */
@@ -129,7 +131,7 @@ async function prepare(harness, features) {
 /**
  * Presses a button of the adapter
  *
- * @param {any} harness - Integration test harness
+ * @param {IntegrationTestHarness} harness - Integration test harness
  * @param {string} id - ID relative to the namespace
  */
 async function press(harness, id) {
@@ -142,7 +144,7 @@ async function press(harness, id) {
 /**
  * Presses the update button and waits until the update ended
  *
- * @param {any} harness - Integration test harness
+ * @param {IntegrationTestHarness} harness - Integration test harness
  * @param {string} expected - "done" or "failed"
  */
 async function runUpdate(harness, expected) {
@@ -171,7 +173,11 @@ async function runUpdate(harness, expected) {
 	}
 }
 
-/** @param {(name: string, fn: (getHarness: () => any) => void) => void} suite */
+/**
+ * Defines the suites of this file
+ *
+ * @param {(name: string, fn: (getHarness: () => IntegrationTestHarness) => void) => void} suite - Defines a suite with a fresh harness
+ */
 exports.runTests = function (suite) {
 	suite("pvvx - firmware update", (getHarness) => {
 		let harness;

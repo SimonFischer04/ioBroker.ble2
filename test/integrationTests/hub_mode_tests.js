@@ -28,9 +28,15 @@ const {
 	waitForValue,
 } = require("./helpers");
 
+/** @import { IntegrationTestHarness } from "@iobroker/testing" */
+
 const DEVICE = "a4:c1:38:12:34:56";
 
-/** @param {(name: string, fn: (getHarness: () => any) => void) => void} suite */
+/**
+ * Defines the suites of this file
+ *
+ * @param {(name: string, fn: (getHarness: () => IntegrationTestHarness) => void) => void} suite - Defines a suite with a fresh harness
+ */
 exports.runTests = function (suite) {
 	suite("Hub mode - local Bluetooth adapter disabled", (getHarness) => {
 		let harness;

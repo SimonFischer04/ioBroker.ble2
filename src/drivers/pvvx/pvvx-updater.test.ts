@@ -13,6 +13,7 @@ import {
 	VERIFY_DELAY_MS,
 	VERIFY_RETRY_MS,
 } from "./pvvx-updater";
+import { MIN_RSSI } from "./ota-checks";
 import { buildTestImage } from "./test-image";
 
 const FIRST = "a4:c1:38:12:34:56";
@@ -81,9 +82,9 @@ class FakeAdapter {
 	/**
 	 * Sets a state without recording it, like the rest of the adapter would
 	 *
-	 * @param id
-	 * @param val
-	 * @param ts
+	 * @param id ID relative to the adapter namespace
+	 * @param val Value of the state
+	 * @param ts Time stamp of the state
 	 */
 	public preset(id: string, val: ioBroker.StateValue, ts = NOW): void {
 		this.states.set(id, { val, ack: true, ts });
@@ -96,7 +97,7 @@ class FakeAdapter {
 	/**
 	 * The values a state was set to, in order
 	 *
-	 * @param id
+	 * @param id ID relative to the adapter namespace
 	 */
 	public history(id: string): string[] {
 		return this.writes
@@ -401,6 +402,7 @@ describe("drivers/pvvx/pvvx-updater => PvvxUpdater", () => {
 				priority: "high",
 				timeoutMs: OTA_SESSION_TIMEOUT_MS,
 				requireFeature: "writeSequence",
+				minRssi: MIN_RSSI,
 			});
 			// The update session, then one to read the new version
 			expect(connections.sessions).to.have.lengthOf(2);

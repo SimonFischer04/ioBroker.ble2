@@ -7,7 +7,7 @@ const BASE_UUID_SUFFIX = "-0000-1000-8000-00805f9b34fb";
  *
  * Accepts 16 bit ("1f10", "0x1F10"), 32 bit ("0000fcd2") and 128 bit UUIDs with or without dashes.
  *
- * @param uuid
+ * @param uuid The UUID in any of the accepted forms
  */
 export function normalizeUuid(uuid: unknown): string | undefined {
 	if (typeof uuid !== "string") {

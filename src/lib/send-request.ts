@@ -3,13 +3,16 @@ import type { GatewayErrorCode } from "./gateway-protocol";
 
 /** What sendRequest needs from the adapter */
 export interface RequestSender {
+	/** Sends a message to another instance, like adapter.sendTo */
 	sendTo(
 		instance: string,
 		command: string,
 		message: unknown,
 		callback: (response: unknown) => void,
 	): void;
+	/** Starts a timer, like adapter.setTimeout */
 	setTimeout(callback: () => void, ms: number): unknown;
+	/** Stops a timer started with setTimeout */
 	clearTimeout(timer: any): void;
 }
 
@@ -18,11 +21,11 @@ export interface RequestSender {
  * Rejects with a GatewayError: the error of the answer, TIMEOUT if none arrived in time,
  * GATT_ERROR if the answer has an unknown form.
  *
- * @param adapter
- * @param instance
- * @param command
- * @param message
- * @param timeoutMs
+ * @param adapter Sends the message and runs the timer
+ * @param instance The receiving instance, e.g. "esphome.0"
+ * @param command The command, e.g. "gatt:read"
+ * @param message The payload of the command
+ * @param timeoutMs How long to wait for the answer
  */
 export function sendRequest<T>(
 	adapter: RequestSender,

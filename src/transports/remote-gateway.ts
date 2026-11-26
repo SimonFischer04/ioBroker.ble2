@@ -26,9 +26,11 @@ const MAX_ANNOUNCED_GATEWAYS = 100;
 const MAX_DATA_LENGTH = 1650;
 const ALIVE_REGEX = /^system\.adapter\.(.+)\.alive$/;
 
+/** A valid "gateway:advertisements" message, converted by parseGatewayMessage */
 export interface ParsedGatewayMessage {
 	/** The ID of the gateway, unique across all senders: "<sender>:<gatewayId>" */
 	gatewayId: string;
+	/** The valid advertisements, in the form the decoder plugins work with */
 	peripherals: PeripheralInfo[];
 	/** How many items were skipped because they were invalid */
 	rejected: number;
@@ -42,9 +44,13 @@ function invalid(message: string): GatewayResponse<never> {
 export interface AnnouncedGateway {
 	/** "<sender>:<gatewayId>" */
 	id: string;
+	/** Whether connections to devices can be opened through this gateway */
 	connect: boolean;
+	/** How many more connections the gateway can open right now, if it reported that */
 	freeSlots?: number;
+	/** How many connections the gateway can have at the same time, if it reported that */
 	slotLimit?: number;
+	/** The known optional commands the gateway supports, without duplicates */
 	features: GatewayFeature[];
 }
 
@@ -58,8 +64,8 @@ function isCount(value: unknown): boolean {
 /**
  * Validates the payload of "gateway:announce"
  *
- * @param sender
- * @param payload
+ * @param sender The instance that sent the message, e.g. "esphome.0"
+ * @param payload The message as received via sendTo
  */
 export function parseAnnounceMessage(
 	sender: string,
@@ -139,8 +145,8 @@ export function parseAnnounceMessage(
  * form the decoder plugins work with. Invalid items are skipped, so a single broken packet
  * does not discard the whole batch.
  *
- * @param sender
- * @param payload
+ * @param sender The instance that sent the message, e.g. "esphome.0"
+ * @param payload The message as received via sendTo
  */
 export function parseGatewayMessage(
 	sender: string,
@@ -226,9 +232,14 @@ function parseItem(
  * Each sender can deliver for several gateways, e.g. one per ESPHome Bluetooth proxy.
  */
 export class RemoteGatewayTransport implements Transport, GattLinkProvider {
+	/**
+	 * Sends the requests to the gateways through the sendTo of the adapter
+	 *
+	 * @param ctx The adapter and where advertisements and gateway states go
+	 * @param epoch When this adapter was started, see GatewayAnnounceResult.epoch
+	 */
 	public constructor(
 		private readonly ctx: TransportContext,
-		/** When this adapter was started, see GatewayAnnounceResult.epoch */
 		private readonly epoch: number,
 	) {
 		const adapter = ctx.adapter;
@@ -250,10 +261,12 @@ export class RemoteGatewayTransport implements Transport, GattLinkProvider {
 	/** Open links by "<full gateway ID>|<address>" */
 	private readonly links = new Map<string, RemoteGattLink>();
 
+	/** Required by Transport; other adapters push their advertisements on their own */
 	public start(): void {
 		// Nothing to do, the advertisements are pushed to us
 	}
 
+	/** Ends all open links without telling the gateways */
 	public stop(): void {
 		for (const link of [...this.links.values()]) {
 			link.handleEnded();
@@ -264,8 +277,8 @@ export class RemoteGatewayTransport implements Transport, GattLinkProvider {
 	 * Opens a connection to a device through a gateway another adapter provides
 	 *
 	 * @param gatewayId Full ID of the gateway, e.g. "esphome.0:proxy-og"
-	 * @param address
-	 * @param addressType
+	 * @param address MAC address of the device
+	 * @param addressType Address type of the device, as it was advertised
 	 */
 	public async connect(
 		gatewayId: string,
@@ -322,7 +335,7 @@ export class RemoteGatewayTransport implements Transport, GattLinkProvider {
 	 * Handles a "gateway:connectionState" message: a connection ended without being asked to
 	 *
 	 * @param sender The instance that sent the message, e.g. "esphome.0"
-	 * @param payload
+	 * @param payload The message as received via sendTo
 	 */
 	public handleConnectionState(sender: string, payload: unknown): void {
 		const target = this.parseTarget(sender, payload);
@@ -346,7 +359,7 @@ export class RemoteGatewayTransport implements Transport, GattLinkProvider {
 	 * Handles a "gateway:notification" message
 	 *
 	 * @param sender The instance that sent the message, e.g. "esphome.0"
-	 * @param payload
+	 * @param payload The message as received via sendTo
 	 */
 	public handleNotification(sender: string, payload: unknown): void {
 		const target = this.parseTarget(sender, payload);
@@ -370,7 +383,7 @@ export class RemoteGatewayTransport implements Transport, GattLinkProvider {
 	/**
 	 * Ends all links of a gateway that went offline, without telling the gateway
 	 *
-	 * @param gatewayId
+	 * @param gatewayId Full ID of the gateway, e.g. "esphome.0:proxy-og"
 	 */
 	public gatewayOffline(gatewayId: string): void {
 		for (const [key, link] of [...this.links]) {
@@ -383,8 +396,8 @@ export class RemoteGatewayTransport implements Transport, GattLinkProvider {
 	/**
 	 * The key of the link a message is about, undefined if the message is invalid
 	 *
-	 * @param sender
-	 * @param payload
+	 * @param sender The instance that sent the message, e.g. "esphome.0"
+	 * @param payload The message as received via sendTo
 	 */
 	private parseTarget(sender: string, payload: unknown): string | undefined {
 		if (payload == null || typeof payload !== "object") {
@@ -408,7 +421,7 @@ export class RemoteGatewayTransport implements Transport, GattLinkProvider {
 	 * Handles a "gateway:advertisements" message
 	 *
 	 * @param sender The instance that sent the message, e.g. "esphome.0"
-	 * @param payload
+	 * @param payload The message as received via sendTo
 	 */
 	public handleAdvertisements(
 		sender: string,
@@ -441,7 +454,7 @@ export class RemoteGatewayTransport implements Transport, GattLinkProvider {
 	 * Handles a "gateway:announce" message
 	 *
 	 * @param sender The instance that sent the message, e.g. "esphome.0"
-	 * @param payload
+	 * @param payload The message as received via sendTo
 	 */
 	public handleAnnounce(
 		sender: string,
@@ -468,7 +481,7 @@ export class RemoteGatewayTransport implements Transport, GattLinkProvider {
 	/**
 	 * When the sending instance stops, its gateways are offline immediately
 	 *
-	 * @param sender
+	 * @param sender The instance that sent a message, e.g. "esphome.0"
 	 */
 	private watchSender(sender: string): void {
 		if (this.senders.has(sender)) {
@@ -483,8 +496,8 @@ export class RemoteGatewayTransport implements Transport, GattLinkProvider {
 	/**
 	 * Must be called for the state changes the adapter receives
 	 *
-	 * @param id
-	 * @param state
+	 * @param id ID of the changed state
+	 * @param state The new state, null or undefined if it was deleted
 	 */
 	public handleStateChange(
 		id: string,

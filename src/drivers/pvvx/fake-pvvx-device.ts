@@ -47,6 +47,13 @@ export const DEFAULT_CONFIG_RESPONSE = "5559000000000a048b003700";
 
 /** A pvvx thermometer behind a link: answers the commands 0x55 and 0x23 with notifications */
 export class FakePvvxDevice implements GattLink {
+	/**
+	 * Creates a device with firmware 5.9 that has not received an update yet.
+	 *
+	 * @param address MAC address of the device
+	 * @param gatewayId Gateway the link appears to go through
+	 * @param mtu MTU of the simulated connection
+	 */
 	public constructor(
 		public readonly address: string = "a4:c1:38:12:34:56",
 		public readonly gatewayId: string = "esphome.0:proxy-og",
@@ -82,6 +89,7 @@ export class FakePvvxDevice implements GattLink {
 	public disconnects = 0;
 	private listener: ((data: Buffer) => void) | undefined;
 
+	/** The pvvx command service and the Telink update service, with the handles the tests use */
 	public getServices(): Promise<GattServiceInfo[]> {
 		return Promise.resolve([
 			{
@@ -118,6 +126,11 @@ export class FakePvvxDevice implements GattLink {
 		]);
 	}
 
+	/**
+	 * Returns the update status for the update characteristic, otherwise the configuration
+	 *
+	 * @param handle Handle of the characteristic
+	 */
 	public read(handle?: number): Promise<Buffer> {
 		if (handle === OTA_HANDLE) {
 			return Promise.resolve(Buffer.from([this.ota.status]));
@@ -128,8 +141,8 @@ export class FakePvvxDevice implements GattLink {
 	/**
 	 * Handles a write to the update characteristic like the Telink firmware
 	 *
-	 * @param data
-	 * @param withResponse
+	 * @param data The written bytes
+	 * @param withResponse Whether the write was requested with response, only recorded
 	 */
 	private writeOta(data: Buffer, withResponse: boolean): Promise<void> {
 		const ota = this.ota;
@@ -186,6 +199,13 @@ export class FakePvvxDevice implements GattLink {
 		return Promise.resolve();
 	}
 
+	/**
+	 * Records the write and answers commands to the command characteristic with a notification
+	 *
+	 * @param handle Handle of the characteristic
+	 * @param data The written bytes
+	 * @param withResponse Whether the write was requested with response, only recorded
+	 */
 	public write(
 		handle: number,
 		data: Buffer,
@@ -244,6 +264,14 @@ export class FakePvvxDevice implements GattLink {
 		return answer;
 	}
 
+	/**
+	 * Writes the packets one after the other and optionally reads the characteristic afterwards
+	 *
+	 * @param handle Handle of the characteristic
+	 * @param data Packets to write
+	 * @param withResponse Whether the writes were requested with response, only recorded
+	 * @param readAfter Whether to read the characteristic after the last packet
+	 */
 	public async writeSequence(
 		handle: number,
 		data: Buffer[],
@@ -256,6 +284,12 @@ export class FakePvvxDevice implements GattLink {
 		return readAfter ? this.read(handle) : undefined;
 	}
 
+	/**
+	 * Registers the receiver of the notifications; only the command characteristic sends any
+	 *
+	 * @param handle Handle of the characteristic
+	 * @param listener Receives the notifications
+	 */
 	public subscribe(
 		handle: number,
 		listener: (data: Buffer) => void,
@@ -266,11 +300,13 @@ export class FakePvvxDevice implements GattLink {
 		return Promise.resolve();
 	}
 
+	/** Counts the disconnects, so tests can check that the session was closed */
 	public disconnect(): Promise<void> {
 		this.disconnects++;
 		return Promise.resolve();
 	}
 
+	/** Never reports a disconnect, the simulated device stays connected */
 	public onDisconnect(): void {
 		// The simulated device never ends the connection by itself
 	}
@@ -279,7 +315,7 @@ export class FakePvvxDevice implements GattLink {
 /**
  * A real GattSession over the simulated device
  *
- * @param device
+ * @param device The simulated device the session talks to
  */
 export function createFakeSession(device: FakePvvxDevice): GattSession {
 	return new GattSession(device);

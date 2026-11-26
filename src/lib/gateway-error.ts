@@ -2,6 +2,12 @@ import type { GatewayErrorCode, GatewayResponse } from "./gateway-protocol";
 
 /** An error with one of the codes of the gateway interface */
 export class GatewayError extends Error {
+	/**
+	 * Creates the error with its code and a message for the log
+	 *
+	 * @param code One of the error codes of the gateway interface
+	 * @param message What went wrong
+	 */
 	public constructor(
 		public readonly code: GatewayErrorCode,
 		message: string,
@@ -14,7 +20,7 @@ export class GatewayError extends Error {
 /**
  * The answer to send for an error. Anything that is not a GatewayError becomes GATT_ERROR.
  *
- * @param error
+ * @param error What was thrown or rejected
  */
 export function toErrorResponse(error: unknown): GatewayResponse<never> {
 	if (error instanceof GatewayError) {
@@ -25,7 +31,8 @@ export function toErrorResponse(error: unknown): GatewayResponse<never> {
 	};
 }
 
-/** Preserves Error instances and wraps other rejection reasons.
+/**
+ * Preserves Error instances and wraps other rejection reasons.
  *
  * @param error The rejection reason.
  */

@@ -27,6 +27,9 @@ const {
 	waitForValue,
 } = require("./helpers");
 
+/** @import { IntegrationTestHarness } from "@iobroker/testing" */
+/** @import { GatewayInfo } from "../../src/lib/gateway-protocol" */
+
 const DEVICE = "a4:c1:38:12:34:56";
 /** BTHome v2: battery 100 %, 25.00 °C, 50.55 % */
 const BTHOME = "4000a5016402c40903bf13";
@@ -52,15 +55,19 @@ function gatewayStates(server) {
 /**
  * Reads the gateways from the adapter, by ID
  *
- * @param {any} harness - Integration test harness
- * @returns {Promise<Record<string, any>>}
+ * @param {IntegrationTestHarness} harness - Integration test harness
+ * @returns {Promise<Record<string, GatewayInfo>>} The gateways the adapter lists
  */
 async function getGateways(harness) {
 	const response = await sendToAdapter(harness, "getGateways", {});
 	return Object.fromEntries(response.result.map((g) => [g.id, g]));
 }
 
-/** @param {(name: string, fn: (getHarness: () => any) => void) => void} suite */
+/**
+ * Defines the suites of this file
+ *
+ * @param {(name: string, fn: (getHarness: () => IntegrationTestHarness) => void) => void} suite - Defines a suite with a fresh harness
+ */
 exports.runTests = function (suite) {
 	suite("Remote scan servers - several at once", (getHarness) => {
 		let harness;
