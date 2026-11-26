@@ -220,6 +220,13 @@ The plugin creates `mopeka_level_raw` (uncalibrated ultrasonic reading), `mopeka
 
 The standard Pro Check layout is verified against [ESPHome](https://github.com/esphome/esphome/blob/dev/esphome/components/mopeka_pro_check/mopeka_pro_check.cpp) and [mopeka-iot-ble](https://github.com/Bluetooth-Devices/mopeka-iot-ble/blob/main/src/mopeka_iot_ble/parser.py). Other Mopeka sensor types are not handled by this plugin.
 
+#### Controlling MagicSwitchBot
+
+Use `sendTo("ble2.0", "runMagicSwitchBotAction", { address, action, pin }, callback)`
+after a connection-capable gateway has seen the bot. Actions are `on`, `off` and `push`.
+Supply the device's six-digit PIN as a string if PIN protection is enabled. The command
+waits for the device to confirm it accepted the action.
+
 #### Xiaomi LYWSD03MMC temperature and humidity monitor
 
 The stock firmware can send encrypted Xiaomi measurements. For passive readings with ble2, use compatible custom firmware configured for unencrypted BTHome v2.
@@ -286,6 +293,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * **BREAKING:** Rename the maintained fork to `iobroker.ble2` with the `ble2` adapter namespace.
 * **BREAKING:** Require Node.js 22.19 or newer; test Node.js 22, 24, and 26 on Linux, Windows, and macOS.
 * Added BTHome signed counters, signed power, volume storage, and direction measurements.
+* Control MagicSwitchBot through a connection-capable Bluetooth gateway.
 * Fixed discovery and decoding of Ruuvi Tag manufacturer-only advertisements, including packets received after empty or unrelated frames.
 * Ignore invalid Mi Flora soil moisture readings above 100% to preserve the last valid measurement.
 

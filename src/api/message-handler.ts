@@ -10,6 +10,7 @@ import {
 	type GattReadResult,
 	type GatewayResponse,
 } from "../lib/gateway-protocol";
+import { runMagicSwitchBotAction } from "../drivers/magicswitchbot";
 import { getHciOptions, parseHciPorts } from "../lib/hci-ports";
 import { normalizeUuid } from "../lib/uuid";
 import {
@@ -163,6 +164,45 @@ export function createMessageHandler(
 				respond(ctx.remoteGateway.handleAnnounce(sender, obj.message));
 				return;
 			}
+
+			case "runMagicSwitchBotAction":
+				void runGattCommand(async () => {
+					const { address } = parseGattRequest(obj.message, {
+						characteristic: false,
+						data: false,
+					});
+					const { action, pin } = obj.message as Record<
+						string,
+						unknown
+					>;
+					if (
+						action !== "on" &&
+						action !== "off" &&
+						action !== "push"
+					) {
+						throw new GatewayError(
+							"INVALID_PAYLOAD",
+							"action must be on, off or push",
+						);
+					}
+					if (
+						pin !== undefined &&
+						(typeof pin !== "string" || !/^\d{6}$/.test(pin))
+					) {
+						throw new GatewayError(
+							"INVALID_PAYLOAD",
+							"pin must be a six-digit string",
+						);
+					}
+					await runMagicSwitchBotAction(
+						ctx.connections,
+						address,
+						action,
+						pin,
+					);
+					return { action };
+				}).then(respond);
+				return;
 
 			case GatewayCommands.connectionState: {
 				const sender = obj.from.replace(/^system\.adapter\./, "");
