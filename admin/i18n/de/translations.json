@@ -18,10 +18,12 @@
     "Ruuvi Tag": "Ruuvi Tag",
     "BTHome": "BTHome",
     "Mopeka Pro Check": "Mopeka Pro Check",
-    "BTHome bindkeys": "BTHome-Bindkeys",
-    "Enter the Bluetooth MAC address and bindkey for each encrypted BTHome device.": "Gib für jedes verschlüsselte BTHome-Gerät die Bluetooth-MAC-Adresse und den Bindkey ein.",
+    "Xiaomi MiBeacon bindkeys": "Xiaomi-MiBeacon-Bindkeys",
+    "Enter the MAC address and bindkey for each encrypted Xiaomi MiBeacon v4 or v5 device.": "MAC-Adresse und Bindkey für jedes verschlüsselte Xiaomi-MiBeacon-Gerät (v4 oder v5) eingeben.",
     "Bluetooth MAC address": "Bluetooth-MAC-Adresse",
     "Bindkey": "Bindkey",
-    "Enter a valid Bluetooth MAC address.": "Gib eine gültige Bluetooth-MAC-Adresse ein.",
-    "Enter a 32-digit hexadecimal bindkey.": "Gib einen Bindkey mit 32 Hexadezimalstellen ein."
+    "Enter a valid Bluetooth MAC address.": "Eine gültige Bluetooth-MAC-Adresse eingeben.",
+    "Enter a 32-digit hexadecimal bindkey.": "Einen 32-stelligen hexadezimalen Bindkey eingeben.",
+    "BTHome bindkeys": "BTHome-Bindkeys",
+    "Enter the Bluetooth MAC address and bindkey for each encrypted BTHome device.": "Gib für jedes verschlüsselte BTHome-Gerät die Bluetooth-MAC-Adresse und den Bindkey ein."
 }

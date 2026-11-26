@@ -106,13 +106,14 @@
 			]
 		}
 	},
-	"encryptedNative": ["bthomeBindkeys"],
-	"protectedNative": ["bthomeBindkeys"],
+	"encryptedNative": ["xiaomiBindkeys", "bthomeBindkeys"],
+	"protectedNative": ["xiaomiBindkeys", "bthomeBindkeys"],
 	"native": {
 		"services": "",
 		"hciDevice": 0,
 		"server": "",
 		"plugins": "",
+		"xiaomiBindkeys": "",
 		"bthomeBindkeys": "",
 		"allowEmptyDevices": false,
 		"rssiThrottle": 0

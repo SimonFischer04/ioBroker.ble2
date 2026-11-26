@@ -1,5 +1,13 @@
+import type XiaomiModule = require("./xiaomi");
 import { expect } from "chai";
-import xiaomiPlugin = require("./xiaomi");
+import * as proxyquireModule from "proxyquire";
+import { createGlobalMock } from "../../test/mocks/global";
+import type { PeripheralInfo } from "../lib/scanProcessInterface";
+
+const xiaomiPlugin = proxyquireModule.noPreserveCache()<typeof XiaomiModule>(
+	"./xiaomi",
+	{ "../lib/global": createGlobalMock({}) },
+);
 
 describe("xiaomi plugin => ", () => {
 	describe("correctly detects which peripherals should be handled => ", () => {
@@ -74,5 +82,54 @@ describe("xiaomi plugin => ", () => {
 			};
 			expect(xiaomiPlugin.isHandling(peripheral as any)).to.be.false;
 		});
+	});
+
+	describe("mosquito repellent measurements", () => {
+		const cases = [
+			{
+				frame: "50200a040166554433221112100100",
+				id: "powerState",
+				value: 0,
+				metadata: { states: { 0: "Off", 1: "On" } },
+			},
+			{
+				frame: "50200a040266554433221112100101",
+				id: "powerState",
+				value: 1,
+				metadata: { states: { 0: "Off", 1: "On" } },
+			},
+			{
+				frame: "50200a04036655443322111310014b",
+				id: "consumableRemaining",
+				value: 75,
+				metadata: { unit: "%" },
+			},
+		];
+		for (const { frame, id, value, metadata } of cases) {
+			it(`publishes ${id} = ${value} from a MiBeacon advertisement`, () => {
+				const peripheral = {
+					address: "11:22:33:44:55:66",
+					advertisement: {
+						serviceData: [
+							{ uuid: "fe95", data: Buffer.from(frame, "hex") },
+						],
+					},
+				} as PeripheralInfo;
+
+				expect(xiaomiPlugin.isHandling(peripheral)).to.be.true;
+				const context = xiaomiPlugin.createContext(peripheral);
+				expect(xiaomiPlugin.getValues(context)).to.deep.equal({
+					[id]: value,
+				});
+				const states = xiaomiPlugin.defineObjects(context)!.states;
+				expect(states.map((state) => state.id)).to.deep.equal([id]);
+				expect(states[0].common).to.deep.include({
+					type: "number",
+					read: true,
+					write: false,
+					...metadata,
+				});
+			});
+		}
 	});
 });
