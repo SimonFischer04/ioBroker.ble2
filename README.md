@@ -64,6 +64,7 @@ If you have any device transmitting specially encoded information via advertisem
 * `"ruuvi-tag"`: [Ruuvi Tag](https://tag.ruuvi.com/) multisensor with firmware versions v1 and v2. **Untested, please give feedback!** 
 * `"switchbot"`: SwitchBot Meter-family temperature, humidity, and battery advertisements (`fd3d` or `0d00`).
 * `"bthome"`: Sensors using the [BTHome](https://bthome.io) protocol. For now this is limited to the `v2` revision of the protocol and does not support encrypted packets.
+* `"mi-scale"`: Mi Scale V1 and V2 broadcast weight in kilograms and a stabilized flag (`181d` and `181b`).
 * `"mopeka"`: Mopeka Pro Check LPG tank sensors (standard sensor type `0x03`).
 
 To read authenticated Xiaomi MiBeacon v4 or v5 advertisements, enable **Xiaomi** and add the device's Bluetooth MAC address and 32-digit hexadecimal bindkey under **Xiaomi MiBeacon bindkeys**. Use the bindkey assigned when the sensor was paired or configured. ioBroker encrypts the stored configuration. Admin configuration exports include the bindkeys.
