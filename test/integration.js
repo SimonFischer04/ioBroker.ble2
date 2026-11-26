@@ -66,6 +66,8 @@ tests.integration(adapterDir, {
 					client.on("error", (error) => {
 						scannerError = error;
 					});
+					// Like bin/blerp.js: a new client is told that the server scans
+					client.write(`${JSON.stringify({ type: "connected" })}\n`);
 				});
 				await new Promise((resolve, reject) => {
 					server.once("error", reject);
