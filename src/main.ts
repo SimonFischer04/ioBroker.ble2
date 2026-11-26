@@ -2,6 +2,7 @@ import * as utils from "@iobroker/adapter-core";
 import { createMessageHandler } from "./api/message-handler";
 import { ConnectionManager } from "./connections/connection-manager";
 import { DeviceRegistry } from "./devices/device-registry";
+import { MiFloraBattery } from "./drivers/mi-flora-battery";
 import { FlowerPower } from "./drivers/flower-power";
 import {
 	createHttpFirmwareSource,
@@ -37,6 +38,7 @@ let gateways: GatewayRegistry | undefined;
 let remoteGateway: RemoteGatewayTransport | undefined;
 let connections: ConnectionManager | undefined;
 let pvvx: PvvxDriver | undefined;
+let miFloraBattery: MiFloraBattery | undefined;
 let flowerPower: FlowerPower | undefined;
 let pvvxUpdater: PvvxUpdater | undefined;
 let handleMessage: ((obj: ioBroker.Message) => void) | undefined;
@@ -63,10 +65,16 @@ const adapter = utils.adapter({
 
 		// Up to 0.14 there was a single remote scan server, which disabled the local Bluetooth adapter
 		const migration = migrateServerSettings(adapter.config);
-		if (migration) {
+		if (migration?.remoteServers !== undefined) {
 			adapter.log.info(
 				`Moving the remote scan server "${migration.remoteServers}" to the list of remote scan servers. The local Bluetooth adapter stays disabled as before.`,
 			);
+		} else if (migration) {
+			adapter.log.debug(
+				'Removing the obsolete setting "server", "remoteServers" is set',
+			);
+		}
+		if (migration) {
 			Object.assign(adapter.config, migration);
 			try {
 				await adapter.extendForeignObjectAsync(
@@ -229,6 +237,7 @@ const adapter = utils.adapter({
 			onAdvertisement: (peripheral) => {
 				// Connections need to know every device in range, also the ones that are not decoded
 				devices.track(peripheral);
+				miFloraBattery?.observe(peripheral);
 				flowerPower?.observe(peripheral);
 				if (
 					matchesServiceFilter(peripheral, services, manufacturerIds)
@@ -253,6 +262,18 @@ const adapter = utils.adapter({
 			setTimeout: (callback, ms) => adapter.setTimeout(callback, ms),
 			clearTimeout: (timer) => adapter.clearTimeout(timer),
 		});
+
+		const plants = parseDeviceList(adapter.config.miFloraBatteryDevices);
+		for (const address of plants.invalid) {
+			adapter.log.warn(`Ignoring invalid Mi Flora address "${address}"`);
+		}
+		if (plants.addresses.length > 0) {
+			miFloraBattery = new MiFloraBattery(
+				adapter,
+				connections,
+				plants.addresses,
+			);
+		}
 
 		const flowerSensors = parseDeviceList(
 			adapter.config.flowerPowerDevices,
@@ -383,6 +404,7 @@ const adapter = utils.adapter({
 			// No new jobs for the connections
 			pvvxUpdater?.dispose();
 			pvvx?.dispose();
+			miFloraBattery?.dispose();
 			flowerPower?.dispose();
 			// Before the transports, so the sessions can still say goodbye to their gateways
 			connections?.dispose();

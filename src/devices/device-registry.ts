@@ -1,6 +1,7 @@
 import type { PeripheralInfo } from "../lib/advertisement";
 import type { DeviceInfo } from "../lib/gateway-protocol";
 
+/** Time limits of the DeviceRegistry, all in ms */
 export interface DeviceRegistryOptions {
 	/**
 	 * When several gateways receive the same packet, they deliver it within this time.
@@ -31,14 +32,21 @@ interface DeviceEntry {
 	lastSeen: number;
 	/** The address type the device last reported, if it was known */
 	addressType?: "public" | "random";
-	/** The payload that was last passed on to the decoders... */
-	processedFingerprint?: string;
-	/** ...when... */
-	processedAt: number;
-	/** ...and which gateway delivered it */
-	processedGateway?: string;
+	/** The payloads passed on to the decoders within the dedupe window, oldest first */
+	processed: ProcessedPacket[];
 }
 
+interface ProcessedPacket {
+	fingerprint: string;
+	/** The gateway that delivered it */
+	gateway: string;
+	at: number;
+}
+
+/** Most packets per device remembered for the deduplication */
+const MAX_PROCESSED_PACKETS = 16;
+
+/** How to treat a received advertisement, see DeviceRegistry.observe() */
 export interface Observation {
 	/** Whether another gateway already delivered this packet, so it must not be decoded again */
 	duplicate: boolean;
@@ -57,6 +65,7 @@ const UNKNOWN_GATEWAY = "unknown";
  * and the signal strength of a device is the one of the gateway that receives it best.
  */
 export class DeviceRegistry {
+	/** @param options Overrides the default time limits */
 	public constructor(options: Partial<DeviceRegistryOptions> = {}) {
 		this.options = { ...defaultOptions, ...options };
 	}
@@ -69,8 +78,8 @@ export class DeviceRegistry {
 	 * Records that a gateway received the device, whether its advertisement is decoded or not.
 	 * Connections need to know every device in range.
 	 *
-	 * @param peripheral
-	 * @param now
+	 * @param peripheral The received advertisement
+	 * @param now Current time in ms
 	 */
 	public track(peripheral: PeripheralInfo, now: number = Date.now()): void {
 		const gatewayId = peripheral.gatewayId ?? UNKNOWN_GATEWAY;
@@ -81,7 +90,7 @@ export class DeviceRegistry {
 				address: peripheral.address,
 				gateways: new Map(),
 				lastSeen: now,
-				processedAt: 0,
+				processed: [],
 			};
 			this.devices.set(peripheral.address, device);
 		}
@@ -108,8 +117,8 @@ export class DeviceRegistry {
 	/**
 	 * Records a received advertisement and tells how to treat it
 	 *
-	 * @param peripheral
-	 * @param now
+	 * @param peripheral The received advertisement
+	 * @param now Current time in ms
 	 */
 	public observe(
 		peripheral: PeripheralInfo,
@@ -122,15 +131,20 @@ export class DeviceRegistry {
 		// A packet is a duplicate when a different gateway delivered the same payload just before.
 		// The same gateway delivering it again is a retransmission of the device and treated as
 		// before: it is passed on.
+		// Several packets are remembered: gateway A may deliver P1 and P2 before gateway B
+		// delivers the same pair.
 		const fingerprint = getFingerprint(peripheral);
-		const duplicate =
-			device.processedFingerprint === fingerprint &&
-			device.processedGateway !== gatewayId &&
-			now - device.processedAt < this.options.dedupeWindowMs;
+		device.processed = device.processed.filter(
+			(p) => now - p.at < this.options.dedupeWindowMs,
+		);
+		const duplicate = device.processed.some(
+			(p) => p.fingerprint === fingerprint && p.gateway !== gatewayId,
+		);
 		if (!duplicate) {
-			device.processedFingerprint = fingerprint;
-			device.processedGateway = gatewayId;
-			device.processedAt = now;
+			device.processed.push({ fingerprint, gateway: gatewayId, at: now });
+			if (device.processed.length > MAX_PROCESSED_PACKETS) {
+				device.processed.shift();
+			}
 		}
 
 		let bestRssi = peripheral.rssi;
@@ -151,8 +165,8 @@ export class DeviceRegistry {
 	/**
 	 * The gateways that received the device within rssiMaxAgeMs, strongest signal first
 	 *
-	 * @param address
-	 * @param now
+	 * @param address MAC address of the device
+	 * @param now Current time in ms
 	 */
 	public getReceivers(
 		address: string,
@@ -174,7 +188,7 @@ export class DeviceRegistry {
 	/**
 	 * The address type the device reported. "public" if it is unknown.
 	 *
-	 * @param address
+	 * @param address MAC address of the device
 	 */
 	public getAddressType(address: string): "public" | "random" {
 		return this.devices.get(address)?.addressType ?? "public";
@@ -183,7 +197,7 @@ export class DeviceRegistry {
 	/**
 	 * Lists the devices that were recently received
 	 *
-	 * @param now
+	 * @param now Current time in ms
 	 */
 	public getDevices(now: number = Date.now()): DeviceInfo[] {
 		this.prune(now);
@@ -199,7 +213,7 @@ export class DeviceRegistry {
 	/**
 	 * Forgets the devices and receptions that are too old
 	 *
-	 * @param now
+	 * @param now Current time in ms
 	 */
 	public prune(now: number = Date.now()): void {
 		this.lastPrune = now;
@@ -220,14 +234,21 @@ export class DeviceRegistry {
 /**
  * Identifies the content of an advertisement, independent of who received it
  *
- * @param peripheral
+ * @param peripheral The received advertisement
  */
 function getFingerprint(peripheral: PeripheralInfo): string {
-	const { serviceData, manufacturerData } = peripheral.advertisement;
+	const { serviceData, manufacturerData, manufacturerDataBlocks } =
+		peripheral.advertisement;
 	const parts: string[] = [];
 	for (const entry of serviceData ?? []) {
 		parts.push(`${entry.uuid}=${entry.data.toString("hex")}`);
 	}
-	parts.push(`m=${manufacturerData?.toString("hex") ?? ""}`);
+	const blocks =
+		manufacturerDataBlocks
+			?.map((block) => block.toString("hex"))
+			.join(",") ??
+		manufacturerData?.toString("hex") ??
+		"";
+	parts.push(`m=${blocks}`);
 	return parts.join("|");
 }

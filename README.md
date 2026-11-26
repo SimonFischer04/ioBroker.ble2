@@ -120,6 +120,10 @@ So far, only gateways of other adapters can connect, e.g. ESPHome Bluetooth prox
 
 An adapter that provides such gateways announces them with `gateway:announce` (`{ protocol: "ble-gateway/1", gateways: [{ gatewayId, connect: true, freeSlots, slotLimit, features }] }`). `features` lists optional commands, so far `"writeSequence"`: `gatt:writeSequence` writes up to 64 values to one handle and reads it afterwards, the firmware update needs it. The providing adapter answers the `gatt:*` commands this adapter sends to it and reports ended connections and notifications with `gateway:connectionState` and `gateway:notification`. The details are in [`docs/spec-phase-2-gatt.md`](docs/spec-phase-2-gatt.md), part A, for `gatt:writeSequence` in [`docs/spec-phase-4-pvvx-ota.md`](docs/spec-phase-4-pvvx-ota.md), part A, and the types in `src/lib/gateway-protocol.ts`.
 
+## Reading the Mi Flora battery level
+
+Enter the addresses of your Mi Flora sensors in **Mi Flora battery polling (MAC addresses)**. When a connection-capable gateway sees a configured plant, the adapter reads its battery level and writes `<mac>.battery`. The first reading is due immediately. After a successful read, another is due the next day. A failed read can be retried after 15 minutes when the gateway sees the sensor again.
+
 ## Reading Parrot Flower Power sensors
 
 Enter your sensor addresses in **Parrot Flower Power sensors (MAC addresses)**. When a connection-capable gateway receives an advertisement from a configured sensor, the adapter reads the available calibrated moisture, air temperature, sunlight and battery characteristics. The first reading is due immediately. Further readings are due every 15 minutes, or after one minute following an unsuccessful read. The firmware must expose the calibrated Flower Power Live service for the plant measurements.
@@ -144,6 +148,16 @@ For every device these states are created below `<mac>.pvvx`:
 | `lastError` | Empty after a successful sync, otherwise `<CODE>: <message>`, e.g. `NO_GATEWAY: ...` |
 
 The device must be received by a gateway that can connect. Devices protected with a PIN code are not supported.
+
+## Setting the Xiaomi LYWSD02 clock
+
+After a connection-capable gateway has seen the thermometer, call
+`sendTo("ble2.0", "syncLywsd02Clock", { address: "AA:BB:CC:11:22:33" }, callback)`
+to set the factory firmware clock from the adapter host. On success,
+`<mac>.lywsd02LastTimeSync` stores the timestamp in milliseconds. Call the same command
+from a scheduled ioBroker JavaScript script to update the clock periodically.
+
+LYWSD02 firmware stores the time zone as a whole-hour UTC offset.
 
 ## Updating the firmware of pvvx thermometers
 The adapter can also install a newer [pvvx firmware](https://github.com/pvvx/ATC_MiThermometer) on the thermometers configured above, through a gateway. **A firmware update is done at your own risk.** According to pvvx, an interrupted update leaves the old firmware in place, but nobody can guarantee that for every device.
@@ -221,7 +235,7 @@ The Xiaomi Door and Window Sensor 2 (MCCGQ02HL) publishes `contactOpen` and `doo
 
 With pvvx firmware, choose **ATC1441** or **PVVX (Custom)** in the firmware settings and enable **ATC1441 and PVVX** in the adapter. These formats carry temperature, humidity, and battery in the same packet. The scanner must expose the Bluetooth MAC address and forward `181a` service data. The **Xiaomi** plugin remains available for MiBeacon mode, where a battery packet may arrive separately from temperature and humidity.
 
-For a Govee H5072 or H5075, enable **Govee H5072/H5075** under **Active plugins**. The scanner must deliver the `EC88` manufacturer data containing the measurements. The separate Apple iBeacon block beginning with `4c000215` contains no Govee sensor readings. Noble can report only the last manufacturer block on a platform that supplies them separately. For a supported remote scanner with service filters, forward service `ec88` or add `--manufacturerIds 60552`.
+For a Govee H5072 or H5075, enable **Govee H5072/H5075** under **Active plugins**. The scanner must deliver the `EC88` manufacturer data containing the measurements. The separate Apple iBeacon block beginning with `4c000215` contains no Govee sensor readings. A gateway that forwards the raw advertisement and scan response preserves separate manufacturer data blocks. For devices handled by the default decoder, `services.manufacturerDataBlocks` lists those blocks as a JSON array of hexadecimal strings. A local Noble backend may supply only the last block. For a supported remote scanner with service filters, forward service `ec88` or add `--manufacturerIds 60552`.
 
 For Mopeka, add `mopeka` to **Active plugins** and enable **Accept new devices** while discovering the sensor. Local scanning includes its manufacturer identifier automatically. A remote scanner with service filters also needs `--manufacturerIds 89` to forward manufacturer-only advertisements.
 
@@ -279,6 +293,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * **BREAKING:** Require js-controller 7.2.2 or newer; update adapter-core and release tools, repository metadata, and Dependabot configuration.
 -->
 ### __WORK IN PROGRESS__
+* Read Mi Flora battery levels through a connecting gateway.
 * Read calibrated Parrot Flower Power data through a connecting gateway.
 * Other adapters can deliver BLE advertisements they received, e.g. from ESPHome Bluetooth proxies (`gateway:advertisements`). Several receivers can be used at the same time.
 * The adapter can run without Bluetooth hardware: the Bluetooth adapter of the host can be disabled in the settings, and the Bluetooth driver is an optional dependency now
@@ -288,6 +303,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * The monitored services also apply to the advertisements of remote scan servers
 * Connections to devices through gateways of other adapters, e.g. ESPHome Bluetooth proxies: `discoverServices`, `readCharacteristic` and `writeCharacteristic`
 * The clock of pvvx thermometers can be set automatically through such gateways: at start, in an interval, after each change between summer and winter time and with a button. Firmware version, hardware ID and the deviation of the clock are shown
+* Set the Xiaomi LYWSD02 factory firmware clock and record its last successful sync.
 * Newer pvvx firmware can be installed on the thermometers through gateways that support it (`gatt:writeSequence`), after checks of battery and signal. The newest version is looked up once a day
 * Support encrypted BTHome v2 advertisements with per-device bindkeys.
 * Replace manual plugin names with a multi-select dropdown, preserving existing plugin settings.
@@ -297,6 +313,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * **BREAKING:** Require Node.js 22.19 or newer; test Node.js 22, 24, and 26 on Linux, Windows, and macOS.
 * Added BTHome signed counters, signed power, volume storage, and direction measurements.
 * Fixed discovery and decoding of Ruuvi Tag manufacturer-only advertisements, including packets received after empty or unrelated frames.
+* Preserve separate manufacturer data blocks in raw gateway advertisements and decode Govee readings alongside iBeacon data.
 * Ignore invalid Mi Flora soil moisture readings above 100% to preserve the last valid measurement.
 
 ### 0.14.2-beta.1 (2026-11-21)

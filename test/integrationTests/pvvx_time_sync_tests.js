@@ -26,6 +26,8 @@ const {
 	waitFor,
 } = require("./helpers");
 
+/** @import { IntegrationTestHarness } from "@iobroker/testing" */
+
 const DEVICE = "a4:c1:38:12:34:56";
 const ENV = { TZ: "Etc/GMT-3" };
 const UTC_OFFSET_S = 3 * 3600;
@@ -47,7 +49,7 @@ function expectedClock() {
  * Announces proxy-og as gateway that can connect (unless announce is false) and delivers an
  * advertisement of the thermometer through the gateway
  *
- * @param {any} harness - Integration test harness
+ * @param {IntegrationTestHarness} harness - Integration test harness
  * @param {string} gatewayId - The gateway
  * @param {boolean} announce - Whether the gateway announces itself
  */
@@ -69,7 +71,7 @@ async function prepare(harness, gatewayId, announce) {
 /**
  * Presses the button pvvx.syncTime
  *
- * @param {any} harness - Integration test harness
+ * @param {IntegrationTestHarness} harness - Integration test harness
  */
 async function pressButton(harness) {
 	await harness.states.setStateAsync(`${NAMESPACE}.${DEVICE}.pvvx.syncTime`, {
@@ -79,7 +81,7 @@ async function pressButton(harness) {
 }
 
 /**
- * @param {any} harness - Integration test harness
+ * @param {IntegrationTestHarness} harness - Integration test harness
  * @returns {Promise<boolean>} Whether all pvvx objects of the thermometer exist
  */
 async function objectsExist(harness) {
@@ -95,7 +97,11 @@ async function objectsExist(harness) {
 	return true;
 }
 
-/** @param {(name: string, fn: (getHarness: () => any) => void) => void} suite */
+/**
+ * Defines the suites of this file
+ *
+ * @param {(name: string, fn: (getHarness: () => IntegrationTestHarness) => void) => void} suite - Defines a suite with a fresh harness
+ */
 exports.runTests = function (suite) {
 	suite("pvvx - setting the clock", (getHarness) => {
 		let harness;

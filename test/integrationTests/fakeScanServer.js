@@ -10,7 +10,11 @@
 
 const net = require("net");
 
+/** @import { ScanMessage } from "../../src/lib/scanProcessInterface" */
+
+/** Serves advertisements over TCP like bin/blerp.js */
 class FakeScanServer {
+	/** Creates a stopped server, start() opens the port */
 	constructor() {
 		this.server = null;
 		this.sockets = new Set();
@@ -69,7 +73,7 @@ class FakeScanServer {
 	/**
 	 * Sends a message to the connected adapter
 	 *
-	 * @param {any} message - The message, as scanProcess.ts sends it
+	 * @param {ScanMessage} message - The message, as scanProcess.ts sends it
 	 * @param {net.Socket} [only] - Send it to this connection only
 	 */
 	send(message, only) {

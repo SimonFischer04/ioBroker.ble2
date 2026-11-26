@@ -27,10 +27,10 @@ export function matchesScanFilter(
 		return true;
 	}
 
-	const data = advertisement.manufacturerData;
-	return (
-		data != null &&
-		data.length >= 2 &&
-		manufacturerIds.includes(data.readUInt16LE(0))
-	);
+	const matches = (data: Buffer): boolean =>
+		data.length >= 2 && manufacturerIds.includes(data.readUInt16LE(0));
+	const { manufacturerData, manufacturerDataBlocks } = advertisement;
+	return manufacturerDataBlocks
+		? manufacturerDataBlocks.some(matches)
+		: manufacturerData != null && matches(manufacturerData);
 }

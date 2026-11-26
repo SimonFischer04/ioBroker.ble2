@@ -8,8 +8,11 @@ import {
 
 const DEFAULT_TIMEOUT_MS = 10000;
 
+/** Timer functions, replaceable so tests can control the request timeout */
 export interface ChannelTimers {
+	/** Calls callback after ms, returns a handle for clearTimeout() */
 	setTimeout(callback: () => void, ms: number): unknown;
+	/** Cancels a timer started with setTimeout() */
 	clearTimeout(timer: any): void;
 }
 
@@ -25,6 +28,12 @@ interface PendingRequest {
  * notification that starts with the same byte. The device sends other notifications in between, e.g. measurements.
  */
 export class PvvxCommandChannel {
+	/**
+	 * Uses an open GATT session to the device; timers are injected for the request timeout.
+	 *
+	 * @param session Connection to the device
+	 * @param timers Timer functions for the request timeout
+	 */
 	public constructor(
 		private readonly session: GattSession,
 		private readonly timers: ChannelTimers,
@@ -46,8 +55,8 @@ export class PvvxCommandChannel {
 	 * Other notifications are skipped. Rejects with GatewayError("TIMEOUT") after timeoutMs.
 	 * Only one request at a time: a second call while one is running rejects with GatewayError("GATT_ERROR").
 	 *
-	 * @param data
-	 * @param timeoutMs
+	 * @param data Request, the first byte is the command
+	 * @param timeoutMs How long to wait for the answer
 	 */
 	public request(
 		data: Buffer,

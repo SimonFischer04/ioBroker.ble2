@@ -8,6 +8,7 @@ import {
 	parseTimeResponse,
 } from "./protocol";
 
+/** Source of the local time, replaceable in tests */
 export interface Clock {
 	/** Current time in ms */
 	now(): number;
@@ -20,8 +21,11 @@ export const systemClock: Clock = {
 	timezoneOffset: (atMs) => new Date(atMs).getTimezoneOffset(),
 };
 
+/** Outcome of syncTime(), for the states of the device */
 export interface TimeSyncResult {
+	/** Firmware version byte from the configuration */
 	version: number;
+	/** Hardware variant from the configuration, if the firmware reports it */
 	hardwareId?: number;
 	/** Seconds the device clock was ahead before it was set */
 	deviation: number;
@@ -33,6 +37,11 @@ export interface TimeSyncResult {
 export class PvvxProtocolError extends Error {
 	public readonly code = "UNEXPECTED_ANSWER";
 
+	/**
+	 * Creates the error with code UNEXPECTED_ANSWER.
+	 *
+	 * @param message What was wrong with the answer
+	 */
 	public constructor(message: string) {
 		super(message);
 		this.name = "PvvxProtocolError";
@@ -45,8 +54,8 @@ const MAX_SET_DEVIATION_S = 2;
 /**
  * Reads the configuration and the clock of the device, then sets the clock to the local time
  *
- * @param channel
- * @param clock
+ * @param channel Opened command channel to the device
+ * @param clock Source of the local time
  */
 export async function syncTime(
 	channel: PvvxCommandChannel,

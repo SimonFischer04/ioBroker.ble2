@@ -5,7 +5,7 @@ import { crc32Telink } from "./ota-protocol";
 /**
  * A valid image for the tests. size >= 1024 and (size & 0x0f) === 4.
  *
- * @param size
+ * @param size Length of the image in bytes
  */
 export function buildTestImage(size: number): Buffer {
 	if (!Number.isInteger(size) || size < 1024 || (size & 0x0f) !== 4) {

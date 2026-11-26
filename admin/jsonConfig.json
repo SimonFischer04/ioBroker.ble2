@@ -373,6 +373,14 @@
                     "xs": 12,
                     "sm": 6
                 },
+                "miFloraBatteryDevices": {
+                    "type": "text",
+                    "label": "Mi Flora battery polling (MAC addresses)",
+                    "help": "Add one address per line. A gateway that can connect is required.",
+                    "minRows": 2,
+                    "xs": 12,
+                    "sm": 6
+                },
                 "flowerPowerDevices": {
                     "type": "text",
                     "label": "Parrot Flower Power sensors (MAC addresses)",
