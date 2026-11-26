@@ -2,6 +2,7 @@
 
 const gateway_advertisement_tests = require("./gateway_advertisement_tests");
 const gateway_announce_tests = require("./gateway_announce_tests");
+const magicswitchbot_action_tests = require("./magicswitchbot_action_tests");
 const gateway_lifecycle_tests = require("./gateway_lifecycle_tests");
 const candela_tests = require("./candela_tests");
 const gatt_tests = require("./gatt_tests");
@@ -44,6 +45,7 @@ exports.runTests = function (suite) {
 
 	// Gateways appearing, going offline and coming back
 	gateway_lifecycle_tests.runTests(suite);
+	magicswitchbot_action_tests.runTests(suite);
 
 	// Gateways that can connect announcing themselves
 	gateway_announce_tests.runTests(suite);

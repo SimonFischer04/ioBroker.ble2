@@ -281,6 +281,13 @@ After a connection-capable gateway has seen the lamp advertise as `yeelight_ms`,
 `sendTo("ble2.0", "setCandelaBrightness", { address: "AA:BB:CC:11:22:33", brightness: 70 }, callback)`.
 A brightness of 1–100 turns the lamp on and sets its intensity. Set brightness to 0 to turn it off.
 
+#### Controlling MagicSwitchBot
+
+Use `sendTo("ble2.0", "runMagicSwitchBotAction", { address, action, pin }, callback)`
+after a connection-capable gateway has seen the bot. Actions are `on`, `off` and `push`.
+Supply the device's six-digit PIN as a string if PIN protection is enabled. The command
+waits for the device to confirm it accepted the action.
+
 #### Xiaomi LYWSD03MMC temperature and humidity monitor
 
 The stock firmware can send encrypted Xiaomi measurements. For passive readings with ble2, use compatible custom firmware configured for unencrypted BTHome v2.
@@ -356,6 +363,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * **BREAKING:** Rename the maintained fork to `iobroker.ble2` with the `ble2` adapter namespace.
 * **BREAKING:** Require Node.js 22.19 or newer; test Node.js 22, 24, and 26 on Linux, Windows, and macOS.
 * Added BTHome signed counters, signed power, volume storage, and direction measurements.
+* Control MagicSwitchBot through a connection-capable Bluetooth gateway.
 * Fixed discovery and decoding of Ruuvi Tag manufacturer-only advertisements, including packets received after empty or unrelated frames.
 * Preserve separate manufacturer data blocks in raw gateway advertisements and decode Govee readings alongside iBeacon data.
 * Ignore invalid Mi Flora soil moisture readings above 100% to preserve the last valid measurement.
