@@ -32,7 +32,9 @@ export class FrameReader {
 		// The last part is the start of the next message
 		this.pending = lines.pop() ?? "";
 		const overflow = this.pending.length > this.maxPending;
-		if (overflow) this.pending = "";
+		if (overflow) {
+			this.pending = "";
+		}
 		return { lines, overflow };
 	}
 }
@@ -143,7 +145,9 @@ export class NobleRemoteTransport implements Transport {
 					return;
 				}
 				for (const line of lines) {
-					if (line === "") continue;
+					if (line === "") {
+						continue;
+					}
 					try {
 						const msg = JSON.parse(line);
 						reviver(msg);

@@ -51,12 +51,16 @@ export function createHttpFirmwareSource(
 			}
 			// Read piece by piece: Content-Length may be missing or describe the compressed size
 			const reader = response.body?.getReader();
-			if (!reader) throw new Error(`${url}: empty response`);
+			if (!reader) {
+				throw new Error(`${url}: empty response`);
+			}
 			const chunks: Uint8Array[] = [];
 			let size = 0;
 			for (;;) {
 				const { done, value } = await reader.read();
-				if (done) break;
+				if (done) {
+					break;
+				}
 				size += value.length;
 				if (size > MAX_DOWNLOAD_SIZE) {
 					await reader.cancel().catch(() => {});
