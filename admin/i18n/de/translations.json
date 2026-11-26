@@ -28,5 +28,9 @@
     "Days since last RSSI update": "Tage seit letzter RSSI-Aktualisierung",
     "Preview stale devices": "Inaktive Geräte prüfen",
     "Delete previewed devices": "Geprüfte Geräte löschen",
-    "Permanently delete the previewed devices and their states?": "Geprüfte Geräte und deren Datenpunkte endgültig löschen?"
+    "Permanently delete the previewed devices and their states?": "Geprüfte Geräte und deren Datenpunkte endgültig löschen?",
+    "Presence tracking": "Anwesenheitserkennung",
+    "Add Bluetooth devices that should get a present state.": "Bluetooth-Geräte mit Anwesenheitsdatenpunkt hinzufügen.",
+    "Packets to confirm presence": "Pakete zur Bestätigung der Anwesenheit",
+    "Full score decay time [s]": "Abbauzeit bei vollem Punktestand [s]"
 }

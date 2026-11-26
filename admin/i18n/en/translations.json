@@ -28,5 +28,9 @@
     "Days since last RSSI update": "Days since last RSSI update",
     "Preview stale devices": "Preview stale devices",
     "Delete previewed devices": "Delete previewed devices",
-    "Permanently delete the previewed devices and their states?": "Permanently delete the previewed devices and their states?"
+    "Permanently delete the previewed devices and their states?": "Permanently delete the previewed devices and their states?",
+    "Presence tracking": "Presence tracking",
+    "Add Bluetooth devices that should get a present state.": "Add Bluetooth devices that should get a present state.",
+    "Packets to confirm presence": "Packets to confirm presence",
+    "Full score decay time [s]": "Full score decay time [s]"
 }
