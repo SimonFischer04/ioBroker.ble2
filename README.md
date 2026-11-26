@@ -145,6 +145,16 @@ For every device these states are created below `<mac>.pvvx`:
 
 The device must be received by a gateway that can connect. Devices protected with a PIN code are not supported.
 
+## Setting the Xiaomi LYWSD02 clock
+
+After a connection-capable gateway has seen the thermometer, call
+`sendTo("ble2.0", "syncLywsd02Clock", { address: "AA:BB:CC:11:22:33" }, callback)`
+to set the factory firmware clock from the adapter host. On success,
+`<mac>.lywsd02LastTimeSync` stores the timestamp in milliseconds. Call the same command
+from a scheduled ioBroker JavaScript script to update the clock periodically.
+
+LYWSD02 firmware stores the time zone as a whole-hour UTC offset.
+
 ## Updating the firmware of pvvx thermometers
 The adapter can also install a newer [pvvx firmware](https://github.com/pvvx/ATC_MiThermometer) on the thermometers configured above, through a gateway. **A firmware update is done at your own risk.** According to pvvx, an interrupted update leaves the old firmware in place, but nobody can guarantee that for every device.
 
@@ -288,6 +298,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * The monitored services also apply to the advertisements of remote scan servers
 * Connections to devices through gateways of other adapters, e.g. ESPHome Bluetooth proxies: `discoverServices`, `readCharacteristic` and `writeCharacteristic`
 * The clock of pvvx thermometers can be set automatically through such gateways: at start, in an interval, after each change between summer and winter time and with a button. Firmware version, hardware ID and the deviation of the clock are shown
+* Set the Xiaomi LYWSD02 factory firmware clock and record its last successful sync.
 * Newer pvvx firmware can be installed on the thermometers through gateways that support it (`gatt:writeSequence`), after checks of battery and signal. The newest version is looked up once a day
 * Support encrypted BTHome v2 advertisements with per-device bindkeys.
 * Replace manual plugin names with a multi-select dropdown, preserving existing plugin settings.

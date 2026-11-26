@@ -4,6 +4,7 @@ const gateway_advertisement_tests = require("./gateway_advertisement_tests");
 const gateway_announce_tests = require("./gateway_announce_tests");
 const gateway_lifecycle_tests = require("./gateway_lifecycle_tests");
 const gatt_tests = require("./gatt_tests");
+const lywsd02_clock_tests = require("./lywsd02_clock_tests");
 const hub_mode_tests = require("./hub_mode_tests");
 const mi_flora_battery_tests = require("./mi_flora_battery_tests");
 const multi_gateway_tests = require("./multi_gateway_tests");
@@ -47,6 +48,7 @@ exports.runTests = function (suite) {
 
 	// Setting the clock of pvvx thermometers through a gateway
 	pvvx_time_sync_tests.runTests(suite);
+	lywsd02_clock_tests.runTests(suite);
 
 	// Firmware updates of pvvx thermometers through a gateway
 	pvvx_ota_tests.runTests(suite);
