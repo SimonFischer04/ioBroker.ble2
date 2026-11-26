@@ -124,6 +124,10 @@ An adapter that provides such gateways announces them with `gateway:announce` (`
 
 Enter the addresses of your Mi Flora sensors in **Mi Flora battery polling (MAC addresses)**. When a connection-capable gateway sees a configured plant, the adapter reads its battery level and writes `<mac>.battery`. The first reading is due immediately. After a successful read, another is due the next day. A failed read can be retried after 15 minutes when the gateway sees the sensor again.
 
+## Reading Parrot Flower Power sensors
+
+Enter your sensor addresses in **Parrot Flower Power sensors (MAC addresses)**. When a connection-capable gateway receives an advertisement from a configured sensor, the adapter reads the available calibrated moisture, air temperature, sunlight and battery characteristics. The first reading is due immediately. Further readings are due every 15 minutes, or after one minute following an unsuccessful read. The firmware must expose the calibrated Flower Power Live service for the plant measurements.
+
 ## Reading a Comet Blue thermostat
 
 Use `sendToAsync("ble2.0", "readCometBlue", { address, pin })` with the thermostat's Bluetooth MAC address and its PIN as a string. A connecting gateway must be in range. The command returns the ambient temperature, manual, eco and comfort setpoints in °C, and a battery percentage when the device provides it. It authenticates using the supplied PIN for the current session.
@@ -307,6 +311,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 -->
 ### __WORK IN PROGRESS__
 * Read Mi Flora battery levels through a connecting gateway.
+* Read calibrated Parrot Flower Power data through a connecting gateway.
 * Read protected temperature and battery data from Comet Blue thermostats.
 * Add the SwitchBot Bot `switchBot` command for external GATT gateways.
 * Other adapters can deliver BLE advertisements they received, e.g. from ESPHome Bluetooth proxies (`gateway:advertisements`). Several receivers can be used at the same time.

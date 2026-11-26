@@ -3,6 +3,7 @@ import { createMessageHandler } from "./api/message-handler";
 import { ConnectionManager } from "./connections/connection-manager";
 import { DeviceRegistry } from "./devices/device-registry";
 import { MiFloraBattery } from "./drivers/mi-flora-battery";
+import { FlowerPower } from "./drivers/flower-power";
 import {
 	createHttpFirmwareSource,
 	DEFAULT_FIRMWARE_URL,
@@ -38,6 +39,7 @@ let remoteGateway: RemoteGatewayTransport | undefined;
 let connections: ConnectionManager | undefined;
 let pvvx: PvvxDriver | undefined;
 let miFloraBattery: MiFloraBattery | undefined;
+let flowerPower: FlowerPower | undefined;
 let pvvxUpdater: PvvxUpdater | undefined;
 let handleMessage: ((obj: ioBroker.Message) => void) | undefined;
 /** The sources of advertisements that are in use */
@@ -236,6 +238,7 @@ const adapter = utils.adapter({
 				// Connections need to know every device in range, also the ones that are not decoded
 				devices.track(peripheral);
 				miFloraBattery?.observe(peripheral);
+				flowerPower?.observe(peripheral);
 				if (
 					matchesServiceFilter(peripheral, services, manufacturerIds)
 				) {
@@ -269,6 +272,22 @@ const adapter = utils.adapter({
 				adapter,
 				connections,
 				plants.addresses,
+			);
+		}
+
+		const flowerSensors = parseDeviceList(
+			adapter.config.flowerPowerDevices,
+		);
+		for (const address of flowerSensors.invalid) {
+			adapter.log.warn(
+				`Ignoring invalid Flower Power sensor address "${address}"`,
+			);
+		}
+		if (flowerSensors.addresses.length > 0) {
+			flowerPower = new FlowerPower(
+				adapter,
+				connections,
+				flowerSensors.addresses,
 			);
 		}
 
@@ -386,6 +405,7 @@ const adapter = utils.adapter({
 			pvvxUpdater?.dispose();
 			pvvx?.dispose();
 			miFloraBattery?.dispose();
+			flowerPower?.dispose();
 			// Before the transports, so the sessions can still say goodbye to their gateways
 			connections?.dispose();
 			for (const transport of transports) {
