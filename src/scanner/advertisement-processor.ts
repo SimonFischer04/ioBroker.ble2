@@ -2,6 +2,7 @@ import { entries } from "alcalzone-shared/objects";
 import type { DeviceRegistry } from "../devices/device-registry";
 import type { GatewayRegistry } from "../gateways/gateway-registry";
 import type { PeripheralInfo } from "../lib/advertisement";
+import type { DevicePresence } from "../lib/device-presence";
 import { Global as _ } from "../lib/global";
 import {
 	extendChannel,
@@ -18,6 +19,7 @@ export interface AdvertisementProcessorOptions {
 	allowEmptyDevices: boolean;
 	/** How frequent the RSSI of devices should be updated, in ms */
 	rssiUpdateInterval: number;
+	devicePresence?: DevicePresence;
 }
 
 /** After how many ms accepting new devices is disabled again */
@@ -247,6 +249,7 @@ export class AdvertisementProcessor {
 
 		// Ensure the device object exists
 		await extendDevice(deviceId, peripheral, objects.device);
+		this.options.devicePresence?.observe(deviceId);
 		// Ensure the channel objects exist (optional)
 		if (objects.channels != null && objects.channels.length > 0) {
 			await Promise.all(

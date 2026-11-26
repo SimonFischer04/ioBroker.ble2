@@ -1,4 +1,4 @@
-import config from "@iobroker/eslint-config";
+import config, { reactConfig } from "@iobroker/eslint-config";
 
 const [, jsdocOptions] = config.findLast(
 	(entry) => entry.rules?.["jsdoc/require-jsdoc"],
@@ -33,6 +33,10 @@ export default [
 		},
 	},
 
+	...reactConfig.map((entry) => ({
+		...entry,
+		files: ["admin/src/**/*.{ts,tsx}"],
+	})),
 	{
 		files: ["**/*.test.ts"],
 		// src/tsconfig.json deliberately excludes unit tests from compilation.

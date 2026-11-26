@@ -12,8 +12,10 @@ import { PvvxUpdater } from "./drivers/pvvx/pvvx-updater";
 import { systemClock } from "./drivers/pvvx/time-sync";
 import { GatewayRegistry } from "./gateways/gateway-registry";
 import type { PeripheralInfo } from "./lib/advertisement";
+import { DevicePresence } from "./lib/device-presence";
 import { Global as _ } from "./lib/global";
 import { parseHciIndex } from "./lib/hci-ports";
+import { extendState } from "./lib/iobroker-objects";
 import { ObjectCache } from "./lib/object-cache";
 // Load all registered plugins
 import plugins from "./plugins";
@@ -28,6 +30,7 @@ import {
 } from "./transports/server-list";
 import type { Transport, TransportContext } from "./transports/transport";
 
+let devicePresence: DevicePresence | undefined;
 let processor: AdvertisementProcessor | undefined;
 let gateways: GatewayRegistry | undefined;
 let remoteGateway: RemoteGatewayTransport | undefined;
@@ -90,6 +93,10 @@ const adapter = utils.adapter({
 			`enabled plugins: ${enabledPlugins.map((p) => p.name).join(", ")}`,
 		);
 
+		for (const plugin of enabledPlugins) {
+			plugin.initialize?.();
+		}
+
 		// Bring the monitored service names into the correct form
 		let services: string[] = [];
 		if (adapter.config.services === "*") {
@@ -140,12 +147,50 @@ const adapter = utils.adapter({
 		});
 		await gateways.init();
 
+		if (
+			Array.isArray(adapter.config.presenceDevices) &&
+			adapter.config.presenceDevices.length > 0
+		) {
+			devicePresence = new DevicePresence(
+				adapter,
+				adapter.config.presenceDevices,
+				async (deviceId, present): Promise<void> => {
+					const stateId = `${deviceId}.present`;
+					await extendState(stateId, {
+						id: "present",
+						common: {
+							name: "Present",
+							type: "boolean",
+							role: "indicator",
+							read: true,
+							write: false,
+						},
+					});
+					await adapter.setStateChangedAsync(stateId, present, true);
+				},
+			);
+			try {
+				const objects = await adapter.getAdapterObjectsAsync();
+				const prefix = `${adapter.namespace}.`;
+				for (const [id, object] of Object.entries(objects)) {
+					if (object.type === "device" && id.startsWith(prefix)) {
+						devicePresence.restore(id.slice(prefix.length));
+					}
+				}
+			} catch (error) {
+				adapter.log.warn(
+					`Could not restore presence states: ${String(error)}`,
+				);
+			}
+		}
+
 		const devices = new DeviceRegistry();
 		processor = new AdvertisementProcessor(
 			{
 				plugins: enabledPlugins,
 				allowEmptyDevices: !!adapter.config.allowEmptyDevices,
 				rssiUpdateInterval,
+				devicePresence,
 			},
 			devices,
 			gateways,
@@ -323,6 +368,7 @@ const adapter = utils.adapter({
 				transport.stop();
 			}
 			processor?.dispose();
+			devicePresence?.stop();
 			gateways?.dispose();
 			_.objectCache?.dispose();
 		} catch (error) {
@@ -342,6 +388,12 @@ const adapter = utils.adapter({
 			// it has been deleted, so delete it from the cache
 			_.objectCache.invalidateObject(id);
 			processor?.removeState(id);
+			const prefix = `${adapter.namespace}.`;
+			if (id.startsWith(prefix)) {
+				devicePresence?.remove(
+					id.slice(prefix.length).replace(/\.present$/, ""),
+				);
+			}
 		}
 	},
 

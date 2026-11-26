@@ -15,9 +15,17 @@ declare global {
 			 */
 			remoteServers?: string;
 			hciDevice: number | string;
+			scanIntervalMinutes?: number;
+			scanWindowSeconds?: number;
 			plugins: string;
 			xiaomiBindkeys?: string;
+			bthomeBindkeys?: string;
 			allowEmptyDevices: boolean;
+			presenceDevices?: {
+				address: string;
+				packets: number;
+				absenceSeconds: number;
+			}[];
 			rssiThrottle: number;
 			/**
 			 * Whether the Bluetooth adapter of this host is used. When disabled, the adapter only

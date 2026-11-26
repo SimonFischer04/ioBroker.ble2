@@ -106,15 +106,19 @@
 			]
 		}
 	},
-	"encryptedNative": ["xiaomiBindkeys"],
-	"protectedNative": ["xiaomiBindkeys"],
+	"encryptedNative": ["xiaomiBindkeys", "bthomeBindkeys"],
+	"protectedNative": ["xiaomiBindkeys", "bthomeBindkeys"],
 	"native": {
 		"services": "",
 		"hciDevice": 0,
+		"scanIntervalMinutes": 0,
+		"scanWindowSeconds": 10,
 		"remoteServers": "",
 		"plugins": "",
 		"xiaomiBindkeys": "",
+		"bthomeBindkeys": "",
 		"allowEmptyDevices": false,
+		"presenceDevices": [],
 		"rssiThrottle": 0,
 		"localScanner": true,
 		"gatewayTimeout": 60,
