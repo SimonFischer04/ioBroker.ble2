@@ -24,6 +24,8 @@ sudo setcap cap_net_raw+eip $(eval readlink -f `which node`)
 ```
 which requires `libcap2-bin` to be installed.
 
+If `info.driverState` is `driverError`, check the instance log for the scanner's Node.js version, OS, architecture, and load error. A missing native file or a `NODE_MODULE_VERSION` mismatch indicates a driver built for a different environment or an incomplete installation. On Linux, install the packages above and reinstall the `ble2` adapter through ioBroker using the Node.js installation that runs js-controller. A standalone scanner prints the same diagnosis to stderr.
+
 ## Configuration
 
 **Reset RSSI after inactivity [s]** sets a device's `rssi` to `0` after the configured time without an advertisement. A fresh advertisement restores the measured value. Use a timeout longer than the device's normal advertising interval. The default `0` disables the reset.
@@ -88,6 +90,8 @@ ioBroker encrypts the bindkeys in the instance configuration. JSON configuration
 For a device with a bindkey, measurement and event updates require an authenticated BTHome packet with a counter greater than the last accepted counter. The adapter keeps these counters in memory. If a sensor resets its counter, restart the adapter instance to start tracking it again.
 
 To read authenticated Xiaomi MiBeacon v4 or v5 advertisements, enable **Xiaomi** and add the device's Bluetooth MAC address and 32-digit hexadecimal bindkey under **Xiaomi MiBeacon bindkeys**. Use the bindkey assigned when the sensor was paired or configured. ioBroker encrypts the stored configuration. Admin configuration exports include the bindkeys.
+
+For MiBeacon v2 or v3 thermometers, use a 24-digit Xiaomi bindkey. These firmware versions send encrypted readings without an authentication tag. The adapter checks the packet structure and accepts only temperature, humidity, and battery readings within their normal ranges.
 
 The original LYWSD02 alarm clock broadcasts temperature and humidity using the **Xiaomi** plugin. A packet can carry just one measurement. Wait for subsequent packets for the other values.
 

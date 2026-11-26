@@ -469,8 +469,10 @@ function handleMessage(message: ScanMessage): void {
 		case "driverState":
 			adapter.setState("info.driverState", message.driverState, true);
 			break;
-		case "error": // fall through
 		case "fatal":
+			adapter.setState("info.connection", false, true);
+		// fall through
+		case "error":
 			handleScanProcessError(message.error);
 			break;
 		case "log":
