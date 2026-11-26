@@ -110,6 +110,41 @@ describe("xiaomi protocol => ", () => {
 		});
 	});
 
+	describe("LYWSD02 capability and measurement frames", () => {
+		it("decodes the LYWSD02 frame reported in #20", () => {
+			const frame = Buffer.from(
+				"70205b0485a458b3002ee7090610026202",
+				"hex",
+			);
+			expect(new XiaomiAdvertisement(frame).event).to.deep.equal({
+				humidity: 61,
+			});
+		});
+
+		it("skips optional I/O capability data in a plaintext frame", () => {
+			const frame = Buffer.from(
+				"70205b0485a458b3002ee729aa0610026202",
+				"hex",
+			);
+			expect(new XiaomiAdvertisement(frame).event).to.deep.equal({
+				humidity: 61,
+			});
+		});
+
+		it("rejects incomplete ranges instead of publishing partial values", () => {
+			for (const [hex, error] of [
+				["70205b0485a458", "MAC address"],
+				["70205b0485a458b3002ee7", "capabilities"],
+				["70205b0485a458b3002ee729", "I/O capabilities"],
+				["70205b0485a458b3002ee70906100262", "MiBeacon event"],
+			]) {
+				expect(
+					() => new XiaomiAdvertisement(Buffer.from(hex, "hex")),
+				).to.throw(error);
+			}
+		});
+	});
+
 	describe("packets should be parsed correctly => ", () => {
 		it("incomplete packet", () => {
 			function create(hex: string) {

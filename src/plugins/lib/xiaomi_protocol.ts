@@ -115,6 +115,9 @@ export class XiaomiAdvertisement {
 		// The actual packet content begins at offset 5
 		let offset = 5;
 		if (this._hasMacAddress) {
+			if (data.length < offset + 6) {
+				throw new Error("Truncated MiBeacon MAC address");
+			}
 			this._macAddress = reverseBuffer(
 				data.slice(offset, offset + 6),
 			).toString("hex");
@@ -122,9 +125,14 @@ export class XiaomiAdvertisement {
 		}
 
 		if (this._hasCapabilities) {
-			this._capabilities = data[offset];
-			offset++;
-			if (this._isEncrypted && (this._capabilities & 0x20) !== 0) {
+			if (data.length <= offset) {
+				throw new Error("Truncated MiBeacon capabilities");
+			}
+			this._capabilities = data[offset++];
+			if ((this._capabilities & 0x20) !== 0) {
+				if (data.length <= offset) {
+					throw new Error("Truncated MiBeacon I/O capabilities");
+				}
 				offset++;
 			}
 		}
@@ -161,9 +169,6 @@ export class XiaomiAdvertisement {
 		const events: XiaomiEvent = {};
 		for (let cursor = 0; cursor < payload.length;) {
 			const { event, end } = readEvent(payload, cursor);
-			if (end > payload.length) {
-				throw new Error("Truncated MiBeacon event");
-			}
 			Object.assign(events, event);
 			cursor = end;
 		}
@@ -265,6 +270,9 @@ function readEvent(
 	}
 	const id = data.readUInt16LE(offset) as XiaomiEventIDs_Internal;
 	const end = offset + 3 + data[offset + 2];
+	if (end > data.length) {
+		throw new Error("Truncated MiBeacon event");
+	}
 	const value = parseNumberLE(data.subarray(offset + 3, end));
 	const name = XiaomiEventIDs_Internal[
 		id

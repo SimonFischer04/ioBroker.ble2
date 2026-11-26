@@ -80,6 +80,8 @@ For a device with a bindkey, measurement and event updates require an authentica
 
 To read authenticated Xiaomi MiBeacon v4 or v5 advertisements, enable **Xiaomi** and add the device's Bluetooth MAC address and 32-digit hexadecimal bindkey under **Xiaomi MiBeacon bindkeys**. Use the bindkey assigned when the sensor was paired or configured. ioBroker encrypts the stored configuration. Admin configuration exports include the bindkeys.
 
+The original LYWSD02 alarm clock broadcasts temperature and humidity using the **Xiaomi** plugin. A packet can carry just one measurement. Wait for subsequent packets for the other values.
+
 For Mopeka, add `mopeka` to **Active plugins** and enable **Accept new devices** while discovering the sensor. Local scanning includes its manufacturer identifier automatically. A remote scanner with service filters also needs `--manufacturerIds 89` to forward manufacturer-only advertisements.
 
 The plugin creates `mopeka_level_raw` (uncalibrated ultrasonic reading), `mopeka_temperature` (°C), `mopeka_battery_v` (V), `mopeka_battery_percent` (CR2032 estimate), and `mopeka_reading_quality` (0: no valid echo, 1: low, 2: medium, 3: high). A reading with quality 0 clears the raw level to `null`; battery and temperature still update. Converting the raw reading to fill percentage, volume, or weight requires calibration for the tank and its contents.
