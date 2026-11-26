@@ -76,5 +76,7 @@
     "Reset RSSI after inactivity [s]": "Reset RSSI after inactivity [s]",
     "Set RSSI to 0 after this many seconds without an advertisement from the device. Set to 0 to disable.": "Set RSSI to 0 after this many seconds without an advertisement from the device. Set to 0 to disable.",
     "Cycling Power sensors (MAC addresses)": "Cycling Power sensors (MAC addresses)",
-    "Add one cycling power sensor address per line. A gateway that can connect is required.": "Add one cycling power sensor address per line. A gateway that can connect is required."
+    "Add one cycling power sensor address per line. A gateway that can connect is required.": "Add one cycling power sensor address per line. A gateway that can connect is required.",
+    "Enter the MAC address and bindkey for each encrypted Xiaomi MiBeacon device.": "Enter the MAC address and bindkey for each encrypted Xiaomi MiBeacon device.",
+    "Enter a 24- or 32-digit hexadecimal Xiaomi bindkey.": "Enter a 24- or 32-digit hexadecimal Xiaomi bindkey."
 }
