@@ -124,6 +124,7 @@
 		"localScanner": true,
 		"gatewayTimeout": 60,
 		"pvvxDevices": "",
+		"flowerPowerDevices": "",
 		"pvvxSyncInterval": 24,
 		"pvvxFirmwareCheck": true,
 		"pvvxFirmwareUrl": "https://raw.githubusercontent.com/pvvx/ATC_MiThermometer/master/"

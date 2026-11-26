@@ -2,6 +2,7 @@ import * as utils from "@iobroker/adapter-core";
 import { createMessageHandler } from "./api/message-handler";
 import { ConnectionManager } from "./connections/connection-manager";
 import { DeviceRegistry } from "./devices/device-registry";
+import { FlowerPower } from "./drivers/flower-power";
 import {
 	createHttpFirmwareSource,
 	DEFAULT_FIRMWARE_URL,
@@ -36,6 +37,7 @@ let gateways: GatewayRegistry | undefined;
 let remoteGateway: RemoteGatewayTransport | undefined;
 let connections: ConnectionManager | undefined;
 let pvvx: PvvxDriver | undefined;
+let flowerPower: FlowerPower | undefined;
 let pvvxUpdater: PvvxUpdater | undefined;
 let handleMessage: ((obj: ioBroker.Message) => void) | undefined;
 /** The sources of advertisements that are in use */
@@ -227,6 +229,7 @@ const adapter = utils.adapter({
 			onAdvertisement: (peripheral) => {
 				// Connections need to know every device in range, also the ones that are not decoded
 				devices.track(peripheral);
+				flowerPower?.observe(peripheral);
 				if (
 					matchesServiceFilter(peripheral, services, manufacturerIds)
 				) {
@@ -250,6 +253,22 @@ const adapter = utils.adapter({
 			setTimeout: (callback, ms) => adapter.setTimeout(callback, ms),
 			clearTimeout: (timer) => adapter.clearTimeout(timer),
 		});
+
+		const flowerSensors = parseDeviceList(
+			adapter.config.flowerPowerDevices,
+		);
+		for (const address of flowerSensors.invalid) {
+			adapter.log.warn(
+				`Ignoring invalid Flower Power sensor address "${address}"`,
+			);
+		}
+		if (flowerSensors.addresses.length > 0) {
+			flowerPower = new FlowerPower(
+				adapter,
+				connections,
+				flowerSensors.addresses,
+			);
+		}
 
 		// Sets the clock of pvvx thermometers through the gateways
 		const pvvxList = parseDeviceList(adapter.config.pvvxDevices);
@@ -364,6 +383,7 @@ const adapter = utils.adapter({
 			// No new jobs for the connections
 			pvvxUpdater?.dispose();
 			pvvx?.dispose();
+			flowerPower?.dispose();
 			// Before the transports, so the sessions can still say goodbye to their gateways
 			connections?.dispose();
 			for (const transport of transports) {

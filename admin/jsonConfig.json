@@ -369,6 +369,14 @@
                     "xs": 12,
                     "sm": 6
                 },
+                "flowerPowerDevices": {
+                    "type": "text",
+                    "label": "Parrot Flower Power sensors (MAC addresses)",
+                    "help": "Add one Parrot Flower Power sensor per line. A gateway that can connect is required.",
+                    "minRows": 2,
+                    "xs": 12,
+                    "sm": 6
+                },
                 "pvvxDevices": {
                     "type": "text",
                     "label": "pvvx thermometers (MAC addresses):",
