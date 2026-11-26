@@ -120,7 +120,8 @@
 		"allowEmptyDevices": false,
 		"discoveryAllowlist": "",
 		"presenceDevices": [],
-		"rssiThrottle": 0
+		"rssiThrottle": 0,
+		"rssiTimeoutSeconds": 0
 	},
 	"objects": [],
 	"instanceObjects": [

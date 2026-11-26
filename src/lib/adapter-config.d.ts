@@ -19,6 +19,7 @@ declare global {
 				absenceSeconds: number;
 			}[];
 			rssiThrottle: number;
+			rssiTimeoutSeconds?: number;
 		}
 	}
 }
