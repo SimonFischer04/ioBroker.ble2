@@ -237,11 +237,18 @@ export class DeviceRegistry {
  * @param peripheral The received advertisement
  */
 function getFingerprint(peripheral: PeripheralInfo): string {
-	const { serviceData, manufacturerData } = peripheral.advertisement;
+	const { serviceData, manufacturerData, manufacturerDataBlocks } =
+		peripheral.advertisement;
 	const parts: string[] = [];
 	for (const entry of serviceData ?? []) {
 		parts.push(`${entry.uuid}=${entry.data.toString("hex")}`);
 	}
-	parts.push(`m=${manufacturerData?.toString("hex") ?? ""}`);
+	const blocks =
+		manufacturerDataBlocks
+			?.map((block) => block.toString("hex"))
+			.join(",") ??
+		manufacturerData?.toString("hex") ??
+		"";
+	parts.push(`m=${blocks}`);
 	return parts.join("|");
 }

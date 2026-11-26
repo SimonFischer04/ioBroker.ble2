@@ -26,6 +26,8 @@ export interface AdvertisementData {
 	serviceData?: ServiceData[];
 	/** The manufacturer specific data including the two leading bytes of the company ID */
 	manufacturerData?: Buffer;
+	/** All manufacturer blocks, in wire order, when the transport receives raw AD data */
+	manufacturerDataBlocks?: Buffer[];
 }
 
 /** A received advertisement together with the device that sent it */
