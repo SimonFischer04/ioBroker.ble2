@@ -190,11 +190,13 @@ const adapter = utils.adapter({
 				plugins: enabledPlugins,
 				allowEmptyDevices: !!adapter.config.allowEmptyDevices,
 				rssiUpdateInterval,
+				rssiTimeoutSeconds: adapter.config.rssiTimeoutSeconds ?? 0,
 				devicePresence,
 			},
 			devices,
 			gateways,
 		);
+		await processor.restoreRssiTimers();
 		const handleAdvertisement = (peripheral: PeripheralInfo): void => {
 			processor!.process(peripheral).catch((e) => {
 				adapter.log.error(

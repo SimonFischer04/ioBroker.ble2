@@ -9,6 +9,7 @@ import {
 	extendDevice,
 	extendState,
 } from "../lib/iobroker-objects";
+import { RssiExpiry } from "../lib/rssi-expiry";
 import { RssiUpdates } from "../lib/rssi-updates";
 import type { Plugin } from "../plugins/plugin";
 
@@ -19,6 +20,7 @@ export interface AdvertisementProcessorOptions {
 	allowEmptyDevices: boolean;
 	/** How frequent the RSSI of devices should be updated, in ms */
 	rssiUpdateInterval: number;
+	rssiTimeoutSeconds: number;
 	devicePresence?: DevicePresence;
 }
 
@@ -39,9 +41,43 @@ export class AdvertisementProcessor {
 			_.adapter,
 			options.rssiUpdateInterval,
 		);
+		const timeout = options.rssiTimeoutSeconds;
+		if (Number.isInteger(timeout) && timeout > 0 && timeout <= 86400) {
+			this.rssiExpiry = new RssiExpiry(_.adapter, timeout * 1000, (id) =>
+				this.rssiUpdates.remove(id),
+			);
+		}
 	}
 
 	private readonly rssiUpdates: RssiUpdates;
+	private readonly rssiExpiry?: RssiExpiry;
+
+	public async restoreRssiTimers(): Promise<void> {
+		if (!this.rssiExpiry) {
+			return;
+		}
+		const { adapter } = _;
+		const states = await adapter
+			.getStatesAsync("*.rssi")
+			.catch((error: unknown) => {
+				adapter.log.warn(
+					`Could not restore RSSI timers: ${String(error)}`,
+				);
+				return {};
+			});
+		const prefix = `${adapter.namespace}.`;
+		for (const [id, state] of Object.entries(states)) {
+			if (
+				id.startsWith(prefix) &&
+				/^[^.]+\.rssi$/.test(id.slice(prefix.length)) &&
+				typeof state?.val === "number" &&
+				state.val !== 0 &&
+				Number.isFinite(state.ts)
+			) {
+				this.rssiExpiry.restore(id, state.ts);
+			}
+		}
+	}
 
 	public observeState(
 		id: string,
@@ -52,6 +88,7 @@ export class AdvertisementProcessor {
 
 	public removeState(id: string): void {
 		this.rssiUpdates.remove(id);
+		this.rssiExpiry?.remove(id);
 	}
 
 	/** Whether new devices may be recorded */
@@ -61,6 +98,7 @@ export class AdvertisementProcessor {
 	private readonly ignoredNewDeviceIDs = new Set<string>();
 
 	public dispose(): void {
+		this.rssiExpiry?.stop();
 		if (this.resetAllowNewDevicesTimeout) {
 			_.adapter.clearTimeout(this.resetAllowNewDevicesTimeout);
 		}
@@ -216,10 +254,14 @@ export class AdvertisementProcessor {
 			native: {},
 		});
 		// Use the signal strength of the gateway that receives the device best.
-		await this.rssiUpdates.update(
-			`${_.adapter.namespace}.${deviceId}.rssi`,
-			observation.bestRssi,
-		);
+		const rssiId = `${_.adapter.namespace}.${deviceId}.rssi`;
+		if (this.rssiExpiry) {
+			await this.rssiExpiry.update(rssiId, () =>
+				this.rssiUpdates.update(rssiId, observation.bestRssi, true),
+			);
+		} else {
+			await this.rssiUpdates.update(rssiId, observation.bestRssi);
+		}
 
 		// Now update device-specific objects and states
 		const context = plugin.createContext(peripheral);

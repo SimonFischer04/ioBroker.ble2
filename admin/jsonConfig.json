@@ -68,6 +68,19 @@
                     "lg": 6,
                     "xl": 6
                 },
+                "rssiTimeoutSeconds": {
+                    "type": "number",
+                    "label": "Reset RSSI after inactivity [s]",
+                    "help": "Set RSSI to 0 after this many seconds without an advertisement from the device. Set to 0 to disable.",
+                    "min": 0,
+                    "max": 86400,
+                    "step": 1,
+                    "xs": 12,
+                    "sm": 6,
+                    "md": 4,
+                    "lg": 4,
+                    "xl": 4
+                },
                 "plugins": {
                     "type": "text",
                     "hidden": true,
@@ -83,7 +96,7 @@
                     "label": "Active plugins:",
                     "help": "Select the plugins for your sensors. Basic advertisement data is always available.",
                     "doNotSave": true,
-                    "defaultFunc": "[...new Set((Array.isArray(data.plugins) ? data.plugins : String(data.plugins || '').split(',')).map(p => p.trim().toLowerCase()).filter(p => ['xiaomi', 'mi-flora', 'ruuvi-tag', 'bthome', 'mopeka', 'switchbot', 'eddystone', 'mi-scale'].includes(p)))]",
+                    "defaultFunc": "[...new Set((Array.isArray(data.plugins) ? data.plugins : String(data.plugins || '').split(',')).map(p => p.trim().toLowerCase()).filter(p => ['xiaomi', 'mi-flora', 'ruuvi-tag', 'atc', 'bthome', 'mopeka', 'switchbot', 'eddystone', 'mi-scale', 'govee'].includes(p)))]",
                     "onChange": {
                         "calculateFunc": "const selection = data._pluginSelection || []; data.plugins = selection.join(','); return selection;"
                     },
@@ -105,6 +118,10 @@
                             "value": "ruuvi-tag"
                         },
                         {
+                            "label": "ATC1441 and PVVX",
+                            "value": "atc"
+                        },
+                        {
                             "label": "SwitchBot Meter",
                             "value": "switchbot"
                         },
@@ -115,6 +132,10 @@
                         {
                             "label": "Xiaomi Mi Scale",
                             "value": "mi-scale"
+                        },
+                        {
+                            "label": "Govee H5072/H5075",
+                            "value": "govee"
                         },
                         {
                             "label": "Mopeka Pro Check",

@@ -120,6 +120,7 @@
 		"allowEmptyDevices": false,
 		"presenceDevices": [],
 		"rssiThrottle": 0,
+		"rssiTimeoutSeconds": 0,
 		"localScanner": true,
 		"gatewayTimeout": 60,
 		"pvvxDevices": "",
