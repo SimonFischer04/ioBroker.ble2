@@ -5,8 +5,9 @@ declare global {
 		interface AdapterConfig {
 			services: string;
 			server: string;
-			hciDevice: number;
+			hciDevice: number | string;
 			plugins: string;
+			xiaomiBindkeys?: string;
 			allowEmptyDevices: boolean;
 			rssiThrottle: number;
 		}

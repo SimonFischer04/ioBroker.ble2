@@ -1,3 +1,5 @@
+import { createDecipheriv } from "node:crypto";
+
 const enum FrameControlFlags {
 	NewFactory = 1 << 0,
 	Connected = 1 << 1,
@@ -27,6 +29,8 @@ export enum XiaomiEventIDs_Internal {
 	Fertility = 0x1009,
 	Battery = 0x100a,
 	TemperatureAndHumidity = 0x100d, // 2 byte temperature / 10, 2 byte humidity / 10
+	PowerState = 0x1012, // 0 = off, 1 = on
+	ConsumableRemaining = 0x1013, // remaining amount in percent
 }
 
 export type XiaomiEventIDs =
@@ -36,7 +40,9 @@ export type XiaomiEventIDs =
 	| "moisture"
 	| "fertility"
 	| "battery"
-	| "kettleStatus";
+	| "kettleStatus"
+	| "powerState"
+	| "consumableRemaining";
 
 export type XiaomiEvent = Partial<Record<XiaomiEventIDs, number>>;
 type ValueTransform = (
@@ -72,10 +78,16 @@ const valueTransforms: Partial<
 		kettleStatus: val & 0xff,
 		temperature: val >>> 8,
 	}),
+	PowerState: (val) => ({ powerState: val }),
+	ConsumableRemaining: (val) => ({ consumableRemaining: val }),
 };
 
 export class XiaomiAdvertisement {
-	public constructor(data: Buffer) {
+	public constructor(
+		data: Buffer,
+		advertisedAddress?: string,
+		findBindkey?: (mac: string) => Buffer | undefined,
+	) {
 		if (!data || data.length < 5) {
 			throw new Error(
 				"A xiaomi advertisement frame must be at least 5 bytes long",
@@ -100,11 +112,6 @@ export class XiaomiAdvertisement {
 
 		this._frameCounter = data[4];
 
-		// Avoid creating thousands of unknown(0xabcd) states
-		if (this._isEncrypted) {
-			throw new Error("Encrypted advertisements are not supported");
-		}
-
 		// The actual packet content begins at offset 5
 		let offset = 5;
 		if (this._hasMacAddress) {
@@ -117,25 +124,50 @@ export class XiaomiAdvertisement {
 		if (this._hasCapabilities) {
 			this._capabilities = data[offset];
 			offset++;
-		}
-
-		if (this._hasEvent) {
-			const eventID = data.readUInt16LE(offset);
-			// const eventName = XiaomiEventIDs_Internal[
-			// 	eventID
-			// ] as keyof typeof XiaomiEventIDs_Internal;
-			const dataLength = data[offset + 2];
-			const eventData = data.slice(offset + 3, offset + 3 + dataLength);
-			const numericData = parseNumberLE(eventData);
-			// check if there's a specialized value transform
-			if (XiaomiEventIDs_Internal[eventID] in valueTransforms) {
-				this._event = (valueTransforms as any)[
-					XiaomiEventIDs_Internal[eventID]
-				](numericData);
-			} else {
-				this._event = valueTransforms.default(numericData, eventID);
+			if (this._isEncrypted && (this._capabilities & 0x20) !== 0) {
+				offset++;
 			}
 		}
+
+		if (!this._hasEvent) {
+			return;
+		}
+		if (!this._isEncrypted) {
+			this._event = readEvent(data, offset).event;
+			return;
+		}
+		if (this._version !== 4 && this._version !== 5) {
+			throw new Error("Unsupported encrypted MiBeacon version");
+		}
+
+		const address = advertisedAddress?.replace(/[:-]/g, "").toLowerCase();
+		const validAddress =
+			address != null && /^[0-9a-f]{12}$/.test(address)
+				? address
+				: undefined;
+		const mac = this._macAddress ?? validAddress;
+		if (
+			mac == undefined ||
+			!/^[0-9a-f]{12}$/.test(mac) ||
+			(validAddress && validAddress !== mac)
+		) {
+			throw new Error("Invalid MAC address for encrypted MiBeacon");
+		}
+		const key = findBindkey?.(mac);
+		if (key?.length !== 16) {
+			throw new Error("No valid MiBeacon bindkey is configured");
+		}
+		const payload = decryptEvents(data, offset, mac, key);
+		const events: XiaomiEvent = {};
+		for (let cursor = 0; cursor < payload.length;) {
+			const { event, end } = readEvent(payload, cursor);
+			if (end > payload.length) {
+				throw new Error("Truncated MiBeacon event");
+			}
+			Object.assign(events, event);
+			cursor = end;
+		}
+		this._event = events;
 	}
 
 	private _productID: number;
@@ -222,6 +254,49 @@ export class XiaomiAdvertisement {
 	public get isBindingFrame(): boolean {
 		return this._isBindingFrame;
 	}
+}
+
+function readEvent(
+	data: Buffer,
+	offset: number,
+): { event: XiaomiEvent; end: number } {
+	if (offset + 3 > data.length) {
+		throw new Error("Truncated MiBeacon event header");
+	}
+	const id = data.readUInt16LE(offset) as XiaomiEventIDs_Internal;
+	const end = offset + 3 + data[offset + 2];
+	const value = parseNumberLE(data.subarray(offset + 3, end));
+	const name = XiaomiEventIDs_Internal[
+		id
+	] as keyof typeof XiaomiEventIDs_Internal;
+	return {
+		event: (valueTransforms[name] ?? valueTransforms.default)(value, id),
+		end,
+	};
+}
+
+// MiBeacon v4/v5 uses the reversed MAC, product and frame counter, then three extension bytes.
+function decryptEvents(
+	data: Buffer,
+	offset: number,
+	mac: string,
+	key: Buffer,
+): Buffer {
+	if (data.length < offset + 10) {
+		throw new Error("Truncated encrypted MiBeacon advertisement");
+	}
+	const nonce = Buffer.concat([
+		Buffer.from(mac, "hex").reverse(),
+		data.subarray(2, 5),
+		data.subarray(-7, -4),
+	]);
+	const ciphertext = data.subarray(offset, -7);
+	const decoder = createDecipheriv("aes-128-ccm", key, nonce, {
+		authTagLength: 4,
+	});
+	decoder.setAuthTag(data.subarray(-4));
+	decoder.setAAD(Buffer.from([0x11]), { plaintextLength: ciphertext.length });
+	return Buffer.concat([decoder.update(ciphertext), decoder.final()]);
 }
 
 function reverseBuffer(buf: Buffer): Buffer {

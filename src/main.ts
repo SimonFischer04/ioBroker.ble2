@@ -1,14 +1,16 @@
 import * as utils from "@iobroker/adapter-core";
 import { entries } from "alcalzone-shared/objects";
-import { exec, fork, type ChildProcess } from "node:child_process";
+import { execFile, fork, type ChildProcess } from "node:child_process";
 import * as path from "node:path";
 import { Global as _ } from "./lib/global";
+import { getHciOptions, parseHciIndex, parseHciPorts } from "./lib/hci-ports";
 import {
 	extendChannel,
 	extendDevice,
 	extendState,
 } from "./lib/iobroker-objects";
 import { ObjectCache } from "./lib/object-cache";
+import { RssiUpdates } from "./lib/rssi-updates";
 import {
 	ScanExitCodes,
 	getMessageReviver,
@@ -50,8 +52,7 @@ const ignoredNewDeviceIDs = new Set<string>();
 // /** MAC addresses of known devices */
 // let knownDevices: string[] = [];
 
-/** How frequent the RSSI of devices should be updated */
-let rssiUpdateInterval = 0;
+let rssiUpdates: RssiUpdates | undefined;
 
 /** A reference to the scanning process */
 let scanProcess: ChildProcess | undefined;
@@ -108,13 +109,10 @@ const adapter = utils.adapter({
 			_.adapter.log.info(`monitored services: ${services.join(", ")}`);
 		}
 
-		// Limit RSSI updates
-		if (adapter.config.rssiThrottle != null) {
-			rssiUpdateInterval = Math.max(
-				0,
-				Math.min(10000, adapter.config.rssiThrottle),
-			);
-		}
+		rssiUpdates = new RssiUpdates(
+			adapter,
+			Math.max(0, Math.min(10000, adapter.config.rssiThrottle ?? 0)),
+		);
 		// monitor our own states and objects
 		adapter.subscribeStates("*");
 		adapter.subscribeObjects("*");
@@ -152,11 +150,13 @@ const adapter = utils.adapter({
 		} else {
 			// it has been deleted, so delete it from the cache
 			_.objectCache.invalidateObject(id);
+			rssiUpdates?.remove(id);
 		}
 	},
 
 	// is called if a subscribed state changes
 	stateChange: (id, state) => {
+		rssiUpdates?.observe(id, state);
 		if (
 			/options\.allowNewDevices$/.test(id) &&
 			state != undefined &&
@@ -220,29 +220,32 @@ const adapter = utils.adapter({
 		// handle the message
 		if (obj) {
 			switch (obj.command) {
+				case "getHCIOptions":
 				case "getHCIPorts":
-					exec("hciconfig | grep hci", (error, stdout, _stderr) => {
-						// hci1:   Type: BR/EDR  Bus: USB
-						// hci0:   Type: BR/EDR  Bus: UART
-						if (error != null) {
-							respond({ error });
-							return;
-						}
-						// parse index and bus type
-						const ports: { index: number; bus: string }[] = [];
-						const regex = /^hci(\d+):.+Bus:\s(\w+)$/gm;
-						let result: RegExpExecArray | null;
-
-						while (true) {
-							result = regex.exec(stdout);
-							if (!(result && result.length)) {
-								break;
+					if (!obj.callback) {
+						return;
+					}
+					execFile(
+						"hciconfig",
+						{ timeout: 3000 },
+						(error, stdout) => {
+							const wantsOptions =
+								obj.command === "getHCIOptions";
+							if (error != null) {
+								respond(wantsOptions ? [] : { error });
+								return;
 							}
-							const port = { index: +result[1], bus: result[2] };
-							ports.push(port);
-						}
-						respond({ error: null, result: ports });
-					});
+							const ports = parseHciPorts(stdout);
+							respond(
+								wantsOptions
+									? getHciOptions(
+											ports,
+											adapter.config.hciDevice,
+										)
+									: { error: null, result: ports },
+							);
+						},
+					);
 					return;
 				default:
 					respond(predefinedResponses.ERROR_UNKNOWN_COMMAND);
@@ -260,8 +263,9 @@ function startScanProcess(): void {
 	if (manufacturerIds.length > 0) {
 		args.push("--manufacturerIds", ...manufacturerIds.map(String));
 	}
-	if (adapter.config.hciDevice) {
-		args.push("-d", adapter.config.hciDevice.toString());
+	const hciIndex = parseHciIndex(adapter.config.hciDevice);
+	if (hciIndex) {
+		args.push("-d", hciIndex.toString());
 	}
 	adapter.log.info("starting scanner process...");
 	scanProcess = fork(path.join(__dirname, "scanProcess"), args, {
@@ -467,16 +471,11 @@ async function onDiscover(peripheral: PeripheralInfo): Promise<void> {
 		},
 		native: {},
 	});
-	// update RSSI information
-	const rssiState = await adapter.getStateAsync(`${deviceId}.rssi`);
-	if (
-		rssiState == null ||
-		// Allow updating the unchanged state because some people use it for presence detection
-		rssiState.ts + rssiUpdateInterval < Date.now() // But don't update too frequently
-	) {
-		_.adapter.log.debug(`updating rssi state for ${deviceId}`);
-		await adapter.setStateAsync(`${deviceId}.rssi`, peripheral.rssi, true);
-	}
+	// Refresh unchanged values too for users who rely on the state timestamp.
+	await rssiUpdates?.update(
+		`${adapter.namespace}.${deviceId}.rssi`,
+		peripheral.rssi,
+	);
 
 	// Now update device-specific objects and states
 	const context = plugin.createContext(peripheral);
