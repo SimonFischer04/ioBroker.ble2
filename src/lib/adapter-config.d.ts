@@ -8,6 +8,7 @@ declare global {
 			hciDevice: number | string;
 			plugins: string;
 			allowEmptyDevices: boolean;
+			reviewNewDevices?: boolean;
 			rssiThrottle: number;
 		}
 	}

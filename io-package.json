@@ -112,10 +112,30 @@
 		"server": "",
 		"plugins": "",
 		"allowEmptyDevices": false,
+		"reviewNewDevices": false,
 		"rssiThrottle": 0
 	},
 	"objects": [],
 	"instanceObjects": [
+		{
+			"_id": "unknownDevices",
+			"type": "channel",
+			"common": { "name": "Unknown devices" },
+			"native": {}
+		},
+		{
+			"_id": "unknownDevices.list",
+			"type": "state",
+			"common": {
+				"name": "Devices waiting for approval",
+				"role": "json",
+				"type": "string",
+				"read": true,
+				"write": false,
+				"def": "[]"
+			},
+			"native": {}
+		},
 		{
 			"_id": "info",
 			"type": "channel",

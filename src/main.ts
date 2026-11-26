@@ -2,6 +2,7 @@ import * as utils from "@iobroker/adapter-core";
 import { entries } from "alcalzone-shared/objects";
 import { execFile, fork, type ChildProcess } from "node:child_process";
 import * as path from "node:path";
+import { DiscoveryCandidates } from "./lib/discovery-candidates";
 import { Global as _ } from "./lib/global";
 import { getHciOptions, parseHciIndex, parseHciPorts } from "./lib/hci-ports";
 import {
@@ -23,6 +24,7 @@ import type { Plugin } from "./plugins/plugin";
 
 let enabledPlugins: Plugin[];
 let services: string[] = [];
+let discoveryCandidates: DiscoveryCandidates | undefined;
 
 /** Whether new devices may be recorded */
 let allowNewDevices = false;
@@ -48,9 +50,6 @@ function autoResetAllowNewDevices(): void {
 /** Cache of new devices we already ignored */
 const ignoredNewDeviceIDs = new Set<string>();
 
-// /** MAC addresses of known devices */
-// let knownDevices: string[] = [];
-
 /** How frequent the RSSI of devices should be updated */
 let rssiUpdateInterval = 0;
 
@@ -72,6 +71,12 @@ const adapter = utils.adapter({
 
 		// Workaround für fehlende InstanceObjects nach update
 		await _.ensureInstanceObjects();
+		await adapter.setStateChangedAsync("unknownDevices.list", "[]", true);
+		if (adapter.config.reviewNewDevices) {
+			discoveryCandidates = new DiscoveryCandidates(adapter, async (list): Promise<void> => {
+				await adapter.setStateChangedAsync("unknownDevices.list", JSON.stringify(list), true);
+			});
+		}
 
 		// Plugins laden
 		_.adapter.log.info(
@@ -142,7 +147,11 @@ const adapter = utils.adapter({
 		} catch {
 			// Shutdown must continue even when the scanner has already exited.
 		}
-		callback();
+		if (discoveryCandidates) {
+			void discoveryCandidates.dispose().finally(callback);
+		} else {
+			callback();
+		}
 	},
 
 	// is called if a subscribed object changes
@@ -153,6 +162,10 @@ const adapter = utils.adapter({
 		} else {
 			// it has been deleted, so delete it from the cache
 			_.objectCache.invalidateObject(id);
+			const prefix = `${adapter.namespace}.`;
+			if (id.startsWith(prefix) && id.endsWith(".rssi")) {
+				discoveryCandidates?.forgetApproval(id.slice(prefix.length, -5));
+			}
 		}
 	},
 
@@ -187,8 +200,6 @@ const adapter = utils.adapter({
 		}
 	},
 
-	// Keep the adapter callback promise-based even when no command awaits work.
-	// eslint-disable-next-line @typescript-eslint/require-await
 	message: async (obj) => {
 		// responds to the adapter that sent the original message
 		function respond(response: any): void {
@@ -221,6 +232,35 @@ const adapter = utils.adapter({
 		// handle the message
 		if (obj) {
 			switch (obj.command) {
+				case "listUnknownDevices": {
+					const list = discoveryCandidates?.list() ?? [];
+					respond(list.length ? list.map(({address, name}) => ({
+						value: address,
+						label: name ? `${name} (${address})` : address,
+					})) : [{ value: "", label: "No devices detected" }]);
+					return;
+				}
+				case "refreshUnknownDevices":
+					respond({ native: { _unknownDevice: "", _unknownDeviceRevision: String(Date.now()) } });
+					return;
+				case "approveUnknownDevice": {
+					if (!obj.callback) {
+						return;
+					}
+					const { address } = (obj.message ?? {}) as { address?: unknown };
+					try {
+						if (typeof address === "string" && await discoveryCandidates?.approve(address, (peripheral) => onDiscover(peripheral, true))) {
+							ignoredNewDeviceIDs.delete(address);
+							respond({ result: "deviceAdded", native: { _unknownDevice: "", _unknownDeviceRevision: String(Date.now()) } });
+						} else {
+							respond({ error: "This device is no longer available. Refresh the discovery list." });
+						}
+					} catch (error) {
+						adapter.log.warn(`Could not approve the discovered device: ${String(error)}`);
+						respond({ error: "Could not add the device. See the adapter log." });
+					}
+					return;
+				}
 				case "getHCIOptions":
 				case "getHCIPorts":
 					if (!obj.callback) {
@@ -367,7 +407,7 @@ function fixServiceName(name: string | null | undefined): string {
 	return name.toLowerCase();
 }
 
-async function onDiscover(peripheral: PeripheralInfo): Promise<void> {
+async function onDiscover(peripheral: PeripheralInfo, approved = false): Promise<void> {
 	if (peripheral == null) {
 		return;
 	}
@@ -441,7 +481,13 @@ async function onDiscover(peripheral: PeripheralInfo): Promise<void> {
 	}
 
 	// Test if we may record this device
-	if (!allowNewDevices) {
+	if (!approved && (!allowNewDevices || discoveryCandidates)) {
+		if (discoveryCandidates?.isPending(deviceId)) {
+			if (allowNewDevices) {
+				discoveryCandidates.observe(peripheral);
+			}
+			return;
+		}
 		// We may not. First test if we already ignored this device
 		if (ignoredNewDeviceIDs.has(deviceId)) {
 			return;
@@ -450,10 +496,14 @@ async function onDiscover(peripheral: PeripheralInfo): Promise<void> {
 		if (
 			!(await _.objectCache.objectExists(
 				`${_.adapter.namespace}.${deviceId}.rssi`,
-			))
+			)) &&
+			!discoveryCandidates?.isApproved(deviceId)
 		) {
-			// This is a new device. Remember that we need to ignore it
-			ignoredNewDeviceIDs.add(deviceId);
+			if (allowNewDevices && discoveryCandidates) {
+				discoveryCandidates.observe(peripheral);
+			} else if (!allowNewDevices) {
+				ignoredNewDeviceIDs.add(deviceId);
+			}
 			return;
 		}
 		// This is a known device
@@ -490,6 +540,9 @@ async function onDiscover(peripheral: PeripheralInfo): Promise<void> {
 
 	// We can't do anything without objects
 	if (objects == null) {
+		if (approved) {
+			await extendDevice(deviceId, peripheral, { common: { name: peripheral.advertisement.localName || deviceId } });
+		}
 		return;
 	}
 

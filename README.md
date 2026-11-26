@@ -28,6 +28,12 @@ which requires `libcap2-bin` to be installed.
 Select the local Bluetooth adapter by its HCI name and bus type, such as `hci0 (USB)`. If the list is unavailable, enter the index manually using the number after `hci`.
 In the textbox below, enter all UUIDs of the advertised services you want to record (as found in the nRF Connect app).
 
+### Review new devices
+
+Enable **Review new devices before adding them** and save the instance settings. Turn on **Accept new devices**, then click **Refresh device list** to see the devices detected during the discovery window. Select one and click **Add selected device** to record it under the usual `ble2.<instance>.<address>` path.
+
+The read-only `unknownDevices.list` state shows up to 256 candidates. A candidate expires after 15 minutes without an advertisement during discovery. You can approve candidates after the discovery window ends while they are still listed. Existing devices continue to update at their current object paths. With review mode disabled, the discovery switch adds new devices directly.
+
 ### Moving from ble to ble2
 
 Install `iobroker.ble2` and create a new `ble2` instance. Copy your settings from the old `ble` instance. If both instances use the same Bluetooth device or remote scanner, disable the old instance before starting the new one.

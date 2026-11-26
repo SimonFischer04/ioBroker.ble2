@@ -145,6 +145,63 @@
                     "xl": 12
                 }
             }
+        },
+        "reviewNewDevices": {
+            "type": "checkbox",
+            "label": "Review new devices before adding them",
+            "help": "Save this setting, enable Accept new devices, then refresh the list and add the devices you want.",
+            "xs": 12,
+            "sm": 6,
+            "md": 6,
+            "lg": 6,
+            "xl": 6
+        },
+        "_unknownDeviceRevision": {
+            "type": "text",
+            "hidden": true,
+            "default": "",
+            "doNotSave": true
+        },
+        "_unknownDevice": {
+            "type": "selectSendTo",
+            "label": "Unknown devices",
+            "command": "listUnknownDevices",
+            "alsoDependsOn": ["_unknownDeviceRevision"],
+            "hidden": "!data.reviewNewDevices",
+            "manual": false,
+            "default": "",
+            "doNotSave": true,
+            "xs": 12,
+            "sm": 6,
+            "md": 6
+        },
+        "_refreshUnknownDevices": {
+            "type": "sendTo",
+            "label": "Refresh device list",
+            "command": "refreshUnknownDevices",
+            "hidden": "!data.reviewNewDevices",
+            "useNative": true,
+            "doNotSave": true,
+            "xs": 12,
+            "sm": 3,
+            "md": 3
+        },
+        "_approveUnknownDevice": {
+            "type": "sendTo",
+            "label": "Add selected device",
+            "command": "approveUnknownDevice",
+            "jsonData": "{\"address\":\"${data._unknownDevice}\"}",
+            "hidden": "!data.reviewNewDevices",
+            "disabled": "!data._unknownDevice",
+            "useNative": true,
+            "showProcess": true,
+            "result": {
+                "deviceAdded": { "en": "Device added.", "de": "Gerät übernommen." }
+            },
+            "doNotSave": true,
+            "xs": 12,
+            "sm": 3,
+            "md": 3
         }
     }
 }
