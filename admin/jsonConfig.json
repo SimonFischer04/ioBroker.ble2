@@ -389,6 +389,14 @@
                     "xs": 12,
                     "sm": 6
                 },
+                "cyclingPowerDevices": {
+                    "type": "text",
+                    "label": "Cycling Power sensors (MAC addresses)",
+                    "help": "Add one cycling power sensor address per line. A gateway that can connect is required.",
+                    "minRows": 2,
+                    "xs": 12,
+                    "sm": 6
+                },
                 "pvvxDevices": {
                     "type": "text",
                     "label": "pvvx thermometers (MAC addresses):",

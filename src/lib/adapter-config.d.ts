@@ -42,6 +42,7 @@ declare global {
 			pvvxDevices?: string;
 			miFloraBatteryDevices?: string;
 			flowerPowerDevices?: string;
+			cyclingPowerDevices?: string;
 			/** Hours between two time syncs of a pvvx device, 0 = no periodic sync. Missing in old configurations = 24. */
 			pvvxSyncInterval?: number;
 			/** Whether the newest pvvx firmware is looked up once a day. Missing in old configurations = true. */

@@ -147,6 +147,10 @@ const result = await adapter.sendToAsync("ble2.0", "switchBot", {
 
 A successful reply contains `{ error: null, result: {} }` after the Bot confirms the action. Rejection and timeout return a gateway error. For protected or other devices, the gateway interface also provides generic `discoverServices`, `readCharacteristic`, and `writeCharacteristic` commands.
 
+## Reading cycling power
+
+Enter each sensor's MAC address in **Cycling Power sensors (MAC addresses)**. When a connection-capable gateway sees the sensor, the adapter subscribes to the standard Cycling Power Measurement characteristic (`2a63` under service `1818`). Instantaneous power is recorded in watts under `<mac>.cyclingPower`. The connection is released after ten seconds without a reading or after fifteen minutes. A later advertisement can start the next session.
+
 ## Setting the clock of pvvx thermometers
 Thermometers with the [pvvx firmware](https://github.com/pvvx/ATC_MiThermometer) (e.g. Xiaomi LYWSD03MMC) have a clock that drifts and does not know summer time. The adapter can set it to the local time of the ioBroker host, through a gateway that can connect, e.g. an ESPHome Bluetooth proxy with `bluetooth_proxy: active: true` and ioBroker.esphome.
 
@@ -317,6 +321,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * Read calibrated Parrot Flower Power data through a connecting gateway.
 * Read protected temperature and battery data from Comet Blue thermostats.
 * Add the SwitchBot Bot `switchBot` command for external GATT gateways.
+* Read standard Cycling Power notifications through a connecting gateway.
 * Other adapters can deliver BLE advertisements they received, e.g. from ESPHome Bluetooth proxies (`gateway:advertisements`). Several receivers can be used at the same time.
 * The adapter can run without Bluetooth hardware: the Bluetooth adapter of the host can be disabled in the settings, and the Bluetooth driver is an optional dependency now
 * A problem with the Bluetooth adapter of the host no longer terminates the adapter

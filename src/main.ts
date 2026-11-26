@@ -4,6 +4,7 @@ import { ConnectionManager } from "./connections/connection-manager";
 import { DeviceRegistry } from "./devices/device-registry";
 import { MiFloraBattery } from "./drivers/mi-flora-battery";
 import { FlowerPower } from "./drivers/flower-power";
+import { CyclingPower } from "./drivers/cycling-power";
 import {
 	createHttpFirmwareSource,
 	DEFAULT_FIRMWARE_URL,
@@ -40,6 +41,7 @@ let connections: ConnectionManager | undefined;
 let pvvx: PvvxDriver | undefined;
 let miFloraBattery: MiFloraBattery | undefined;
 let flowerPower: FlowerPower | undefined;
+let cyclingPower: CyclingPower | undefined;
 let pvvxUpdater: PvvxUpdater | undefined;
 let handleMessage: ((obj: ioBroker.Message) => void) | undefined;
 /** The sources of advertisements that are in use */
@@ -239,6 +241,7 @@ const adapter = utils.adapter({
 				devices.track(peripheral);
 				miFloraBattery?.observe(peripheral);
 				flowerPower?.observe(peripheral);
+				cyclingPower?.observe(peripheral);
 				if (
 					matchesServiceFilter(peripheral, services, manufacturerIds)
 				) {
@@ -288,6 +291,22 @@ const adapter = utils.adapter({
 				adapter,
 				connections,
 				flowerSensors.addresses,
+			);
+		}
+
+		const powerSensors = parseDeviceList(
+			adapter.config.cyclingPowerDevices,
+		);
+		for (const address of powerSensors.invalid) {
+			adapter.log.warn(
+				`Ignoring invalid Cycling Power sensor address "${address}"`,
+			);
+		}
+		if (powerSensors.addresses.length > 0) {
+			cyclingPower = new CyclingPower(
+				adapter,
+				connections,
+				powerSensors.addresses,
 			);
 		}
 
@@ -406,6 +425,7 @@ const adapter = utils.adapter({
 			pvvx?.dispose();
 			miFloraBattery?.dispose();
 			flowerPower?.dispose();
+			cyclingPower?.dispose();
 			// Before the transports, so the sessions can still say goodbye to their gateways
 			connections?.dispose();
 			for (const transport of transports) {

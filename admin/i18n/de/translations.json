@@ -79,6 +79,8 @@
     "Add one address per line. A gateway that can connect is required.": "Eine Adresse pro Zeile eintragen. Ein verbindungsfähiges Gateway ist erforderlich.",
     "Parrot Flower Power sensors (MAC addresses)": "Parrot-Flower-Power-Sensoren (MAC-Adressen)",
     "Add one Parrot Flower Power sensor per line. A gateway that can connect is required.": "Eine Parrot-Flower-Power-Adresse pro Zeile eintragen. Ein verbindungsfähiges Gateway ist erforderlich.",
+    "Cycling Power sensors (MAC addresses)": "Radsport-Leistungssensoren (MAC-Adressen)",
+    "Add one cycling power sensor address per line. A gateway that can connect is required.": "Eine Sensoradresse pro Zeile eintragen. Ein verbindungsfähiges Gateway ist erforderlich.",
     "Enter the MAC address and bindkey for each encrypted Xiaomi MiBeacon device.": "MAC-Adresse und Bindkey für jedes verschlüsselte Xiaomi-MiBeacon-Gerät eingeben.",
     "Enter a 24- or 32-digit hexadecimal Xiaomi bindkey.": "Einen 24- oder 32-stelligen hexadezimalen Xiaomi-Bindkey eingeben."
 }
