@@ -10,6 +10,7 @@ import { runSwitchBotAction } from "../drivers/switchbot-bot";
 import { setCandelaBrightness } from "../drivers/candela";
 import type { GatewayRegistry } from "../gateways/gateway-registry";
 import { normalizeAddress } from "../lib/advertisement";
+import { readSkyrcMc3000Slot } from "../drivers/skyrc-mc3000";
 import { GatewayError, toErrorResponse } from "../lib/gateway-error";
 import {
 	GatewayCommands,
@@ -373,6 +374,28 @@ export function createMessageHandler(
 
 			case GatewayCommands.getDevices:
 				respond({ error: null, result: ctx.devices.getDevices() });
+				return;
+
+			case "readSkyrcMc3000Slot":
+				void runGattCommand(async () => {
+					const { address } = parseGattRequest(obj.message, {
+						characteristic: false,
+						data: false,
+					});
+					const { slot } = obj.message as { slot?: unknown };
+					if (
+						typeof slot !== "number" ||
+						!Number.isInteger(slot) ||
+						slot < 1 ||
+						slot > 4
+					) {
+						throw new GatewayError(
+							"INVALID_PAYLOAD",
+							"slot must be an integer from 1 to 4",
+						);
+					}
+					return readSkyrcMc3000Slot(ctx.connections, address, slot);
+				}).then(respond);
 				return;
 
 			default:

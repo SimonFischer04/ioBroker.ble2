@@ -207,6 +207,15 @@ An update takes a few minutes. The states below `<mac>.pvvx`:
 
 After the update the adapter connects again, checks the new version and sets the clock. A failed update is not repeated automatically. Devices with a PIN code are not supported.
 
+## Reading a SkyRC MC3000 charging slot
+
+After a connection-capable gateway has seen the charger, call
+`sendTo("ble2.0", "readSkyrcMc3000Slot", { address: "AA:BB:CC:11:22:33", slot: 1 }, callback)`.
+Slots are numbered 1 to 4. The result includes the status code, elapsed seconds, voltage
+in V, current in A, capacity in mAh and temperature in °C. The MC3000 accepts this status
+query over BLE without explicit pairing. The manufacturer documents this in the
+[MC3000 manual](https://www.skyrc.com/download/MC3000_Instruction_Manual_V1.17.pdf).
+
 ## Plugin system
 Build the adapter from source with `npm ci` followed by `npm run build`. The generated backend `build/` directory is not tracked in Git. Published npm packages include the generated files; installation directly from Git is disabled with `common.nogit`.
 
@@ -334,6 +343,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * Several remote scan servers (`bin/blerp.js`) can be used at the same time, together with the Bluetooth adapter of the host. The setting of version 0.14 is migrated, its behaviour stays the same.
 * The connection to a remote scan server is re-established when it was lost, a server that is down is reported once instead of every 10 seconds
 * The monitored services also apply to the advertisements of remote scan servers
+* Read individual charging slot measurements from a SkyRC MC3000 through a Bluetooth gateway.
 * Connections to devices through gateways of other adapters, e.g. ESPHome Bluetooth proxies: `discoverServices`, `readCharacteristic` and `writeCharacteristic`
 * The clock of pvvx thermometers can be set automatically through such gateways: at start, in an interval, after each change between summer and winter time and with a button. Firmware version, hardware ID and the deviation of the clock are shown
 * Set the Xiaomi LYWSD02 factory firmware clock and record its last successful sync.
