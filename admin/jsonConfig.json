@@ -87,7 +87,7 @@
             "label": "Active plugins:",
             "help": "Select the plugins for your sensors. Basic advertisement data is always available.",
             "doNotSave": true,
-            "defaultFunc": "[...new Set((Array.isArray(data.plugins) ? data.plugins : String(data.plugins || '').split(',')).map(p => p.trim().toLowerCase()).filter(p => ['xiaomi', 'mi-flora', 'ruuvi-tag', 'bthome', 'mopeka', 'switchbot'].includes(p)))]",
+            "defaultFunc": "[...new Set((Array.isArray(data.plugins) ? data.plugins : String(data.plugins || '').split(',')).map(p => p.trim().toLowerCase()).filter(p => ['xiaomi', 'mi-flora', 'ruuvi-tag', 'bthome', 'mopeka', 'switchbot', 'mi-scale'].includes(p)))]",
             "options": [
                 {
                     "label": "Xiaomi",
@@ -108,6 +108,10 @@
                 {
                     "label": "BTHome",
                     "value": "bthome"
+                },
+                {
+                    "label": "Xiaomi Mi Scale",
+                    "value": "mi-scale"
                 },
                 {
                     "label": "Mopeka Pro Check",
@@ -172,6 +176,42 @@
             "md": 6,
             "lg": 6,
             "xl": 6
+        },
+        "presenceDevices": {
+            "type": "table",
+            "label": "Presence tracking",
+            "help": "Add Bluetooth devices that should get a present state.",
+            "uniqueColumns": ["address"],
+            "useCardFor": ["xs", "sm"],
+            "xs": 12,
+            "items": [
+                {
+                    "attr": "address",
+                    "type": "text",
+                    "title": "Bluetooth MAC address",
+                    "validator": "/^(?:[0-9a-f]{12}|(?:[0-9a-f]{2}:){5}[0-9a-f]{2})$/i.test((data.address || '').trim())",
+                    "validatorErrorText": "Enter a valid Bluetooth MAC address.",
+                    "validatorNoSaveOnError": true
+                },
+                {
+                    "attr": "packets",
+                    "type": "number",
+                    "title": "Packets to confirm presence",
+                    "default": 3,
+                    "min": 1,
+                    "max": 20,
+                    "step": 1
+                },
+                {
+                    "attr": "absenceSeconds",
+                    "type": "number",
+                    "title": "Full score decay time [s]",
+                    "default": 60,
+                    "min": 1,
+                    "max": 86400,
+                    "step": 1
+                }
+            ]
         },
         "_discovery": {
             "type": "panel",

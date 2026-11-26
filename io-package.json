@@ -115,6 +115,7 @@
 		"plugins": "",
 		"xiaomiBindkeys": "",
 		"allowEmptyDevices": false,
+		"presenceDevices": [],
 		"rssiThrottle": 0,
 		"rssiTimeoutSeconds": 0
 	},
