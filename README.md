@@ -25,6 +25,9 @@ sudo setcap cap_net_raw+eip $(eval readlink -f `which node`)
 which requires `libcap2-bin` to be installed.
 
 ## Configuration
+
+**Reset RSSI after inactivity [s]** sets a device's `rssi` to `0` after the configured time without an advertisement. A fresh advertisement restores the measured value. Use a timeout longer than the device's normal advertising interval. The default `0` disables the reset.
+
 Select the local Bluetooth adapter by its HCI name and bus type, such as `hci0 (USB)`. If the list is unavailable, enter the index manually using the number after `hci`.
 In the textbox below, enter all UUIDs of the advertised services you want to record (as found in the nRF Connect app).
 

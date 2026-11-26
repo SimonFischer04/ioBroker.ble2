@@ -11,6 +11,7 @@ import {
 	extendState,
 } from "./lib/iobroker-objects";
 import { ObjectCache } from "./lib/object-cache";
+import { RssiExpiry } from "./lib/rssi-expiry";
 import { RssiUpdates } from "./lib/rssi-updates";
 import {
 	ScanExitCodes,
@@ -55,6 +56,7 @@ const ignoredNewDeviceIDs = new Set<string>();
 // let knownDevices: string[] = [];
 
 let rssiUpdates: RssiUpdates | undefined;
+let rssiExpiry: RssiExpiry | undefined;
 
 /** A reference to the scanning process */
 let scanProcess: ChildProcess | undefined;
@@ -125,6 +127,36 @@ const adapter = utils.adapter({
 		// Beim Start des Adapters sicher stellen, dass keine neuen Geräte erfasst werden,
 		// bis der User es explizit erlaubt.
 		await adapter.setStateAsync("options.allowNewDevices", false, true);
+		const timeoutSeconds = adapter.config.rssiTimeoutSeconds ?? 0;
+		if (
+			Number.isInteger(timeoutSeconds) &&
+			timeoutSeconds > 0 &&
+			timeoutSeconds <= 86400
+		) {
+			rssiExpiry = new RssiExpiry(adapter, timeoutSeconds * 1000, (id) =>
+				rssiUpdates?.remove(id),
+			);
+			const states = await adapter
+				.getStatesAsync("*.rssi")
+				.catch((error: unknown) => {
+					adapter.log.warn(
+						`Could not restore RSSI timers: ${String(error)}`,
+					);
+					return {};
+				});
+			const statePrefix = `${adapter.namespace}.`;
+			for (const [id, state] of Object.entries(states)) {
+				if (
+					id.startsWith(statePrefix) &&
+					/^[^.]+\.rssi$/.test(id.slice(statePrefix.length)) &&
+					typeof state?.val === "number" &&
+					state.val !== 0 &&
+					Number.isFinite(state.ts)
+				) {
+					rssiExpiry.restore(id, state.ts);
+				}
+			}
+		}
 		if (
 			Array.isArray(adapter.config.presenceDevices) &&
 			adapter.config.presenceDevices.length > 0
@@ -175,6 +207,7 @@ const adapter = utils.adapter({
 	// is called when adapter shuts down - callback has to be called under any circumstances!
 	unload: (callback) => {
 		try {
+			rssiExpiry?.stop();
 			devicePresence?.stop();
 			_.objectCache?.dispose();
 			scanProcess?.kill();
@@ -193,6 +226,7 @@ const adapter = utils.adapter({
 			// it has been deleted, so delete it from the cache
 			_.objectCache.invalidateObject(id);
 			rssiUpdates?.remove(id);
+			rssiExpiry?.remove(id);
 			if (devicePresence && id.startsWith(`${adapter.namespace}.`)) {
 				devicePresence.remove(
 					id
@@ -525,11 +559,14 @@ async function onDiscover(peripheral: PeripheralInfo): Promise<void> {
 		},
 		native: {},
 	});
-	// Refresh unchanged values too for users who rely on the state timestamp.
-	await rssiUpdates?.update(
-		`${adapter.namespace}.${deviceId}.rssi`,
-		peripheral.rssi,
-	);
+	const stateId = `${adapter.namespace}.${deviceId}.rssi`;
+	if (rssiExpiry) {
+		await rssiExpiry.update(stateId, async () => {
+			await rssiUpdates?.update(stateId, peripheral.rssi, true);
+		});
+	} else {
+		await rssiUpdates?.update(stateId, peripheral.rssi);
+	}
 
 	// Now update device-specific objects and states
 	const context = plugin.createContext(peripheral);

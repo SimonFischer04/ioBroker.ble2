@@ -57,6 +57,19 @@
                     "lg": 6,
                     "xl": 6
                 },
+                "rssiTimeoutSeconds": {
+                    "type": "number",
+                    "label": "Reset RSSI after inactivity [s]",
+                    "help": "Set RSSI to 0 after this many seconds without an advertisement from the device. Set to 0 to disable.",
+                    "min": 0,
+                    "max": 86400,
+                    "step": 1,
+                    "xs": 12,
+                    "sm": 6,
+                    "md": 4,
+                    "lg": 4,
+                    "xl": 4
+                },
                 "plugins": {
                     "type": "text",
                     "hidden": true,
