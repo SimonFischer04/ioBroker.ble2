@@ -1,5 +1,6 @@
 interface RssiEntry {
 	timestamp?: number | null;
+	wasReset?: boolean;
 	pending: Promise<void>;
 }
 
@@ -24,8 +25,13 @@ export class RssiUpdates {
 	 *
 	 * @param id Fully qualified state ID.
 	 * @param value Received signal strength.
+	 * @param restoreAfterReset Whether zero marks an expired RSSI.
 	 */
-	public async update(id: string, value: number): Promise<void> {
+	public async update(
+		id: string,
+		value: number,
+		restoreAfterReset = false,
+	): Promise<void> {
 		let entry = this.entries.get(id);
 		if (!entry) {
 			entry = { pending: Promise.resolve() };
@@ -40,17 +46,22 @@ export class RssiUpdates {
 				const state = await this.adapter.getStateAsync(id);
 				if (current.timestamp === undefined) {
 					current.timestamp = state?.ts ?? null;
+					current.wasReset = state?.val === 0;
 				}
 			}
 			const now = Date.now();
 			if (
 				this.entries.get(id) === current &&
 				(current.timestamp === null ||
+					(restoreAfterReset && current.wasReset) ||
 					current.timestamp + this.intervalMs < now)
 			) {
 				this.adapter.log.debug(`updating RSSI state ${id}`);
 				await this.adapter.setStateAsync(id, value, true);
-				current.timestamp = Math.max(current.timestamp ?? 0, now);
+				if ((current.timestamp ?? 0) <= now) {
+					current.timestamp = now;
+					current.wasReset = value === 0;
+				}
 			}
 		});
 		current.pending = result.catch(() => undefined);
@@ -66,7 +77,10 @@ export class RssiUpdates {
 	public observe(id: string, state: ioBroker.State | null | undefined): void {
 		const entry = this.entries.get(id);
 		if (entry && state) {
-			entry.timestamp = Math.max(entry.timestamp ?? 0, state.ts);
+			if (state.ts >= (entry.timestamp ?? 0)) {
+				entry.timestamp = state.ts;
+				entry.wasReset = state.val === 0;
+			}
 		} else if (!state) {
 			this.remove(id);
 		}

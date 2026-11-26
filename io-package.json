@@ -119,7 +119,8 @@
 		"bthomeBindkeys": "",
 		"allowEmptyDevices": false,
 		"presenceDevices": [],
-		"rssiThrottle": 0
+		"rssiThrottle": 0,
+		"rssiTimeoutSeconds": 0
 	},
 	"objects": [],
 	"instanceObjects": [

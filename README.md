@@ -27,6 +27,9 @@ which requires `libcap2-bin` to be installed.
 If `info.driverState` is `driverError`, check the instance log for the scanner's Node.js version, OS, architecture, and load error. A missing native file or a `NODE_MODULE_VERSION` mismatch indicates a driver built for a different environment or an incomplete installation. On Linux, install the packages above and reinstall the `ble2` adapter through ioBroker using the Node.js installation that runs js-controller. A standalone scanner prints the same diagnosis to stderr.
 
 ## Configuration
+
+**Reset RSSI after inactivity [s]** sets a device's `rssi` to `0` after the configured time without an advertisement. A fresh advertisement restores the measured value. Use a timeout longer than the device's normal advertising interval. The default `0` disables the reset.
+
 Select the local Bluetooth adapter by its HCI name and bus type, such as `hci0 (USB)`. If the list is unavailable, enter the index manually using the number after `hci`.
 In the textbox below, enter all UUIDs of the advertised services you want to record (as found in the nRF Connect app).
 
@@ -69,9 +72,11 @@ If you have any device transmitting specially encoded information via advertisem
 * `"mi-flora"`: Original plugin for the flower care plant sensor, now aliased to `"xiaomi"`
 * `"eddystone"`: Eddystone UID, URL, and EID identifiers and unencrypted telemetry (`feaa`).
 * `"ruuvi-tag"`: [Ruuvi Tag](https://tag.ruuvi.com/) multisensor with firmware versions v1 and v2. **Untested, please give feedback!** 
+* `"atc"`: Temperature, humidity, battery level, and voltage from unencrypted ATC1441 and PVVX Custom advertisements (`181a`).
 * `"switchbot"`: SwitchBot Meter-family temperature, humidity, and battery advertisements (`fd3d` or `0d00`).
 * `"bthome"`: Sensors using [BTHome v2](https://bthome.io), including encrypted advertisements.
 * `"mi-scale"`: Mi Scale V1 and V2 broadcast weight in kilograms and a stabilized flag (`181d` and `181b`).
+* `"govee"`: Govee H5072 and H5075 temperature, humidity, and battery from EC88 manufacturer data.
 * `"mopeka"`: Mopeka Pro Check LPG tank sensors (standard sensor type `0x03`).
 
 For an encrypted BTHome sensor, select **BTHome** under **Active plugins** and add its Bluetooth MAC address and bindkey under **BTHome bindkeys**. Enter the 16-byte key as 32 hexadecimal digits or in UUID format. Enable **Accept new devices** when adding a new sensor. A remote scanner using service filters must forward service `fcd2`. Decryption requires the actual Bluetooth MAC address, which some local scanners (such as macOS CoreBluetooth) do not expose.
@@ -82,7 +87,13 @@ For a device with a bindkey, measurement and event updates require an authentica
 
 To read authenticated Xiaomi MiBeacon v4 or v5 advertisements, enable **Xiaomi** and add the device's Bluetooth MAC address and 32-digit hexadecimal bindkey under **Xiaomi MiBeacon bindkeys**. Use the bindkey assigned when the sensor was paired or configured. ioBroker encrypts the stored configuration. Admin configuration exports include the bindkeys.
 
+The original LYWSD02 alarm clock broadcasts temperature and humidity using the **Xiaomi** plugin. A packet can carry just one measurement. Wait for subsequent packets for the other values.
+
 The Xiaomi Door and Window Sensor 2 (MCCGQ02HL) publishes `contactOpen` and `doorLeftOpen` from contact events. Configure its bindkey to decode encrypted broadcasts. A status-only packet does not carry the door state.
+
+With pvvx firmware, choose **ATC1441** or **PVVX (Custom)** in the firmware settings and enable **ATC1441 and PVVX** in the adapter. These formats carry temperature, humidity, and battery in the same packet. The scanner must expose the Bluetooth MAC address and forward `181a` service data. The **Xiaomi** plugin remains available for MiBeacon mode, where a battery packet may arrive separately from temperature and humidity.
+
+For a Govee H5072 or H5075, enable **Govee H5072/H5075** under **Active plugins**. The scanner must deliver the `EC88` manufacturer data containing the measurements. The separate Apple iBeacon block beginning with `4c000215` contains no Govee sensor readings. Noble can report only the last manufacturer block on a platform that supplies them separately. For a supported remote scanner with service filters, forward service `ec88` or add `--manufacturerIds 60552`.
 
 For Mopeka, add `mopeka` to **Active plugins** and enable **Accept new devices** while discovering the sensor. Local scanning includes its manufacturer identifier automatically. A remote scanner with service filters also needs `--manufacturerIds 89` to forward manufacturer-only advertisements.
 
