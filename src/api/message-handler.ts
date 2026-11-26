@@ -4,13 +4,13 @@ import type {
 	SessionOptions,
 } from "../connections/connection-manager";
 import type { DeviceRegistry } from "../devices/device-registry";
-import { syncLywsd02Clock } from "../drivers/lywsd02-clock";
-import { readCometBlue } from "../drivers/comet-blue";
-import { runSwitchBotAction } from "../drivers/switchbot-bot";
-import { setCandelaBrightness } from "../drivers/candela";
+import { syncLywsd02Clock } from "../plugins/xiaomi/lywsd02-clock";
+import { readCometBlue } from "../plugins/comet-blue/comet-blue";
+import { runSwitchBotAction } from "../plugins/switchbot/bot";
+import { setCandelaBrightness } from "../plugins/yeelight/candela";
 import type { GatewayRegistry } from "../gateways/gateway-registry";
 import { normalizeAddress } from "../lib/advertisement";
-import { readSkyrcMc3000Slot } from "../drivers/skyrc-mc3000";
+import { readSkyrcMc3000Slot } from "../plugins/skyrc/mc3000";
 import { GatewayError, toErrorResponse } from "../lib/gateway-error";
 import {
 	GatewayCommands,
@@ -18,7 +18,7 @@ import {
 	type GattReadResult,
 	type GatewayResponse,
 } from "../lib/gateway-protocol";
-import { runMagicSwitchBotAction } from "../drivers/magicswitchbot";
+import { runMagicSwitchBotAction } from "../plugins/magicswitchbot/actions";
 import { getHciOptions, parseHciPorts } from "../lib/hci-ports";
 import { normalizeUuid } from "../lib/uuid";
 import {

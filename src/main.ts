@@ -2,17 +2,17 @@ import * as utils from "@iobroker/adapter-core";
 import { createMessageHandler } from "./api/message-handler";
 import { ConnectionManager } from "./connections/connection-manager";
 import { DeviceRegistry } from "./devices/device-registry";
-import { MiFloraBattery } from "./drivers/mi-flora-battery";
-import { FlowerPower } from "./drivers/flower-power";
-import { CyclingPower } from "./drivers/cycling-power";
+import { MiFloraBattery } from "./plugins/xiaomi/mi-flora-battery";
+import { FlowerPower } from "./plugins/parrot/flower-power";
+import { CyclingPower } from "./plugins/cycling-power/cycling-power";
 import {
 	createHttpFirmwareSource,
 	DEFAULT_FIRMWARE_URL,
 	FirmwareCatalog,
-} from "./drivers/pvvx/firmware-catalog";
-import { parseDeviceList, PvvxDriver } from "./drivers/pvvx/pvvx-driver";
-import { PvvxUpdater } from "./drivers/pvvx/pvvx-updater";
-import { systemClock } from "./drivers/pvvx/time-sync";
+} from "./plugins/atc/pvvx/firmware-catalog";
+import { parseDeviceList, PvvxDriver } from "./plugins/atc/pvvx/pvvx-driver";
+import { PvvxUpdater } from "./plugins/atc/pvvx/pvvx-updater";
+import { systemClock } from "./plugins/atc/pvvx/time-sync";
 import { GatewayRegistry } from "./gateways/gateway-registry";
 import type { PeripheralInfo } from "./lib/advertisement";
 import { DevicePresence } from "./lib/device-presence";

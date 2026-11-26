@@ -9,7 +9,7 @@
 const {
 	crc16Modbus,
 	validateImage,
-} = require("../../build/drivers/pvvx/ota-protocol");
+} = require("../../build/plugins/atc/pvvx/ota-protocol");
 
 const COMMAND_HANDLE = 32;
 const OTA_HANDLE = 42;

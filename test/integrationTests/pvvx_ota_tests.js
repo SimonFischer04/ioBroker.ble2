@@ -13,7 +13,7 @@
 
 const http = require("node:http");
 const { expect } = require("chai");
-const { buildTestImage } = require("../../build/drivers/pvvx/test-image");
+const { buildTestImage } = require("../../build/plugins/atc/pvvx/test-image");
 const { FakeGattGateway } = require("./fakeGattGateway");
 const { createPvvxHandler } = require("./fakePvvxThermometer");
 const {
