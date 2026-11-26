@@ -313,6 +313,27 @@ function startScanProcess(): void {
 	if (hciIndex) {
 		args.push("-d", hciIndex.toString());
 	}
+	const interval = adapter.config.scanIntervalMinutes ?? 0;
+	const duration = adapter.config.scanWindowSeconds ?? 10;
+	if (Number.isInteger(interval) && interval > 0 && interval <= 1440) {
+		if (
+			Number.isInteger(duration) &&
+			duration > 0 &&
+			duration <= 3600 &&
+			duration < interval * 60
+		) {
+			args.push(
+				"--scanInterval",
+				String(interval * 60),
+				"--scanDuration",
+				String(duration),
+			);
+		} else {
+			adapter.log.warn(
+				"The BLE scan window must be shorter than the scan interval. Scanning continuously.",
+			);
+		}
+	}
 	adapter.log.info("starting scanner process...");
 	scanProcess = fork(path.join(__dirname, "scanProcess"), args, {
 		stdio: ["pipe", "pipe", "pipe", "ipc"],

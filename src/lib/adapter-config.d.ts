@@ -6,6 +6,8 @@ declare global {
 			services: string;
 			server: string;
 			hciDevice: number | string;
+			scanIntervalMinutes?: number;
+			scanWindowSeconds?: number;
 			plugins: string;
 			xiaomiBindkeys?: string;
 			allowEmptyDevices: boolean;
