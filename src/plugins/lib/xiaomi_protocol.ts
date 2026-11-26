@@ -31,6 +31,7 @@ export enum XiaomiEventIDs_Internal {
 	TemperatureAndHumidity = 0x100d, // 2 byte temperature / 10, 2 byte humidity / 10
 	PowerState = 0x1012, // 0 = off, 1 = on
 	ConsumableRemaining = 0x1013, // remaining amount in percent
+	DoorWindowStatus = 0x1019,
 }
 
 export type XiaomiEventIDs =
@@ -44,10 +45,14 @@ export type XiaomiEventIDs =
 	| "powerState"
 	| "consumableRemaining";
 
-export type XiaomiEvent = Partial<Record<XiaomiEventIDs, number>>;
+export type XiaomiEvent = Partial<Record<XiaomiEventIDs, number>> & {
+	contactOpen?: boolean;
+	doorLeftOpen?: boolean;
+};
 type ValueTransform = (
 	val: number,
 	eventID?: XiaomiEventIDs_Internal,
+	length?: number,
 ) => XiaomiEvent;
 
 // value transforms translate the internal data structure to the external one
@@ -80,6 +85,21 @@ const valueTransforms: Partial<
 	}),
 	PowerState: (val) => ({ powerState: val }),
 	ConsumableRemaining: (val) => ({ consumableRemaining: val }),
+	DoorWindowStatus: (val, _id, length) => {
+		if (length !== 1) {
+			return {};
+		}
+		switch (val) {
+			case 0:
+				return { contactOpen: true };
+			case 1:
+				return { contactOpen: false, doorLeftOpen: false };
+			case 2:
+				return { contactOpen: true, doorLeftOpen: true };
+			default:
+				return {};
+		}
+	},
 };
 
 export class XiaomiAdvertisement {
@@ -115,6 +135,9 @@ export class XiaomiAdvertisement {
 		// The actual packet content begins at offset 5
 		let offset = 5;
 		if (this._hasMacAddress) {
+			if (data.length < offset + 6) {
+				throw new Error("Truncated MiBeacon MAC address");
+			}
 			this._macAddress = reverseBuffer(
 				data.slice(offset, offset + 6),
 			).toString("hex");
@@ -122,9 +145,14 @@ export class XiaomiAdvertisement {
 		}
 
 		if (this._hasCapabilities) {
-			this._capabilities = data[offset];
-			offset++;
-			if (this._isEncrypted && (this._capabilities & 0x20) !== 0) {
+			if (data.length <= offset) {
+				throw new Error("Truncated MiBeacon capabilities");
+			}
+			this._capabilities = data[offset++];
+			if ((this._capabilities & 0x20) !== 0) {
+				if (data.length <= offset) {
+					throw new Error("Truncated MiBeacon I/O capabilities");
+				}
 				offset++;
 			}
 		}
@@ -161,9 +189,6 @@ export class XiaomiAdvertisement {
 		const events: XiaomiEvent = {};
 		for (let cursor = 0; cursor < payload.length;) {
 			const { event, end } = readEvent(payload, cursor);
-			if (end > payload.length) {
-				throw new Error("Truncated MiBeacon event");
-			}
 			Object.assign(events, event);
 			cursor = end;
 		}
@@ -265,12 +290,20 @@ function readEvent(
 	}
 	const id = data.readUInt16LE(offset) as XiaomiEventIDs_Internal;
 	const end = offset + 3 + data[offset + 2];
-	const value = parseNumberLE(data.subarray(offset + 3, end));
+	if (end > data.length) {
+		throw new Error("Truncated MiBeacon event");
+	}
+	const bytes = data.subarray(offset + 3, end);
+	const value = parseNumberLE(bytes);
 	const name = XiaomiEventIDs_Internal[
 		id
 	] as keyof typeof XiaomiEventIDs_Internal;
 	return {
-		event: (valueTransforms[name] ?? valueTransforms.default)(value, id),
+		event: (valueTransforms[name] ?? valueTransforms.default)(
+			value,
+			id,
+			bytes.length,
+		),
 		end,
 	};
 }

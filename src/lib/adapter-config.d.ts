@@ -27,6 +27,7 @@ declare global {
 				absenceSeconds: number;
 			}[];
 			rssiThrottle: number;
+			rssiTimeoutSeconds?: number;
 			/**
 			 * Whether the Bluetooth adapter of this host is used. When disabled, the adapter only
 			 * handles advertisements other adapters deliver. Missing in old configurations = true.

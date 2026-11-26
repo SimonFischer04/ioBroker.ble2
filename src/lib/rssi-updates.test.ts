@@ -36,6 +36,16 @@ describe("RSSI update cache", () => {
 		expect(setStateAsync.callCount).to.equal(2);
 	});
 
+	it("restores a reset RSSI immediately when expiration is enabled", async () => {
+		const updater = new RssiUpdates(adapter, 1000);
+		getStateAsync.resolves({ val: 0, ts: Date.now() });
+		await updater.update(id, -52);
+		expect(setStateAsync.callCount).to.equal(0);
+		await updater.update(id, -52, true);
+		expect(setStateAsync.calledOnceWithExactly(id, -52, true)).to.be.true;
+		expect(getStateAsync.calledOnceWithExactly(id)).to.be.true;
+	});
+
 	it("honors state notifications and re-reads after deletion", async () => {
 		const updater = new RssiUpdates(adapter, 100);
 		await updater.update(id, -50);
