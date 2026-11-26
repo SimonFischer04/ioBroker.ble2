@@ -105,7 +105,9 @@ const INSTANCE_STATES: Record<string, ioBroker.StateCommon> = {
 	},
 };
 
+/** What the updater uses from the adapter, injected so tests can replace it */
 export interface PvvxUpdaterContext {
+	/** For the objects, states and log of the update */
 	adapter: Pick<
 		ioBroker.Adapter,
 		| "namespace"
@@ -114,18 +116,27 @@ export interface PvvxUpdaterContext {
 		| "setStateAsync"
 		| "getStateAsync"
 	>;
+	/** Chooses the gateway and opens the GATT sessions to the devices */
 	connections: Pick<ConnectionManager, "withSession" | "bestGateway">;
+	/** firmware.json and the images */
 	catalog: FirmwareCatalog;
+	/** Current time, e.g. for the age of the battery value */
 	clock: Clock;
+	/** Calls callback after ms, returns a handle for clearTimeout() */
 	setTimeout(callback: () => void, ms: number): unknown;
+	/** Cancels a timer started with setTimeout() */
 	clearTimeout(timer: any): void;
+	/** Calls callback every ms, returns a handle for clearInterval() */
 	setInterval(callback: () => void, ms: number): unknown;
+	/** Cancels a timer started with setInterval() */
 	clearInterval(timer: any): void;
 	/** Sets the clock of the device soon, PvvxDriver.requestSync() */
 	requestTimeSync(address: string): void;
 }
 
+/** Settings of the firmware update from the adapter configuration */
 export interface PvvxUpdaterOptions {
+	/** Devices that may be updated, the pvvx devices of the time sync */
 	addresses: string[];
 	/** Setting pvvxFirmwareCheck */
 	dailyCheck: boolean;
@@ -148,7 +159,7 @@ function errorCode(e: unknown): string {
 /**
  * "5.9" -> 0x59, undefined for anything else
  *
- * @param value
+ * @param value Content of the state firmwareVersion
  */
 function parseVersion(value: unknown): number | undefined {
 	if (typeof value !== "string") {
@@ -168,6 +179,12 @@ function parseVersion(value: unknown): number | undefined {
 
 /** Installs newer pvvx firmware on the configured devices, one after the other */
 export class PvvxUpdater {
+	/**
+	 * Prepares the updater; nothing happens until start() is called.
+	 *
+	 * @param ctx Adapter, connections, catalog, clock and timers
+	 * @param options Devices and whether to check for new firmware daily
+	 */
 	public constructor(
 		private readonly ctx: PvvxUpdaterContext,
 		private readonly options: PvvxUpdaterOptions,
@@ -257,7 +274,7 @@ export class PvvxUpdater {
 	/**
 	 * Updates firmwareAvailable of all devices, without connecting to them. Public for tests.
 	 *
-	 * @param refresh
+	 * @param refresh Load firmware.json even if the cached copy is recent
 	 */
 	public async checkAll(refresh: boolean): Promise<void> {
 		if (this.checking || this.disposed) {
@@ -319,7 +336,7 @@ export class PvvxUpdater {
 	/**
 	 * Whether an update of the device is queued or running
 	 *
-	 * @param address
+	 * @param address MAC address of the device
 	 */
 	public isBusy(address: string): boolean {
 		return this.busy.has(address);
@@ -328,7 +345,7 @@ export class PvvxUpdater {
 	/**
 	 * Queues the update of a device. Resolves when it is finished (done or failed). Public for tests.
 	 *
-	 * @param address
+	 * @param address MAC address of the device
 	 */
 	public update(address: string): Promise<void> {
 		if (this.disposed || !this.options.addresses.includes(address)) {
@@ -377,7 +394,9 @@ export class PvvxUpdater {
 	}
 
 	/**
-	 * @param address
+	 * Checks, downloads and transfers the image for one device, then verifies the new version
+	 *
+	 * @param address MAC address of the device
 	 * @returns Whether the device runs the new firmware now
 	 */
 	private async run(address: string): Promise<boolean> {
@@ -490,8 +509,8 @@ export class PvvxUpdater {
 	/**
 	 * Waits for the restart and checks that the device runs the new version
 	 *
-	 * @param address
-	 * @param expected
+	 * @param address MAC address of the device
+	 * @param expected Version byte the device must report after the update
 	 */
 	private async verify(address: string, expected: number): Promise<void> {
 		await this.sleep(VERIFY_DELAY_MS);
@@ -554,7 +573,7 @@ export class PvvxUpdater {
 	/**
 	 * Waits. After dispose() it never resolves, so nothing goes on.
 	 *
-	 * @param ms
+	 * @param ms Time to wait
 	 */
 	private sleep(ms: number): Promise<void> {
 		return new Promise((resolve) => {
@@ -612,8 +631,8 @@ export class PvvxUpdater {
 	/**
 	 * Handles the buttons. Returns true if the state belongs to the updater.
 	 *
-	 * @param id
-	 * @param state
+	 * @param id Full ID of the changed state
+	 * @param state The new state, null or undefined if it was deleted
 	 */
 	public handleStateChange(
 		id: string,
@@ -647,6 +666,7 @@ export class PvvxUpdater {
 		return true;
 	}
 
+	/** Stops all timers and empties the queue when the adapter unloads. */
 	public dispose(): void {
 		this.disposed = true;
 		for (const timer of this.timers) {

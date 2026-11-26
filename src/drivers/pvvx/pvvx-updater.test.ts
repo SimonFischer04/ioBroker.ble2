@@ -82,9 +82,9 @@ class FakeAdapter {
 	/**
 	 * Sets a state without recording it, like the rest of the adapter would
 	 *
-	 * @param id
-	 * @param val
-	 * @param ts
+	 * @param id ID relative to the adapter namespace
+	 * @param val Value of the state
+	 * @param ts Time stamp of the state
 	 */
 	public preset(id: string, val: ioBroker.StateValue, ts = NOW): void {
 		this.states.set(id, { val, ack: true, ts });
@@ -97,7 +97,7 @@ class FakeAdapter {
 	/**
 	 * The values a state was set to, in order
 	 *
-	 * @param id
+	 * @param id ID relative to the adapter namespace
 	 */
 	public history(id: string): string[] {
 		return this.writes

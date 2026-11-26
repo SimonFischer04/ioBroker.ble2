@@ -17,11 +17,17 @@ import {
 	type RemoteGatewayTransport,
 } from "../transports/remote-gateway";
 
+/** The parts of the adapter the message handler answers from */
 export interface MessageHandlerContext {
+	/** Used to send the answers and to read the configured HCI device */
 	adapter: ioBroker.Adapter;
+	/** Answers getGateways */
 	gateways: GatewayRegistry;
+	/** Answers getDevices */
 	devices: DeviceRegistry;
+	/** Receives the messages remote gateways send */
 	remoteGateway: RemoteGatewayTransport;
+	/** Runs the GATT commands */
 	connections: ConnectionManager;
 }
 
@@ -38,10 +44,10 @@ interface GattRequest {
  * Validates the payload of discoverServices, readCharacteristic and writeCharacteristic
  * before anything is connected. Throws GatewayError("INVALID_PAYLOAD").
  *
- * @param payload
- * @param fields
- * @param fields.characteristic
- * @param fields.data
+ * @param payload The message as received
+ * @param fields Which fields the command needs besides the address
+ * @param fields.characteristic Whether service and characteristic are required
+ * @param fields.data Whether data (and optionally withResponse) is required
  */
 function parseGattRequest(
 	payload: unknown,
@@ -94,7 +100,7 @@ function parseGattRequest(
 /**
  * Runs a GATT command and turns the result or the error into the answer
  *
- * @param run
+ * @param run The command, may throw a GatewayError
  */
 async function runGattCommand<T>(
 	run: () => Promise<T>,
@@ -109,7 +115,7 @@ async function runGattCommand<T>(
 /**
  * Creates the handler for the messages other adapters and the admin UI send to this adapter
  *
- * @param ctx
+ * @param ctx The parts of the adapter the messages are answered from
  */
 export function createMessageHandler(
 	ctx: MessageHandlerContext,

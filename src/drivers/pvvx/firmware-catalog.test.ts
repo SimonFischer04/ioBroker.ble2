@@ -204,7 +204,13 @@ describe("drivers/pvvx/firmware-catalog", () => {
 	describe("createHttpFirmwareSource()", () => {
 		const CHUNK = 16 * 1024;
 
-		/** A fetch that answers every URL with the body, streamed in chunks of 16 KiB */
+		/**
+		 * A fetch that answers every URL with the body, streamed in chunks of 16 KiB
+		 *
+		 * @param status HTTP status of every answer
+		 * @param body Content of every answer
+		 * @param headers Headers of every answer
+		 */
 		function fakeFetch(
 			status: number,
 			body: Buffer,
