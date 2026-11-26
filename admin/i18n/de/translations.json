@@ -58,5 +58,7 @@
     "Presence tracking": "Anwesenheitserkennung",
     "Add Bluetooth devices that should get a present state.": "Bluetooth-Geräte mit Anwesenheitsdatenpunkt hinzufügen.",
     "Packets to confirm presence": "Pakete zur Bestätigung der Anwesenheit",
-    "Full score decay time [s]": "Abbauzeit bei vollem Punktestand [s]"
+    "Full score decay time [s]": "Abbauzeit bei vollem Punktestand [s]",
+    "BTHome bindkeys": "BTHome-Bindkeys",
+    "Enter the Bluetooth MAC address and bindkey for each encrypted BTHome device.": "Gib für jedes verschlüsselte BTHome-Gerät die Bluetooth-MAC-Adresse und den Bindkey ein."
 }

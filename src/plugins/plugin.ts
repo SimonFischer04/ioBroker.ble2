@@ -44,6 +44,8 @@ export interface Plugin<TContext = any> {
 	advertisedServices: string[];
 	/** Bluetooth company identifiers to include even without advertised services */
 	manufacturerIds?: number[];
+	/** Loads instance configuration before scanning starts. */
+	initialize?: () => void;
 
 	/** Determines whether this plugin is handling a peripheral or not */
 	isHandling: (peripheral: PeripheralInfo) => boolean;

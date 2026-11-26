@@ -44,5 +44,11 @@
     "Loading Bluetooth devices": "Загрузка устройств Bluetooth",
     "Could not load Bluetooth devices.": "Не удалось загрузить устройства Bluetooth.",
     "Retry": "Повторить",
-    "No BLE devices have been recorded yet.": "Пока не зарегистрировано ни одного устройства BLE."
+    "No BLE devices have been recorded yet.": "Пока не зарегистрировано ни одного устройства BLE.",
+    "BTHome bindkeys": "Ключи BTHome",
+    "Enter the Bluetooth MAC address and bindkey for each encrypted BTHome device.": "Укажите MAC-адрес Bluetooth и ключ для каждого устройства BTHome с шифрованием.",
+    "Bluetooth MAC address": "MAC-адрес Bluetooth",
+    "Bindkey": "Ключ шифрования",
+    "Enter a valid Bluetooth MAC address.": "Введите действительный MAC-адрес Bluetooth.",
+    "Enter a 32-digit hexadecimal bindkey.": "Введите ключ из 32 шестнадцатеричных цифр."
 }

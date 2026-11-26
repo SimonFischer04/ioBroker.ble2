@@ -68,9 +68,15 @@ If you have any device transmitting specially encoded information via advertisem
 * `"eddystone"`: Eddystone UID, URL, and EID identifiers and unencrypted telemetry (`feaa`).
 * `"ruuvi-tag"`: [Ruuvi Tag](https://tag.ruuvi.com/) multisensor with firmware versions v1 and v2. **Untested, please give feedback!** 
 * `"switchbot"`: SwitchBot Meter-family temperature, humidity, and battery advertisements (`fd3d` or `0d00`).
-* `"bthome"`: Sensors using the [BTHome](https://bthome.io) protocol. For now this is limited to the `v2` revision of the protocol and does not support encrypted packets.
+* `"bthome"`: Sensors using [BTHome v2](https://bthome.io), including encrypted advertisements.
 * `"mi-scale"`: Mi Scale V1 and V2 broadcast weight in kilograms and a stabilized flag (`181d` and `181b`).
 * `"mopeka"`: Mopeka Pro Check LPG tank sensors (standard sensor type `0x03`).
+
+For an encrypted BTHome sensor, select **BTHome** under **Active plugins** and add its Bluetooth MAC address and bindkey under **BTHome bindkeys**. Enter the 16-byte key as 32 hexadecimal digits or in UUID format. Enable **Accept new devices** when adding a new sensor. A remote scanner using service filters must forward service `fcd2`. Decryption requires the actual Bluetooth MAC address, which some local scanners (such as macOS CoreBluetooth) do not expose.
+
+ioBroker encrypts the bindkeys in the instance configuration. JSON configuration exports from Admin contain the keys in plaintext.
+
+For a device with a bindkey, measurement and event updates require an authenticated BTHome packet with a counter greater than the last accepted counter. The adapter keeps these counters in memory. If a sensor resets its counter, restart the adapter instance to start tracking it again.
 
 To read authenticated Xiaomi MiBeacon v4 or v5 advertisements, enable **Xiaomi** and add the device's Bluetooth MAC address and 32-digit hexadecimal bindkey under **Xiaomi MiBeacon bindkeys**. Use the bindkey assigned when the sensor was paired or configured. ioBroker encrypts the stored configuration. Admin configuration exports include the bindkeys.
 
@@ -130,6 +136,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * **BREAKING:** Require js-controller 7.2.2 or newer; update adapter-core and release tools, repository metadata, and Dependabot configuration.
 -->
 ### __WORK IN PROGRESS__
+* Support encrypted BTHome v2 advertisements with per-device bindkeys.
 * Replace manual plugin names with a multi-select dropdown, preserving existing plugin settings.
 * Add Mopeka Pro Check support with raw level, temperature, battery, and reading quality states.
 * Replace the custom React settings page with responsive native JSONConfig (requires admin 7.6.20 or newer), preserving settings and the live discovery switch.

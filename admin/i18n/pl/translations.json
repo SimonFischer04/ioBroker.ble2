@@ -44,5 +44,11 @@
     "Loading Bluetooth devices": "Ładowanie urządzeń Bluetooth",
     "Could not load Bluetooth devices.": "Nie udało się załadować urządzeń Bluetooth.",
     "Retry": "Spróbuj ponownie",
-    "No BLE devices have been recorded yet.": "Nie zarejestrowano jeszcze żadnego urządzenia BLE."
+    "No BLE devices have been recorded yet.": "Nie zarejestrowano jeszcze żadnego urządzenia BLE.",
+    "BTHome bindkeys": "Klucze BTHome",
+    "Enter the Bluetooth MAC address and bindkey for each encrypted BTHome device.": "Wpisz adres MAC Bluetooth i klucz każdego urządzenia BTHome z włączonym szyfrowaniem.",
+    "Bluetooth MAC address": "Adres MAC Bluetooth",
+    "Bindkey": "Klucz szyfrowania",
+    "Enter a valid Bluetooth MAC address.": "Wpisz prawidłowy adres MAC Bluetooth.",
+    "Enter a 32-digit hexadecimal bindkey.": "Wpisz klucz złożony z 32 cyfr szesnastkowych."
 }

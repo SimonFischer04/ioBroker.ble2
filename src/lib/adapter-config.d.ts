@@ -10,6 +10,7 @@ declare global {
 			scanWindowSeconds?: number;
 			plugins: string;
 			xiaomiBindkeys?: string;
+			bthomeBindkeys?: string;
 			allowEmptyDevices: boolean;
 			presenceDevices?: {
 				address: string;
