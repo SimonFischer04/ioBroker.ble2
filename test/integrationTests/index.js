@@ -10,6 +10,8 @@ const pvvx_ota_tests = require("./pvvx_ota_tests");
 const pvvx_time_sync_tests = require("./pvvx_time_sync_tests");
 const remote_server_tests = require("./remote_server_tests");
 
+/** @import { IntegrationTestHarness } from "@iobroker/testing" */
+
 // Every suite exports runTests(suite) and is registered here.
 //
 // All suites run always: they need neither Bluetooth hardware nor a second adapter. The
@@ -17,7 +19,11 @@ const remote_server_tests = require("./remote_server_tests");
 // A harness cannot start the adapter again after stopAdapter(), so every scenario that needs
 // its own configuration gets its own suite.
 
-/** @param {(name: string, fn: (getHarness: () => any) => void) => void} suite */
+/**
+ * Defines all integration test suites
+ *
+ * @param {(name: string, fn: (getHarness: () => IntegrationTestHarness) => void) => void} suite - Defines a suite with a fresh harness
+ */
 exports.runTests = function (suite) {
 	// The adapter without Bluetooth hardware and without the Bluetooth driver in use
 	hub_mode_tests.runTests(suite);

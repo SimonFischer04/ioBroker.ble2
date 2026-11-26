@@ -31,20 +31,26 @@ const {
 	waitForValue,
 } = require("./helpers");
 
+/** @import { IntegrationTestHarness } from "@iobroker/testing" */
+
 const GATEWAY = "proxy-og";
 
 /**
  * Whether the device object exists
  *
- * @param {any} harness - Integration test harness
+ * @param {IntegrationTestHarness} harness - Integration test harness
  * @param {string} address - MAC address of the device
- * @returns {Promise<boolean>}
+ * @returns {Promise<boolean>} Whether the object exists
  */
 async function deviceExists(harness, address) {
 	return !!(await harness.objects.getObjectAsync(`${NAMESPACE}.${address}`));
 }
 
-/** @param {(name: string, fn: (getHarness: () => any) => void) => void} suite */
+/**
+ * Defines the suites of this file
+ *
+ * @param {(name: string, fn: (getHarness: () => IntegrationTestHarness) => void) => void} suite - Defines a suite with a fresh harness
+ */
 exports.runTests = function (suite) {
 	suite(
 		"Gateway interface - advertisements of the supported devices",

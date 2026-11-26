@@ -8,6 +8,9 @@
 
 const { NAMESPACE, getMessageClient } = require("./helpers");
 
+/** @import { IntegrationTestHarness } from "@iobroker/testing" */
+/** @import { GattReadRequest, GattWriteRequest, GattWriteSequenceRequest } from "../../src/lib/gateway-protocol" */
+
 // Service 0x1f10 with one characteristic 0x1f1f (read, write without response, notify), like the
 // pvvx thermometers
 const SERVICES = [
@@ -51,9 +54,10 @@ function delay(ms) {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** The gateways of test.0 and one simulated device behind each of them */
 class FakeGattGateway {
 	/**
-	 * @param {any} harness - Integration test harness
+	 * @param {IntegrationTestHarness} harness - Integration test harness
 	 */
 	constructor(harness) {
 		this.client = getMessageClient(harness);
@@ -133,7 +137,7 @@ class FakeGattGateway {
 	}
 
 	/**
-	 * @param {any} message - gatt:read or gatt:writeSequence
+	 * @param {GattReadRequest | GattWriteSequenceRequest} message - gatt:read or gatt:writeSequence
 	 * @returns {string} The value of the handle, base64
 	 */
 	readValue(message) {
@@ -148,7 +152,7 @@ class FakeGattGateway {
 	 * Writes a value like the device does and sends the notifications the write handler returns
 	 *
 	 * @param {string} key - "<gatewayId>|<address>"
-	 * @param {any} message - gatt:write or gatt:writeSequence
+	 * @param {GattWriteRequest | GattWriteSequenceRequest} message - gatt:write or gatt:writeSequence
 	 * @param {string} data - The value, base64
 	 */
 	applyWrite(key, message, data) {
@@ -193,7 +197,7 @@ class FakeGattGateway {
 	/**
 	 * The commands received so far, as "<command> <gatewayId>"
 	 *
-	 * @returns {string[]}
+	 * @returns {string[]} One entry per command
 	 */
 	get log() {
 		return this.commands.map((c) => `${c.command} ${c.message.gatewayId}`);
@@ -209,8 +213,8 @@ class FakeGattGateway {
 
 	/**
 	 * @param {string} command - The command ble sent
-	 * @param {any} message - Its payload
-	 * @returns {Promise<any>} The answer, undefined to leave it unanswered
+	 * @param {ioBroker.MessagePayload} message - Its payload
+	 * @returns {Promise<ioBroker.MessagePayload>} The answer, undefined to leave it unanswered
 	 */
 	async handle(command, message) {
 		if (!command.startsWith("gatt:")) {

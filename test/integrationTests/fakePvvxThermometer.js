@@ -14,6 +14,8 @@ const {
 const COMMAND_HANDLE = 32;
 const OTA_HANDLE = 42;
 
+// JavaScript has no other way to declare these types for @ts-check
+/* eslint-disable jsdoc/check-tag-names */
 /**
  * @typedef {object} PvvxOta
  * @property {boolean} started - 01 ff was received
@@ -40,6 +42,7 @@ const OTA_HANDLE = 42;
  * @property {(address: string) => void} onDisconnect - Called when the device ends the connection
  * @property {(address: string, handle: number) => string | undefined} readHandler - For FakeGattGateway.setReadHandler()
  */
+/* eslint-enable jsdoc/check-tag-names */
 
 /**
  * @param {Partial<Omit<PvvxThermometer, "writes">>} [options] - Initial state
@@ -148,8 +151,7 @@ function createPvvxHandler(options = {}) {
 	};
 
 	/**
-	 * @param {string} _address - The device
-	 * @param address
+	 * @param {string} address - The device
 	 * @param {number} handle - Handle written to
 	 * @param {string} dataHex - The data
 	 * @returns {string[] | undefined} The notifications
