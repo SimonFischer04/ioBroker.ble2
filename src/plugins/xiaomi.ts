@@ -303,6 +303,31 @@ const plugin: Plugin<XiaomiContext> = {
 			}
 		}
 
+		if ("dimmerAction" in event) {
+			stateObjects.push({
+				id: "dimmerAction",
+				common: {
+					name: "Dimmer action",
+					type: "string",
+					role: "text",
+					read: true,
+					write: false,
+				},
+			});
+		}
+		if ("dimmerSteps" in event) {
+			stateObjects.push({
+				id: "dimmerSteps",
+				common: {
+					name: "Dimmer steps in the last rotation",
+					type: "number",
+					role: "value",
+					read: true,
+					write: false,
+				},
+			});
+		}
+
 		for (const key of Object.keys(event)) {
 			if (key.startsWith("unknown ")) {
 				stateObjects.push({

@@ -20,7 +20,10 @@ export enum CapabilityFlags {
 	IO = (1 << 3) | (1 << 4),
 }
 
+const YEELIGHT_DIMMER = 0x03b6;
+
 export enum XiaomiEventIDs_Internal {
+	Button = 0x1001,
 	Temperature = 0x1004, // temp = value / 10
 	KettleStatusAndTemperature = 0x1005, // 1 byte status, 1 byte temperature
 	Humidity = 0x1006, // humidity = value / 10
@@ -43,11 +46,15 @@ export type XiaomiEventIDs =
 	| "battery"
 	| "kettleStatus"
 	| "powerState"
-	| "consumableRemaining";
+	| "consumableRemaining"
+	| "dimmerSteps";
 
-export type XiaomiEvent = Partial<Record<XiaomiEventIDs, number>> & {
+export type XiaomiEvent = Partial<
+	Record<XiaomiEventIDs | `unknown (0x${string})`, number>
+> & {
 	contactOpen?: boolean;
 	doorLeftOpen?: boolean;
+	dimmerAction?: string;
 };
 type ValueTransform = (
 	val: number,
@@ -83,6 +90,8 @@ const valueTransforms: Partial<
 		kettleStatus: val & 0xff,
 		temperature: val >>> 8,
 	}),
+	// Preserve raw button data for products without a device-specific decoder.
+	Button: (val) => ({ "unknown (0x1001)": val }),
 	PowerState: (val) => ({ powerState: val }),
 	ConsumableRemaining: (val) => ({ consumableRemaining: val }),
 	DoorWindowStatus: (val, _id, length) => {
@@ -161,7 +170,7 @@ export class XiaomiAdvertisement {
 			return;
 		}
 		if (!this._isEncrypted) {
-			this._event = readEvent(data, offset).event;
+			this._event = readEvent(data, offset, this._productID).event;
 			return;
 		}
 		const legacy = this._version === 2 || this._version === 3;
@@ -189,13 +198,14 @@ export class XiaomiAdvertisement {
 		if (legacy) {
 			this._event = readLegacyMeasurements(
 				decryptLegacy(data, offset, mac, key),
+				this._productID,
 			);
 			return;
 		}
 		const payload = decryptEvents(data, offset, mac, key);
 		const events: XiaomiEvent = {};
 		for (let cursor = 0; cursor < payload.length;) {
-			const { event, end } = readEvent(payload, cursor);
+			const { event, end } = readEvent(payload, cursor, this._productID);
 			Object.assign(events, event);
 			cursor = end;
 		}
@@ -291,6 +301,7 @@ export class XiaomiAdvertisement {
 function readEvent(
 	data: Buffer,
 	offset: number,
+	productID: number,
 ): { event: XiaomiEvent; end: number } {
 	if (offset + 3 > data.length) {
 		throw new Error("Truncated MiBeacon event header");
@@ -301,6 +312,12 @@ function readEvent(
 		throw new Error("Truncated MiBeacon event");
 	}
 	const bytes = data.subarray(offset + 3, end);
+	if (
+		id === XiaomiEventIDs_Internal.Button &&
+		productID === YEELIGHT_DIMMER
+	) {
+		return { event: readDimmerAction(bytes), end };
+	}
 	const value = parseNumberLE(bytes);
 	const name = XiaomiEventIDs_Internal[
 		id
@@ -315,6 +332,48 @@ function readEvent(
 	};
 }
 
+function readDimmerAction(data: Buffer): XiaomiEvent {
+	if (data.length !== 3) {
+		return {};
+	}
+	const [button, value, press] = data;
+	switch (press) {
+		case 0:
+			return { dimmerAction: "single press" };
+		case 1:
+			return { dimmerAction: "double press" };
+		case 2:
+			return { dimmerAction: "long press" };
+		case 3:
+			if (button === 0 || button === 1) {
+				return {
+					dimmerAction: button === 0 ? "short press" : "long press",
+					dimmerSteps: value,
+				};
+			}
+			return {};
+		case 4: {
+			const movement = button || value;
+			if (movement === 0) {
+				return {};
+			}
+			const left = movement > 127;
+			const direction = left ? "rotate left" : "rotate right";
+			return {
+				dimmerAction:
+					button === 0 ? direction : `${direction} (pressed)`,
+				dimmerSteps: left ? 256 - movement : movement,
+			};
+		}
+		case 5:
+			return { dimmerAction: "short press" };
+		case 6:
+			return { dimmerAction: "long press" };
+		default:
+			return {};
+	}
+}
+
 const legacyMeasurementLengths: Partial<
 	Record<XiaomiEventIDs_Internal, number>
 > = {
@@ -324,14 +383,21 @@ const legacyMeasurementLengths: Partial<
 	[XiaomiEventIDs_Internal.Battery]: 1,
 };
 
-function readLegacyMeasurements(payload: Buffer): XiaomiEvent {
+function readLegacyMeasurements(
+	payload: Buffer,
+	productID: number,
+): XiaomiEvent {
 	const events: XiaomiEvent = {};
 	for (let offset = 0; offset < payload.length;) {
 		if (payload.length - offset < 3) {
 			throw new Error("Truncated legacy MiBeacon measurement");
 		}
 		const id = payload.readUInt16LE(offset) as XiaomiEventIDs_Internal;
-		const length = legacyMeasurementLengths[id];
+		const length =
+			id === XiaomiEventIDs_Internal.Button &&
+			productID === YEELIGHT_DIMMER
+				? 3
+				: legacyMeasurementLengths[id];
 		if (
 			length == null ||
 			payload[offset + 2] !== length ||
@@ -339,12 +405,14 @@ function readLegacyMeasurements(payload: Buffer): XiaomiEvent {
 		) {
 			throw new Error("Invalid legacy MiBeacon measurement");
 		}
-		const { event, end } = readEvent(payload, offset);
+		const { event, end } = readEvent(payload, offset, productID);
 		const { temperature, humidity, battery } = event;
 		if (
 			(temperature != null && (temperature < -40 || temperature > 85)) ||
 			(humidity != null && humidity > 100) ||
-			(battery != null && battery > 100)
+			(battery != null && battery > 100) ||
+			(id === XiaomiEventIDs_Internal.Button &&
+				event.dimmerAction == null)
 		) {
 			throw new Error("Legacy MiBeacon measurement outside its range");
 		}
