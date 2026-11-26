@@ -39,6 +39,10 @@ The new adapter creates its own objects and states under `ble2.<instance>.*`. Ex
 
 Remote scanner command-line flags and the TCP protocol are unchanged. For scanner configuration supplied through environment variables, rename the `IOB_BLE_` prefix to `IOB_BLE2_`.
 
+### Periodic scans
+
+Set **Local scan interval [min]** and **Local scan duration [s]** to leave the Bluetooth adapter idle between scan windows. The first scan starts immediately. The duration must be shorter than the interval. An interval of `0` keeps continuous scanning. The scanner's connection indicator follows the active scan windows. On a standalone remote scanner, use `--scanInterval` and `--scanDuration`, both in seconds.
+
 ## Plugin system
 Build the adapter from source with `npm ci` followed by `npm run build`. The generated backend `build/` directory is not tracked in Git. Published npm packages include the generated files; installation directly from Git is disabled with `common.nogit`.
 
@@ -64,6 +68,7 @@ If you have any device transmitting specially encoded information via advertisem
   * [Mijia Temperature and Humidity sensor](https://www.banggood.com/Xiaomi-Mijia-Bluetooth-Thermometer-Hygrometer-with-LCD-Screen-Magnetic-Suction-Wall-Stickers-p-1232396.html?cur_warehouse=USA)
   * [Mosquito Repellent](https://www.aliexpress.com/item/32883859984.html)
 * `"mi-flora"`: Original plugin for the flower care plant sensor, now aliased to `"xiaomi"`
+* `"eddystone"`: Eddystone UID, URL, and EID identifiers and unencrypted telemetry (`feaa`).
 * `"ruuvi-tag"`: [Ruuvi Tag](https://tag.ruuvi.com/) multisensor with firmware versions v1 and v2. **Untested, please give feedback!** 
 * `"switchbot"`: SwitchBot Meter-family temperature, humidity, and battery advertisements (`fd3d` or `0d00`).
 * `"bthome"`: Sensors using the [BTHome](https://bthome.io) protocol. For now this is limited to the `v2` revision of the protocol and does not support encrypted packets.

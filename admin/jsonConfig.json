@@ -87,7 +87,7 @@
             "label": "Active plugins:",
             "help": "Select the plugins for your sensors. Basic advertisement data is always available.",
             "doNotSave": true,
-            "defaultFunc": "[...new Set((Array.isArray(data.plugins) ? data.plugins : String(data.plugins || '').split(',')).map(p => p.trim().toLowerCase()).filter(p => ['xiaomi', 'mi-flora', 'ruuvi-tag', 'bthome', 'mopeka', 'switchbot', 'mi-scale'].includes(p)))]",
+            "defaultFunc": "[...new Set((Array.isArray(data.plugins) ? data.plugins : String(data.plugins || '').split(',')).map(p => p.trim().toLowerCase()).filter(p => ['xiaomi', 'mi-flora', 'ruuvi-tag', 'bthome', 'mopeka', 'switchbot', 'eddystone', 'mi-scale'].includes(p)))]",
             "options": [
                 {
                     "label": "Xiaomi",
@@ -96,6 +96,10 @@
                 {
                     "label": "Mi Flora",
                     "value": "mi-flora"
+                },
+                {
+                    "label": "Eddystone",
+                    "value": "eddystone"
                 },
                 {
                     "label": "Ruuvi Tag",
@@ -176,6 +180,33 @@
             "md": 6,
             "lg": 6,
             "xl": 6
+        },
+        "scanIntervalMinutes": {
+            "type": "number",
+            "label": "Local scan interval [min]",
+            "help": "Minutes between scan starts. Set to 0 for continuous scanning.",
+            "min": 0,
+            "max": 1440,
+            "step": 1,
+            "xs": 12,
+            "sm": 6,
+            "md": 4,
+            "lg": 4,
+            "xl": 4
+        },
+        "scanWindowSeconds": {
+            "type": "number",
+            "label": "Local scan duration [s]",
+            "help": "Seconds spent scanning in each interval. Use a duration shorter than the interval.",
+            "hidden": "!data.scanIntervalMinutes",
+            "min": 1,
+            "max": 3600,
+            "step": 1,
+            "xs": 12,
+            "sm": 6,
+            "md": 4,
+            "lg": 4,
+            "xl": 4
         },
         "presenceDevices": {
             "type": "table",
