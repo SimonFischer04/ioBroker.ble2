@@ -7,6 +7,7 @@ declare global {
 			server: string;
 			hciDevice: number | string;
 			plugins: string;
+			xiaomiBindkeys?: string;
 			allowEmptyDevices: boolean;
 			reviewNewDevices?: boolean;
 			rssiThrottle: number;

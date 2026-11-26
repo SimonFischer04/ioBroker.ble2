@@ -17,5 +17,16 @@
     "Mi Flora": "Mi Flora",
     "Ruuvi Tag": "Ruuvi Tag",
     "BTHome": "BTHome",
-    "Mopeka Pro Check": "Mopeka Pro Check"
+    "Mopeka Pro Check": "Mopeka Pro Check",
+    "Xiaomi MiBeacon bindkeys": "Xiaomi MiBeacon bindkeys",
+    "Enter the MAC address and bindkey for each encrypted Xiaomi MiBeacon v4 or v5 device.": "Enter the MAC address and bindkey for each encrypted Xiaomi MiBeacon v4 or v5 device.",
+    "Bluetooth MAC address": "Bluetooth MAC address",
+    "Bindkey": "Bindkey",
+    "Enter a valid Bluetooth MAC address.": "Enter a valid Bluetooth MAC address.",
+    "Enter a 32-digit hexadecimal bindkey.": "Enter a 32-digit hexadecimal bindkey.",
+    "Review new devices before adding them": "Review new devices before adding them",
+    "Save this setting, enable Accept new devices, then refresh the list and add the devices you want.": "Save this setting, enable Accept new devices, then refresh the list and add the devices you want.",
+    "Unknown devices": "Unknown devices",
+    "Refresh device list": "Refresh device list",
+    "Add selected device": "Add selected device"
 }

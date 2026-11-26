@@ -11,6 +11,7 @@ import {
 	extendState,
 } from "./lib/iobroker-objects";
 import { ObjectCache } from "./lib/object-cache";
+import { RssiUpdates } from "./lib/rssi-updates";
 import {
 	ScanExitCodes,
 	getMessageReviver,
@@ -50,8 +51,7 @@ function autoResetAllowNewDevices(): void {
 /** Cache of new devices we already ignored */
 const ignoredNewDeviceIDs = new Set<string>();
 
-/** How frequent the RSSI of devices should be updated */
-let rssiUpdateInterval = 0;
+let rssiUpdates: RssiUpdates | undefined;
 
 /** A reference to the scanning process */
 let scanProcess: ChildProcess | undefined;
@@ -73,9 +73,16 @@ const adapter = utils.adapter({
 		await _.ensureInstanceObjects();
 		await adapter.setStateChangedAsync("unknownDevices.list", "[]", true);
 		if (adapter.config.reviewNewDevices) {
-			discoveryCandidates = new DiscoveryCandidates(adapter, async (list): Promise<void> => {
-				await adapter.setStateChangedAsync("unknownDevices.list", JSON.stringify(list), true);
-			});
+			discoveryCandidates = new DiscoveryCandidates(
+				adapter,
+				async (list): Promise<void> => {
+					await adapter.setStateChangedAsync(
+						"unknownDevices.list",
+						JSON.stringify(list),
+						true,
+					);
+				},
+			);
 		}
 
 		// Plugins laden
@@ -114,13 +121,10 @@ const adapter = utils.adapter({
 			_.adapter.log.info(`monitored services: ${services.join(", ")}`);
 		}
 
-		// Limit RSSI updates
-		if (adapter.config.rssiThrottle != null) {
-			rssiUpdateInterval = Math.max(
-				0,
-				Math.min(10000, adapter.config.rssiThrottle),
-			);
-		}
+		rssiUpdates = new RssiUpdates(
+			adapter,
+			Math.max(0, Math.min(10000, adapter.config.rssiThrottle ?? 0)),
+		);
 		// monitor our own states and objects
 		adapter.subscribeStates("*");
 		adapter.subscribeObjects("*");
@@ -162,15 +166,19 @@ const adapter = utils.adapter({
 		} else {
 			// it has been deleted, so delete it from the cache
 			_.objectCache.invalidateObject(id);
+			rssiUpdates?.remove(id);
 			const prefix = `${adapter.namespace}.`;
 			if (id.startsWith(prefix) && id.endsWith(".rssi")) {
-				discoveryCandidates?.forgetApproval(id.slice(prefix.length, -5));
+				discoveryCandidates?.forgetApproval(
+					id.slice(prefix.length, -5),
+				);
 			}
 		}
 	},
 
 	// is called if a subscribed state changes
 	stateChange: (id, state) => {
+		rssiUpdates?.observe(id, state);
 		if (
 			/options\.allowNewDevices$/.test(id) &&
 			state != undefined &&
@@ -234,30 +242,61 @@ const adapter = utils.adapter({
 			switch (obj.command) {
 				case "listUnknownDevices": {
 					const list = discoveryCandidates?.list() ?? [];
-					respond(list.length ? list.map(({address, name}) => ({
-						value: address,
-						label: name ? `${name} (${address})` : address,
-					})) : [{ value: "", label: "No devices detected" }]);
+					respond(
+						list.length
+							? list.map(({ address, name }) => ({
+									value: address,
+									label: name
+										? `${name} (${address})`
+										: address,
+								}))
+							: [{ value: "", label: "No devices detected" }],
+					);
 					return;
 				}
 				case "refreshUnknownDevices":
-					respond({ native: { _unknownDevice: "", _unknownDeviceRevision: String(Date.now()) } });
+					respond({
+						native: {
+							_unknownDevice: "",
+							_unknownDeviceRevision: String(Date.now()),
+						},
+					});
 					return;
 				case "approveUnknownDevice": {
 					if (!obj.callback) {
 						return;
 					}
-					const { address } = (obj.message ?? {}) as { address?: unknown };
+					const { address } = (obj.message ?? {}) as {
+						address?: unknown;
+					};
 					try {
-						if (typeof address === "string" && await discoveryCandidates?.approve(address, (peripheral) => onDiscover(peripheral, true))) {
+						if (
+							typeof address === "string" &&
+							(await discoveryCandidates?.approve(
+								address,
+								(peripheral) => onDiscover(peripheral, true),
+							))
+						) {
 							ignoredNewDeviceIDs.delete(address);
-							respond({ result: "deviceAdded", native: { _unknownDevice: "", _unknownDeviceRevision: String(Date.now()) } });
+							respond({
+								result: "deviceAdded",
+								native: {
+									_unknownDevice: "",
+									_unknownDeviceRevision: String(Date.now()),
+								},
+							});
 						} else {
-							respond({ error: "This device is no longer available. Refresh the discovery list." });
+							respond({
+								error: "This device is no longer available. Refresh the discovery list.",
+							});
 						}
 					} catch (error) {
-						adapter.log.warn(`Could not approve the discovered device: ${String(error)}`);
-						respond({ error: "Could not add the device. See the adapter log." });
+						adapter.log.warn(
+							`Could not approve the discovered device: ${String(error)}`,
+						);
+						respond({
+							error: "Could not add the device. See the adapter log.",
+						});
 					}
 					return;
 				}
@@ -407,7 +446,10 @@ function fixServiceName(name: string | null | undefined): string {
 	return name.toLowerCase();
 }
 
-async function onDiscover(peripheral: PeripheralInfo, approved = false): Promise<void> {
+async function onDiscover(
+	peripheral: PeripheralInfo,
+	approved = false,
+): Promise<void> {
 	if (peripheral == null) {
 		return;
 	}
@@ -522,16 +564,11 @@ async function onDiscover(peripheral: PeripheralInfo, approved = false): Promise
 		},
 		native: {},
 	});
-	// update RSSI information
-	const rssiState = await adapter.getStateAsync(`${deviceId}.rssi`);
-	if (
-		rssiState == null ||
-		// Allow updating the unchanged state because some people use it for presence detection
-		rssiState.ts + rssiUpdateInterval < Date.now() // But don't update too frequently
-	) {
-		_.adapter.log.debug(`updating rssi state for ${deviceId}`);
-		await adapter.setStateAsync(`${deviceId}.rssi`, peripheral.rssi, true);
-	}
+	// Refresh unchanged values too for users who rely on the state timestamp.
+	await rssiUpdates?.update(
+		`${adapter.namespace}.${deviceId}.rssi`,
+		peripheral.rssi,
+	);
 
 	// Now update device-specific objects and states
 	const context = plugin.createContext(peripheral);
@@ -541,7 +578,11 @@ async function onDiscover(peripheral: PeripheralInfo, approved = false): Promise
 	// We can't do anything without objects
 	if (objects == null) {
 		if (approved) {
-			await extendDevice(deviceId, peripheral, { common: { name: peripheral.advertisement.localName || deviceId } });
+			await extendDevice(deviceId, peripheral, {
+				common: {
+					name: peripheral.advertisement.localName || deviceId,
+				},
+			});
 		}
 		return;
 	}

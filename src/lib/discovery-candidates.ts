@@ -13,7 +13,8 @@ interface Candidate {
 
 const defaultLifetime = 15 * 60_000;
 const defaultLimit = 256;
-const addressPattern = /^(?:[0-9a-f]{12}|(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}|[0-9a-f]{32}|[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})$/i;
+const addressPattern =
+	/^(?:[0-9a-f]{12}|(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}|[0-9a-f]{32}|[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})$/i;
 
 /** Keeps a temporary, bounded list of devices waiting for approval. */
 export class DiscoveryCandidates {
@@ -32,7 +33,10 @@ export class DiscoveryCandidates {
 	 * @param limit Maximum number of devices in the list.
 	 */
 	constructor(
-		private readonly adapter: Pick<ioBroker.Adapter, "setTimeout" | "clearTimeout" | "log">,
+		private readonly adapter: Pick<
+			ioBroker.Adapter,
+			"setTimeout" | "clearTimeout" | "log"
+		>,
 		private readonly writeList: (list: CandidateSummary[]) => Promise<void>,
 		private readonly lifetime = defaultLifetime,
 		private readonly limit = defaultLimit,
@@ -45,7 +49,12 @@ export class DiscoveryCandidates {
 	 */
 	public observe(peripheral: PeripheralInfo): void {
 		const address = peripheral.address;
-		if (this.disposed || !addressPattern.test(address) || this.approving.has(address) || this.approved.has(address)) {
+		if (
+			this.disposed ||
+			!addressPattern.test(address) ||
+			this.approving.has(address) ||
+			this.approved.has(address)
+		) {
 			return;
 		}
 		this.expire();
@@ -54,9 +63,17 @@ export class DiscoveryCandidates {
 			return;
 		}
 		const advertisedName = peripheral.advertisement.localName;
-		const name = (typeof advertisedName === "string" && advertisedName.trim().slice(0, 80)) || previous?.name || "";
+		const name =
+			(typeof advertisedName === "string" &&
+				advertisedName.trim().slice(0, 80)) ||
+			previous?.name ||
+			"";
 		this.candidates.delete(address);
-		this.candidates.set(address, { peripheral, name, expiresAt: Date.now() + this.lifetime });
+		this.candidates.set(address, {
+			peripheral,
+			name,
+			expiresAt: Date.now() + this.lifetime,
+		});
 		if (previous?.name !== name) {
 			this.queuePublish();
 		}
@@ -65,7 +82,10 @@ export class DiscoveryCandidates {
 
 	/** @param address Device address in a scanner advertisement. */
 	public isPending(address: string): boolean {
-		return this.approving.has(address) || (this.candidates.get(address)?.expiresAt ?? 0) > Date.now();
+		return (
+			this.approving.has(address) ||
+			(this.candidates.get(address)?.expiresAt ?? 0) > Date.now()
+		);
 	}
 
 	/** @param address Address of a device approved during this adapter session. */
@@ -88,7 +108,10 @@ export class DiscoveryCandidates {
 	 * @param address Address selected in Admin.
 	 * @param record Creates the device and updates its states.
 	 */
-	public async approve(address: string, record: (peripheral: PeripheralInfo) => Promise<void>): Promise<boolean> {
+	public async approve(
+		address: string,
+		record: (peripheral: PeripheralInfo) => Promise<void>,
+	): Promise<boolean> {
 		if (this.approved.has(address)) {
 			return true;
 		}
@@ -147,11 +170,14 @@ export class DiscoveryCandidates {
 	private scheduleExpiry(): void {
 		const first = this.candidates.values().next().value;
 		if (this.expiryTimer == undefined && first) {
-			this.expiryTimer = this.adapter.setTimeout(() => {
-				this.expiryTimer = undefined;
-				this.expire();
-				this.scheduleExpiry();
-			}, Math.max(1, first.expiresAt - Date.now()));
+			this.expiryTimer = this.adapter.setTimeout(
+				() => {
+					this.expiryTimer = undefined;
+					this.expire();
+					this.scheduleExpiry();
+				},
+				Math.max(1, first.expiresAt - Date.now()),
+			);
 		}
 	}
 
@@ -172,7 +198,9 @@ export class DiscoveryCandidates {
 		try {
 			await this.writeList(list);
 		} catch (error) {
-			this.adapter.log.warn(`Could not publish the discovery list: ${String(error)}`);
+			this.adapter.log.warn(
+				`Could not publish the discovery list: ${String(error)}`,
+			);
 		}
 	}
 }
