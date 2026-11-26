@@ -74,6 +74,7 @@ If you have any device transmitting specially encoded information via advertisem
 * `"switchbot"`: SwitchBot Meter-family temperature, humidity, and battery advertisements (`fd3d` or `0d00`).
 * `"bthome"`: Sensors using [BTHome v2](https://bthome.io), including encrypted advertisements.
 * `"mi-scale"`: Mi Scale V1 and V2 broadcast weight in kilograms and a stabilized flag (`181d` and `181b`).
+* `"govee"`: Govee H5072 and H5075 temperature, humidity, and battery from EC88 manufacturer data.
 * `"mopeka"`: Mopeka Pro Check LPG tank sensors (standard sensor type `0x03`).
 
 For an encrypted BTHome sensor, select **BTHome** under **Active plugins** and add its Bluetooth MAC address and bindkey under **BTHome bindkeys**. Enter the 16-byte key as 32 hexadecimal digits or in UUID format. Enable **Accept new devices** when adding a new sensor. A remote scanner using service filters must forward service `fcd2`. Decryption requires the actual Bluetooth MAC address, which some local scanners (such as macOS CoreBluetooth) do not expose.
@@ -89,6 +90,8 @@ The original LYWSD02 alarm clock broadcasts temperature and humidity using the *
 The Xiaomi Door and Window Sensor 2 (MCCGQ02HL) publishes `contactOpen` and `doorLeftOpen` from contact events. Configure its bindkey to decode encrypted broadcasts. A status-only packet does not carry the door state.
 
 With pvvx firmware, choose **ATC1441** or **PVVX (Custom)** in the firmware settings and enable **ATC1441 and PVVX** in the adapter. These formats carry temperature, humidity, and battery in the same packet. The scanner must expose the Bluetooth MAC address and forward `181a` service data. The **Xiaomi** plugin remains available for MiBeacon mode, where a battery packet may arrive separately from temperature and humidity.
+
+For a Govee H5072 or H5075, enable **Govee H5072/H5075** under **Active plugins**. The scanner must deliver the `EC88` manufacturer data containing the measurements. The separate Apple iBeacon block beginning with `4c000215` contains no Govee sensor readings. Noble can report only the last manufacturer block on a platform that supplies them separately. For a supported remote scanner with service filters, forward service `ec88` or add `--manufacturerIds 60552`.
 
 For Mopeka, add `mopeka` to **Active plugins** and enable **Accept new devices** while discovering the sensor. Local scanning includes its manufacturer identifier automatically. A remote scanner with service filters also needs `--manufacturerIds 89` to forward manufacturer-only advertisements.
 

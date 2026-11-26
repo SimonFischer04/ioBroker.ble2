@@ -85,7 +85,7 @@
                     "label": "Active plugins:",
                     "help": "Select the plugins for your sensors. Basic advertisement data is always available.",
                     "doNotSave": true,
-                    "defaultFunc": "[...new Set((Array.isArray(data.plugins) ? data.plugins : String(data.plugins || '').split(',')).map(p => p.trim().toLowerCase()).filter(p => ['xiaomi', 'mi-flora', 'ruuvi-tag', 'atc', 'bthome', 'mopeka', 'switchbot', 'eddystone', 'mi-scale'].includes(p)))]",
+                    "defaultFunc": "[...new Set((Array.isArray(data.plugins) ? data.plugins : String(data.plugins || '').split(',')).map(p => p.trim().toLowerCase()).filter(p => ['xiaomi', 'mi-flora', 'ruuvi-tag', 'atc', 'bthome', 'mopeka', 'switchbot', 'eddystone', 'mi-scale', 'govee'].includes(p)))]",
                     "onChange": {
                         "calculateFunc": "const selection = data._pluginSelection || []; data.plugins = selection.join(','); return selection;"
                     },
@@ -121,6 +121,10 @@
                         {
                             "label": "Xiaomi Mi Scale",
                             "value": "mi-scale"
+                        },
+                        {
+                            "label": "Govee H5072/H5075",
+                            "value": "govee"
                         },
                         {
                             "label": "Mopeka Pro Check",
