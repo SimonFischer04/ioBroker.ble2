@@ -306,6 +306,34 @@ describe("connections/connection-manager => ConnectionManager", () => {
 		expect(provider.links[1]).to.not.equal(link);
 	});
 
+	it("tries no further gateway once the job has expired", async () => {
+		const failing = deferred<FakeLink>();
+		provider.behaviour.set(OG, () => failing.promise);
+		const error = await rejection(
+			manager.withSession(DEVICE, async () => "never", { timeoutMs: 50 }),
+		);
+		expect(error.code).to.equal("TIMEOUT");
+
+		failing.reject(new GatewayError("CONNECT_FAILED", "no answer"));
+		await tick();
+		await tick();
+		// KELLER would be next, but the job is over
+		expect(provider.connects).to.deep.equal([`${OG} ${DEVICE} public`]);
+		// The queue is free again
+		provider.behaviour.delete(OG);
+		await manager.withSession(DEVICE, async () => undefined);
+		expect(provider.connects).to.have.lengthOf(2);
+	});
+
+	it("reception() tells the recent signal of a gateway, even if it cannot connect", () => {
+		announce(OG, { connect: true, freeSlots: 0 });
+		expect(manager.reception("A4-C1-38-12-34-56", OG)).to.equal(-55);
+		expect(manager.reception(DEVICE, "esphome.0:unknown")).to.equal(
+			undefined,
+		);
+		expect(manager.reception("not a mac", OG)).to.equal(undefined);
+	});
+
 	it("rejects an invalid address", async () => {
 		const error = await rejection(
 			manager.withSession("not a mac", async () => undefined),

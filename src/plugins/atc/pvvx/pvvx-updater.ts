@@ -4,7 +4,11 @@ import type {
 } from "../../../connections/connection-manager";
 import { PvvxCommandChannel } from "./command-channel";
 import { type FirmwareCatalog, selectImage } from "./firmware-catalog";
-import { checkPreconditions, MIN_RSSI } from "./ota-checks";
+import {
+	checkPreconditions,
+	MIN_RSSI,
+	type PreconditionInput,
+} from "./ota-checks";
 import { transferImage } from "./ota-transfer";
 import {
 	encodeConfigRequest,
@@ -122,7 +126,10 @@ export interface PvvxUpdaterContext {
 		| "getStateAsync"
 	>;
 	/** Chooses the gateway and opens the GATT sessions to the devices */
-	connections: Pick<ConnectionManager, "withSession" | "candidates">;
+	connections: Pick<
+		ConnectionManager,
+		"withSession" | "candidates" | "reception"
+	>;
 	/** firmware.json and the images */
 	catalog: FirmwareCatalog;
 	/** Current time, e.g. for the age of the battery value */
@@ -419,35 +426,57 @@ export class PvvxUpdater {
 		const { ctx } = this;
 		try {
 			await this.setStates(address, { firmwareStatus: "checking" });
-			let battery: ioBroker.State | null | undefined;
-			try {
-				battery = await ctx.adapter.getStateAsync(`${address}.battery`);
-			} catch {
-				battery = undefined;
-			}
-			const check = (): GatewayCandidate[] => {
-				const gateways = ctx.connections
-					.candidates(address)
-					.filter(({ features }) =>
-						features.includes("writeSequence"),
+			/** Reads the battery again and checks it together with the gateway */
+			const check = async (
+				gateway: PreconditionInput["bestGateway"],
+			): Promise<void> => {
+				let battery: ioBroker.State | null | undefined;
+				try {
+					battery = await ctx.adapter.getStateAsync(
+						`${address}.battery`,
 					);
+				} catch {
+					battery = undefined;
+				}
 				checkPreconditions({
 					address,
 					now: ctx.clock.now(),
 					battery,
-					bestGateway: gateways[0],
+					bestGateway: gateway,
 				});
-				return gateways;
 			};
-			check();
+			const updateGateways = (): GatewayCandidate[] =>
+				ctx.connections
+					.candidates(address)
+					.filter(({ features }) =>
+						features.includes("writeSequence"),
+					);
+
+			await check(updateGateways()[0]);
 			const index = await ctx.catalog.getIndex(false);
-			// The signal may have changed during the download
-			const gateways = check();
+			// Battery and signal may have changed during the download
+			const gateways = updateGateways();
+			await check(gateways[0]);
 
 			let expected = 0;
 			await ctx.connections.withSession(
 				address,
 				async (session) => {
+					// The job may have waited in the queue: check the gateway that is actually
+					// used with its latest signal. During the connection the device does not
+					// advertise, so this is the last measurement before the transfer.
+					const rssi = ctx.connections.reception(
+						address,
+						session.gatewayId,
+					);
+					if (rssi === undefined) {
+						throw new PvvxUpdateError(
+							"WEAK_SIGNAL",
+							`${session.gatewayId} has not received the device recently`,
+						);
+					}
+					const gateway = { gatewayId: session.gatewayId, rssi };
+					await check(gateway);
 					const channel = new PvvxCommandChannel(session, ctx);
 					await channel.open();
 					const config = parseConfigResponse(
@@ -478,6 +507,8 @@ export class PvvxUpdater {
 					const { image, length } = await ctx.catalog.getImage(
 						selection.path,
 					);
+					// Loading the image may have taken a while
+					await check(gateway);
 					await this.setStates(address, {
 						firmwareStatus: "transferring",
 					});

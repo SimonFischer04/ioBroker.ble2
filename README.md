@@ -111,7 +111,7 @@ The types of the interface are defined in [`src/lib/gateway-protocol.ts`](src/li
 | `readCharacteristic` | `{ address, service, characteristic }` → `{ data }` (base64) |
 | `writeCharacteristic` | `{ address, service, characteristic, data, withResponse? }` → `{}`. `withResponse` defaults to `true` |
 
-For every gateway the states `gateways.<id>.connected` and `gateways.<id>.lastAdvertisement` are created, for gateways that can connect also `gateways.<id>.freeSlots`. `info.connection` is `true` while at least one source of advertisements is active.
+For every gateway the states `gateways.<id>.connected` and `gateways.<id>.lastAdvertisement` are created, for gateways that can connect also `gateways.<id>.freeSlots`. `<id>` is the gateway ID with `.` and `:` replaced by `_`, e.g. `gateways.esphome_0_proxy-og`. Scan servers and IDs containing `_` get a short hash appended (`gateways.server_192_168_1_20_9000__…`), so no two gateways share their states. `info.connection` is `true` while at least one source of advertisements is active.
 
 ### Connecting to devices
 `discoverServices`, `readCharacteristic` and `writeCharacteristic` connect to a device, do their work and disconnect again. UUIDs can be given short (`"1f10"`, `"0x1F10"`) or in full, with or without dashes. The adapter connects through the gateway that receives the device best and can connect, tries the next one if that fails, and runs only one request per device at a time. Errors come as `{ error: { code, message } }`, e.g. `NO_GATEWAY` when no gateway that can connect receives the device.

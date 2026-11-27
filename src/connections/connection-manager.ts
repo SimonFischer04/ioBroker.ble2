@@ -190,9 +190,33 @@ export class ConnectionManager {
 			: undefined;
 	}
 
+	/**
+	 * The signal strength a gateway received the device with recently, whether or not it can
+	 * connect right now. undefined if it did not receive the device within the last 30 s.
+	 *
+	 * @param address MAC address of the device
+	 * @param gatewayId Full ID of the gateway
+	 */
+	public reception(address: string, gatewayId: string): number | undefined {
+		const normalized = normalizeAddress(address);
+		return normalized
+			? this.ctx.devices
+					.getReceivers(normalized)
+					.find((r) => r.gatewayId === gatewayId)?.rssi
+			: undefined;
+	}
+
+	/**
+	 * Opens a link through the first candidate that connects
+	 *
+	 * @param address Normalized MAC address of the device
+	 * @param options The options of the job
+	 * @param expired Tells whether the job has expired: then no further gateway is tried
+	 */
 	private async connect(
 		address: string,
 		options: SessionOptions,
+		expired: () => boolean,
 	): Promise<GattLink> {
 		const candidates =
 			options.gateways?.filter((id) => this.connectable(id)) ??
@@ -209,6 +233,9 @@ export class ConnectionManager {
 			options.addressType ?? this.ctx.devices.getAddressType(address);
 		let lastError: unknown;
 		for (const gatewayId of candidates) {
+			if (expired()) {
+				break;
+			}
 			try {
 				return await this.ctx.provider.connect(
 					gatewayId,
@@ -251,7 +278,11 @@ export class ConnectionManager {
 
 		const connected = (async () => {
 			const session = new GattSession(
-				await this.connect(address, job.options),
+				await this.connect(
+					address,
+					job.options,
+					() => aborted || this.disposed,
+				),
 			);
 			if (aborted || this.disposed) {
 				await this.closeSession(session);

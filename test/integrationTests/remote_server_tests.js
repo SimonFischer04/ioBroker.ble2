@@ -13,6 +13,7 @@
  */
 
 const { expect } = require("chai");
+const { toObjectId } = require("../../build/gateways/gateway-registry");
 const { FakeScanServer } = require("./fakeScanServer");
 const {
 	NAMESPACE,
@@ -49,7 +50,7 @@ function gatewayId(server) {
  * @returns {string} ID of the channel with the states of its gateway
  */
 function gatewayStates(server) {
-	return `gateways.server_127_0_0_1_${server.port}`;
+	return `gateways.${toObjectId(gatewayId(server))}`;
 }
 
 /**

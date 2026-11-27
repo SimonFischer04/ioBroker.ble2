@@ -392,18 +392,26 @@ export class GatewayRegistry {
 }
 
 /**
+ * Gateway IDs that stay readable as object IDs: "local" and "<adapter>.<instance>:<gateway>" with a
+ * gateway ID of letters, digits, "-" and single dots. Replacing "." and ":" by "_" cannot make two
+ * of them alike: the adapter name contains no "_", the instance only digits, the gateway no "_".
+ */
+const READABLE_ID =
+	/^(?:local|[a-z0-9-]+\.\d+:[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*)$/;
+
+/**
  * The ID of the gateway's channel below "gateways.". Readable for the usual IDs
- * ("esphome.0:proxy-og" → "esphome_0_proxy-og"). An ID with "_" or other characters that become
- * "_" gets a hash of the ID appended, so that e.g. "proxy.garage" and "proxy_garage" do not
- * share their states.
+ * ("esphome.0:proxy-og" → "esphome_0_proxy-og"). Every other ID (scan servers, IDs with "_")
+ * gets a hash of the full ID appended after "__", which readable IDs never contain, so that e.g.
+ * "proxy.garage" and "proxy_garage" or two IPv6 scan servers do not share their states.
  *
  * @param gatewayId Full ID of the gateway
  */
 export function toObjectId(gatewayId: string): string {
 	const readable = gatewayId.replace(/[^A-Za-z0-9-]/g, "_");
-	if (/^[A-Za-z0-9.:-]+$/.test(gatewayId)) {
+	if (READABLE_ID.test(gatewayId)) {
 		return readable;
 	}
 	const hash = createHash("sha256").update(gatewayId).digest("hex");
-	return `${readable}__${hash.slice(0, 8)}`;
+	return `${readable}__${hash.slice(0, 12)}`;
 }

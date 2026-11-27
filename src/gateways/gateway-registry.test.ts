@@ -48,16 +48,24 @@ describe("gateways/gateway-registry => GatewayRegistry", () => {
 
 	it("gives every gateway ID its own object ID", () => {
 		expect(toObjectId("esphome.0:proxy-og")).to.equal("esphome_0_proxy-og");
-		expect(toObjectId("server:192.168.1.20:9000")).to.equal(
-			"server_192_168_1_20_9000",
+		expect(toObjectId("esphome.0:proxy.garage")).to.equal(
+			"esphome_0_proxy_garage",
 		);
 		expect(toObjectId("local")).to.equal("local");
+		expect(toObjectId("server:192.168.1.20:9000")).to.match(
+			/^server_192_168_1_20_9000__[0-9a-f]{12}$/,
+		);
 
 		const ids = [
 			"esphome.0:proxy.garage",
 			"esphome.0:proxy_garage",
 			"esphome.0:proxy__garage",
+			"esphome.0:proxy..garage",
 			"esphome.0:proxy garage",
+			"server:fd00::ffff:192.168.1.20:9000",
+			"server:fd00::ffff:192:168:1:20:9000",
+			"server:192.168.1.20:9000",
+			"server:192:168:1:20:9000",
 		].map(toObjectId);
 		expect(new Set(ids).size).to.equal(ids.length);
 		for (const id of ids) {

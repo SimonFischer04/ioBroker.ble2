@@ -154,6 +154,10 @@ class FakeConnections {
 		return this.best ? [this.best] : [];
 	}
 
+	public reception(_address: string, gatewayId: string): number | undefined {
+		return this.best?.gatewayId === gatewayId ? this.best.rssi : undefined;
+	}
+
 	/** Sessions that wrote firmware, not the ones that only read the version */
 	public get updateSessions(): string[] {
 		return this.sessions
@@ -502,6 +506,45 @@ describe("plugins/atc/pvvx/pvvx-updater => PvvxUpdater", () => {
 				/^WEAK_SIGNAL: /,
 			);
 			expect(connections.sessions).to.deep.equal([]);
+		});
+
+		it("checks the signal of the gateway in use when the session starts", async () => {
+			await createUpdater().start();
+			const gate = deferred();
+			connections.gate = gate.promise;
+
+			const update = updater.update(FIRST);
+			await settle();
+			// The signal drops while the job waits in the queue
+			connections.best = {
+				gatewayId: "esphome.0:proxy-og",
+				rssi: -91,
+				features: ["writeSequence"],
+			};
+			gate.resolve();
+			await update;
+
+			expect(String(adapter.val(`${FIRST}.pvvx.firmwareError`))).to.match(
+				/^WEAK_SIGNAL: /,
+			);
+			expect(first.writes).to.deep.equal([]);
+			expect(first.ota.writes).to.deep.equal([]);
+		});
+
+		it("checks the battery again right before the transfer", async () => {
+			await createUpdater().start();
+			source.getImage = () => {
+				// The battery drops while the image is loading
+				adapter.preset(`${FIRST}.battery`, 30);
+				return Promise.resolve(image);
+			};
+
+			await updater.update(FIRST);
+
+			expect(String(adapter.val(`${FIRST}.pvvx.firmwareError`))).to.match(
+				/^BATTERY_LOW: /,
+			);
+			expect(first.ota.writes).to.deep.equal([]);
 		});
 
 		it("UP_TO_DATE, NO_IMAGE and UNKNOWN_HARDWARE write nothing to the update characteristic", async () => {
