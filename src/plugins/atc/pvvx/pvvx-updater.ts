@@ -11,6 +11,7 @@ import {
 import { type Clock, PvvxProtocolError } from "./time-sync";
 import { PvvxUpdateError } from "./update-error";
 import { errorMessage } from "../../../lib/gateway-error";
+import { describeError, writeStates } from "./states";
 
 /** First check for new firmware after the start */
 export const CHECK_START_DELAY_MS = 120000;
@@ -146,11 +147,6 @@ export interface PvvxUpdaterOptions {
 interface QueuedUpdate {
 	address: string;
 	finished: () => void;
-}
-
-function errorCode(e: unknown): string {
-	const code = (e as { code?: unknown } | null | undefined)?.code;
-	return typeof code === "string" ? code : "ERROR";
 }
 
 /**
@@ -511,7 +507,7 @@ export class PvvxUpdater {
 			if (this.disposed) {
 				return false;
 			}
-			const firmwareError = `${errorCode(e)}: ${errorMessage(e)}`;
+			const firmwareError = describeError(e);
 			ctx.adapter.log.warn(
 				`The firmware update of ${address} failed: ${firmwareError}`,
 			);
@@ -604,26 +600,16 @@ export class PvvxUpdater {
 		});
 	}
 
-	private async setStates(
+	private setStates(
 		address: string,
 		values: Record<string, ioBroker.StateValue>,
 	): Promise<void> {
-		for (const [id, value] of Object.entries(values)) {
-			if (this.disposed) {
-				return;
-			}
-			try {
-				await this.ctx.adapter.setStateAsync(
-					`${address}.pvvx.${id}`,
-					value,
-					true,
-				);
-			} catch (e) {
-				this.ctx.adapter.log.warn(
-					`Could not write ${address}.pvvx.${id}: ${errorMessage(e)}`,
-				);
-			}
-		}
+		return writeStates(
+			this.ctx.adapter,
+			address,
+			values,
+			() => this.disposed,
+		);
 	}
 
 	/** Starts the update of every device with a newer firmware, in the order of the setting */

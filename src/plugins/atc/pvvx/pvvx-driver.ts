@@ -1,10 +1,9 @@
 import type { ConnectionManager } from "../../../connections/connection-manager";
-// The list of devices in the settings is parsed by the core helper, re-exported for the tests
-export { parseDeviceList } from "../../../lib/device-list";
 import { PvvxCommandChannel } from "./command-channel";
 import { formatVersion } from "./protocol";
 import { type Clock, syncTime } from "./time-sync";
 import { errorMessage } from "../../../lib/gateway-error";
+import { describeError, writeStates } from "./states";
 
 /** How often the driver checks which devices are due */
 export const TICK_INTERVAL_MS = 60000;
@@ -54,7 +53,6 @@ interface DeviceState {
 	nextDue: number;
 	/** Errors in a row */
 	failures: number;
-	running: boolean;
 }
 
 /** The objects of a device below <mac>.pvvx */
@@ -121,7 +119,6 @@ export class PvvxDriver {
 				address,
 				nextDue: Infinity,
 				failures: 0,
-				running: false,
 			});
 		}
 	}
@@ -234,7 +231,6 @@ export class PvvxDriver {
 
 	private async sync(device: DeviceState): Promise<void> {
 		const { ctx } = this;
-		device.running = true;
 		try {
 			const result = await ctx.connections.withSession(
 				device.address,
@@ -280,13 +276,7 @@ export class PvvxDriver {
 					now + (this.intervalMs || FALLBACK_INTERVAL_MS);
 				device.failures = 0;
 			}
-			const code =
-				e != null &&
-				typeof e === "object" &&
-				typeof (e as { code?: unknown }).code === "string"
-					? (e as { code: string }).code
-					: "ERROR";
-			const lastError = `${code}: ${errorMessage(e)}`;
+			const lastError = describeError(e);
 			const message = `Could not set the clock of ${device.address}: ${lastError}`;
 			if (failures === RETRY_DELAYS_MS.length) {
 				ctx.adapter.log.warn(message);
@@ -294,31 +284,19 @@ export class PvvxDriver {
 				ctx.adapter.log.info(message);
 			}
 			await this.setStates(device.address, { lastError });
-		} finally {
-			device.running = false;
 		}
 	}
 
-	private async setStates(
+	private setStates(
 		address: string,
 		values: Record<string, ioBroker.StateValue>,
 	): Promise<void> {
-		for (const [id, value] of Object.entries(values)) {
-			if (this.disposed) {
-				return;
-			}
-			try {
-				await this.ctx.adapter.setStateAsync(
-					`${address}.pvvx.${id}`,
-					value,
-					true,
-				);
-			} catch (e) {
-				this.ctx.adapter.log.warn(
-					`Could not write ${address}.pvvx.${id}: ${errorMessage(e)}`,
-				);
-			}
-		}
+		return writeStates(
+			this.ctx.adapter,
+			address,
+			values,
+			() => this.disposed,
+		);
 	}
 
 	/**
@@ -343,10 +321,7 @@ export class PvvxDriver {
 			return true;
 		}
 		this.ctx.adapter.setStateAsync(id, false, true).catch(() => {});
-		device.nextDue = 0;
-		device.failures = 0;
-		// While a tick runs, the device comes next time
-		void this.tick();
+		this.requestSync(device.address);
 		return true;
 	}
 
