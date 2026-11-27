@@ -454,3 +454,34 @@ Phase 2 bis 4 sind umgesetzt und nur gegen Fakes getestet. Offen, in dieser Reih
 2. Gefundene Fehler beheben, Ergebnisse in `docs/pvvx-protocol.md`, Abschnitt 9, eintragen.
 3. Den Branch `ccr-ble-gateway-gatt` in `ioBroker.esphome` als PR gegen `main` stellen und mit den Maintainern abstimmen. Für `ioBroker.ble` klären, ob der PR an das Original-Repo geht.
 4. Mit den Ergebnissen aus Punkt 1 die Konstanten H1 bis H5 aus `docs/spec-phase-4-pvvx-ota.md`, Abschnitt 0, prüfen und anpassen, dann ein echtes Firmware-Update über einen Proxy, auch mit absichtlichem Abbruch.
+
+---
+
+## 10. Für später
+
+### pvvx-Geräte mit PIN-Code (Pairing mit Passkey)
+
+**Problem.** Ist an einem pvvx-Thermometer ein PIN-Code gesetzt, verlangen die Befehls- und die OTA-Characteristic eine verschlüsselte Verbindung mit authentifiziertem Pairing. Die Gegenseite muss dabei die 6-stellige PIN eingeben (`docs/pvvx-protocol.md`, Abschnitt 2, Regel 3). Zeitsync und Firmware-Update gehen deshalb heute nicht. Messwerte sind nicht betroffen, die Advertisements bleiben unverschlüsselt bzw. werden mit dem Bindkey entschlüsselt.
+
+**Stand der Bausteine.**
+- Die ESPHome-API kennt Pairing (`BluetoothDeviceRequest` mit `BLUETOOTH_DEVICE_REQUEST_TYPE_PAIR`/`_UNPAIR`, Antwort `BluetoothDevicePairingResponse`). `@2colors/esphome-native-api` bietet `pairBluetoothDeviceService(address)`.
+- Es fehlt die PIN: Die Anfrage enthält nur die Adresse, und `bluetooth_proxy` beantwortet die Passkey-Anfrage des ESP32-Stacks (`ESP_GAP_BLE_PASSKEY_REQ_EVT` → `esp_ble_passkey_reply`) nicht.
+
+**Variante A, ohne Änderung an ESPHome (zuerst an echter Hardware ausprobieren).**
+- Im YAML des Proxys `esp32_ble: io_capability: keyboard_only` und ein `ble_client` für die MAC des Thermometers mit `auto_connect: false` und `on_passkey_request` → `passkey_reply` mit der festen PIN.
+- Offen und nur mit Hardware zu klären: ob der `ble_client` die Passkey-Anfrage auch beantwortet, während der Proxy die Verbindung hält.
+- `ioBroker.esphome`: Befehl `gatt:pair` auf `pairBluetoothDeviceService` abbilden, Feature `pair` in `gateway:announce` (etwa ½–1 Tag mit Tests).
+- `ioBroker.ble`: `gatt:pair` in `ble-gateway/1` (erweiternd, §8 Punkt 1). Bei „insufficient authentication“ pairen und erneut versuchen, für solche Geräte nur Gateways mit `pair` wählen (etwa 1 Tag mit Tests).
+- Nachteil: Die PIN steht pro Gerät im YAML jedes Proxys.
+
+**Variante B, PIN über die API (sauber).**
+- ESPHome: PIN-Feld in der Pairing-Anfrage. Die Proxy-Verbindung merkt sich die PIN und beantwortet damit die Passkey-Anfrage (grob 100 Zeilen C++ und `api.proto`). Upstream betrifft das auch Home Assistant und `aioesphomeapi`: Review dauert Wochen bis Monate, Annahme offen. Für den Eigengebrauch geht es als `external_components`-Fork.
+- `@2colors/esphome-native-api`: neue `api.proto` übernehmen, PIN-Parameter für das Pairing (Upstream-PR oder Fork).
+- `ioBroker.esphome` und `ioBroker.ble` wie bei A, aber mit PIN im Befehl. In `ble` eine PIN pro Gerät in der Konfiguration, verschlüsselt wie die BTHome-Bindkeys.
+- Grob 3–5 Tage eigene Arbeit, die Dauer bestimmen die Upstream-Reviews.
+
+**Für beide Varianten.**
+- Das Bonding wird auf jedem ESP gespeichert: Jeder Proxy pairt einmal selbst, danach wird ohne PIN verschlüsselt. Die Zahl der Bonds pro ESP ist begrenzt (vermutlich etwa 15, prüfen).
+- Nach Neu-Flashen des Thermometers oder geänderter PIN muss das Pairing gelöst und neu aufgebaut werden. Dafür braucht es Fehlerbehandlung (`gatt:unpair`).
+
+**Vorgehen.** Erst Variante A an einem Thermometer mit PIN testen (nur YAML). Klappt das Pairing, Variante A in `esphome` und `ble` umsetzen. Variante B nur, wenn mehrere Nutzer PIN-geschützte Geräte brauchen.
