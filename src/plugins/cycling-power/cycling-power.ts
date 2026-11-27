@@ -3,6 +3,7 @@ import type { GattSession } from "../../connections/gatt-session";
 import type { PeripheralInfo } from "../../lib/advertisement";
 import { normalizeAddress } from "../../lib/advertisement";
 import { extendDevice, extendState } from "../../lib/iobroker-objects";
+import { errorMessage } from "../../lib/gateway-error";
 
 const cyclingPowerService = "1818";
 const powerMeasurement = "2a63";
@@ -57,7 +58,7 @@ export class CyclingPower {
 			.catch((error: unknown) => {
 				if (!this.stopped) {
 					this.adapter.log.debug(
-						`Cycling Power session for ${address} ended: ${error instanceof Error ? error.message : "Unknown error"}`,
+						`Cycling Power session for ${address} ended: ${errorMessage(error)}`,
 					);
 				}
 			})
@@ -144,7 +145,7 @@ export class CyclingPower {
 						})
 						.catch((error: unknown) => {
 							this.adapter.log.warn(
-								`Could not store cycling power for ${address}: ${error instanceof Error ? error.message : "Unknown error"}`,
+								`Could not store cycling power for ${address}: ${errorMessage(error)}`,
 							);
 						});
 				},

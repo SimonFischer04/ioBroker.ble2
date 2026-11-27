@@ -1,4 +1,5 @@
 import type { GattLink } from "../connections/gatt-link";
+import { decodeBase64 } from "../lib/base64";
 import { GatewayError, normalizeError } from "../lib/gateway-error";
 import {
 	GattCommands,
@@ -20,9 +21,6 @@ export const GATT_TIMEOUTS_MS = {
 	subscribe: 10000,
 	writeSequence: 30000,
 } as const;
-
-const BASE64_REGEX =
-	/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 
 /**
  * A connection to a device through a gateway another adapter provides. The commands go to that
@@ -138,17 +136,14 @@ export class RemoteGattLink implements GattLink {
 			{ handle },
 			GATT_TIMEOUTS_MS.read,
 		);
-		// Buffer.from() would turn invalid base64 into an empty value without complaint
-		if (
-			typeof result?.data !== "string" ||
-			!BASE64_REGEX.test(result.data)
-		) {
+		const data = decodeBase64(result?.data);
+		if (!data) {
 			throw new GatewayError(
 				"GATT_ERROR",
 				`Unexpected answer to ${GattCommands.read}`,
 			);
 		}
-		return Buffer.from(result.data, "base64");
+		return data;
 	}
 
 	/**
@@ -203,16 +198,14 @@ export class RemoteGattLink implements GattLink {
 		if (!readAfter) {
 			return undefined;
 		}
-		if (
-			typeof result?.data !== "string" ||
-			!BASE64_REGEX.test(result.data)
-		) {
+		const value = decodeBase64(result?.data);
+		if (!value) {
 			throw new GatewayError(
 				"GATT_ERROR",
 				`Invalid answer to ${GattCommands.writeSequence}`,
 			);
 		}
-		return Buffer.from(result.data, "base64");
+		return value;
 	}
 
 	/**

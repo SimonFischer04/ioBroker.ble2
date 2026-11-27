@@ -1,6 +1,6 @@
 import type { Plugin, PluginContext, PluginInstance } from "../plugins/plugin";
 import type { PeripheralInfo } from "./advertisement";
-import { toErrorResponse } from "./gateway-error";
+import { errorMessage, toErrorResponse } from "./gateway-error";
 import type { GatewayResponse } from "./gateway-protocol";
 
 /** A started active part, with the plugin it belongs to */
@@ -80,7 +80,7 @@ export class PluginHost {
 				instance = await plugin.start(ctx);
 			} catch (e) {
 				this.log.error(
-					`Plugin ${plugin.name} could not start: ${message(e)}`,
+					`Plugin ${plugin.name} could not start: ${errorMessage(e)}`,
 				);
 				continue;
 			}
@@ -115,7 +115,7 @@ export class PluginHost {
 				instance.observe?.(peripheral);
 			} catch (e) {
 				this.log.warn(
-					`Plugin ${name} failed to handle an advertisement: ${message(e)}`,
+					`Plugin ${name} failed to handle an advertisement: ${errorMessage(e)}`,
 				);
 			}
 		}
@@ -190,17 +190,11 @@ export class PluginHost {
 			try {
 				instance.dispose?.();
 			} catch (e) {
-				this.log.warn(`Plugin ${name} failed to stop: ${message(e)}`);
+				this.log.warn(
+					`Plugin ${name} failed to stop: ${errorMessage(e)}`,
+				);
 			}
 		}
 		this.commands.clear();
 	}
-}
-
-/**
- * @param e Anything that was thrown
- * @returns Its message
- */
-function message(e: unknown): string {
-	return e instanceof Error ? e.message : String(e);
 }

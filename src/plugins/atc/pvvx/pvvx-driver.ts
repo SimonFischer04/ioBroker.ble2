@@ -4,6 +4,7 @@ export { parseDeviceList } from "../../../lib/device-list";
 import { PvvxCommandChannel } from "./command-channel";
 import { formatVersion } from "./protocol";
 import { type Clock, syncTime } from "./time-sync";
+import { errorMessage } from "../../../lib/gateway-error";
 
 /** How often the driver checks which devices are due */
 export const TICK_INTERVAL_MS = 60000;
@@ -369,8 +370,4 @@ export class PvvxDriver {
 			this.interval = undefined;
 		}
 	}
-}
-
-function errorMessage(e: unknown): string {
-	return e instanceof Error ? e.message : String(e);
 }

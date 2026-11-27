@@ -49,3 +49,27 @@ export function normalizeError(error: unknown): Error {
 	}
 	return new Error("Unknown error", { cause: error });
 }
+
+/**
+ * The message of anything that was thrown
+ *
+ * @param error The rejection reason
+ */
+export function errorMessage(error: unknown): string {
+	return normalizeError(error).message;
+}
+
+/**
+ * Runs a command and turns its result or error into an answer of the gateway interface
+ *
+ * @param run The command, may throw a GatewayError
+ */
+export async function toResponse<T>(
+	run: () => Promise<T>,
+): Promise<GatewayResponse<T>> {
+	try {
+		return { error: null, result: await run() };
+	} catch (e) {
+		return toErrorResponse(e);
+	}
+}

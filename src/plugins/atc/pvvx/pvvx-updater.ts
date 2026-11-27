@@ -10,6 +10,7 @@ import {
 } from "./protocol";
 import { type Clock, PvvxProtocolError } from "./time-sync";
 import { PvvxUpdateError } from "./update-error";
+import { errorMessage } from "../../../lib/gateway-error";
 
 /** First check for new firmware after the start */
 export const CHECK_START_DELAY_MS = 120000;
@@ -145,10 +146,6 @@ export interface PvvxUpdaterOptions {
 interface QueuedUpdate {
 	address: string;
 	finished: () => void;
-}
-
-function errorMessage(e: unknown): string {
-	return e instanceof Error ? e.message : String(e);
 }
 
 function errorCode(e: unknown): string {

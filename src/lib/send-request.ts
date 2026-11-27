@@ -1,4 +1,4 @@
-import { GatewayError } from "./gateway-error";
+import { errorMessage, GatewayError } from "./gateway-error";
 import type { GatewayErrorCode } from "./gateway-protocol";
 
 /** What sendRequest needs from the adapter */
@@ -97,12 +97,7 @@ export function sendRequest<T>(
 			});
 		} catch (e) {
 			settle(() =>
-				reject(
-					new GatewayError(
-						"GATT_ERROR",
-						e instanceof Error ? e.message : String(e),
-					),
-				),
+				reject(new GatewayError("GATT_ERROR", errorMessage(e))),
 			);
 		}
 	});

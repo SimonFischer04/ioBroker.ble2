@@ -1,6 +1,7 @@
 import { validateImage } from "./ota-protocol";
 import type { Clock } from "./time-sync";
 import { PvvxUpdateError } from "./update-error";
+import { errorMessage } from "../../../lib/gateway-error";
 
 /** Where firmware.json and the images come from */
 export interface FirmwareSource {
@@ -157,10 +158,6 @@ export function selectImage(
 	return { path, version: index.version };
 }
 
-function message(e: unknown): string {
-	return e instanceof Error ? e.message : String(e);
-}
-
 /** firmware.json and the images, cached */
 export class FirmwareCatalog {
 	/**
@@ -200,7 +197,7 @@ export class FirmwareCatalog {
 		} catch (e) {
 			throw new PvvxUpdateError(
 				"DOWNLOAD_FAILED",
-				`Could not load firmware.json: ${message(e)}`,
+				`Could not load firmware.json: ${errorMessage(e)}`,
 			);
 		}
 		const value = parseFirmwareIndex(json);
@@ -232,7 +229,7 @@ export class FirmwareCatalog {
 		} catch (e) {
 			throw new PvvxUpdateError(
 				"DOWNLOAD_FAILED",
-				`Could not load ${path}: ${message(e)}`,
+				`Could not load ${path}: ${errorMessage(e)}`,
 			);
 		}
 		const result = validateImage(image);

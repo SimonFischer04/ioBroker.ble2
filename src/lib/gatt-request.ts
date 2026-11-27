@@ -1,6 +1,6 @@
 import type { SessionOptions } from "../connections/connection-manager";
-import { BASE64_REGEX } from "../transports/remote-gateway";
 import { normalizeAddress } from "./advertisement";
+import { decodeBase64 } from "./base64";
 import { GatewayError } from "./gateway-error";
 import { normalizeUuid } from "./uuid";
 
@@ -86,13 +86,14 @@ export function parseGattRequest(
 		request.characteristic = characteristicUuid;
 	}
 	if (fields.data) {
-		if (typeof data !== "string" || !BASE64_REGEX.test(data)) {
+		const bytes = decodeBase64(data);
+		if (!bytes) {
 			throw invalid(`"data" must be base64 encoded`);
 		}
 		if (withResponse !== undefined && typeof withResponse !== "boolean") {
 			throw invalid(`"withResponse" must be true or false`);
 		}
-		request.data = Buffer.from(data, "base64");
+		request.data = bytes;
 		request.withResponse = withResponse ?? true;
 	}
 	return request;

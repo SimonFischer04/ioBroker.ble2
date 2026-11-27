@@ -1,7 +1,7 @@
 import type { ConnectionManager } from "../../connections/connection-manager";
 import type { PeripheralInfo } from "../../lib/advertisement";
 import { normalizeAddress } from "../../lib/advertisement";
-import { GatewayError } from "../../lib/gateway-error";
+import { errorMessage, GatewayError } from "../../lib/gateway-error";
 import { extendDevice, extendState } from "../../lib/iobroker-objects";
 import { normalizeUuid } from "../../lib/uuid";
 
@@ -50,7 +50,7 @@ export class MiFloraBattery {
 				if (!this.stopped) {
 					this.nextRead.set(address, Date.now() + retryDelay);
 					this.adapter.log.warn(
-						`Could not read Mi Flora battery for ${address}: ${error instanceof Error ? error.message : "Unknown error"}`,
+						`Could not read Mi Flora battery for ${address}: ${errorMessage(error)}`,
 					);
 				}
 			},

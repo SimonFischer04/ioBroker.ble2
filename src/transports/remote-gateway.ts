@@ -1,6 +1,7 @@
 import type { GattLinkProvider } from "../connections/gatt-link";
 import { parseAdvertisementData } from "../lib/ad-parser";
 import { normalizeAddress, type PeripheralInfo } from "../lib/advertisement";
+import { decodeBase64 } from "../lib/base64";
 import { GatewayError } from "../lib/gateway-error";
 import {
 	GATEWAY_FEATURES,
@@ -18,8 +19,6 @@ import { GATT_TIMEOUTS_MS, RemoteGattLink } from "./remote-gatt-link";
 import type { Transport, TransportContext } from "./transport";
 
 const GATEWAY_ID_REGEX = /^[A-Za-z0-9_.-]{1,64}$/;
-/** Base64 as the gateway interface transports binary data */
-export const BASE64_REGEX = /^[A-Za-z0-9+/]*={0,2}$/;
 /** At most this many gateways in one "gateway:announce" */
 const MAX_ANNOUNCED_GATEWAYS = 100;
 /** Extended advertisements can be up to 1650 bytes long */
@@ -203,11 +202,12 @@ function parseItem(
 	if (typeof rssi !== "number" || !Number.isFinite(rssi)) {
 		return;
 	}
-	if (
-		typeof data !== "string" ||
-		data.length > Math.ceil(MAX_DATA_LENGTH / 3) * 4 ||
-		!BASE64_REGEX.test(data)
-	) {
+	const payload =
+		typeof data === "string" &&
+		data.length <= Math.ceil(MAX_DATA_LENGTH / 3) * 4
+			? decodeBase64(data)
+			: undefined;
+	if (!payload) {
 		return;
 	}
 
@@ -221,7 +221,7 @@ function parseItem(
 				? addressType
 				: "unknown",
 		connectable: typeof connectable === "boolean" ? connectable : undefined,
-		advertisement: parseAdvertisementData(Buffer.from(data, "base64")),
+		advertisement: parseAdvertisementData(payload),
 		rssi,
 		gatewayId,
 	};
@@ -367,17 +367,11 @@ export class RemoteGatewayTransport implements Transport, GattLinkProvider {
 			return;
 		}
 		const { handle, data } = payload as Record<string, unknown>;
-		if (
-			!Number.isInteger(handle) ||
-			(handle as number) < 0 ||
-			typeof data !== "string" ||
-			!BASE64_REGEX.test(data)
-		) {
+		const value = decodeBase64(data);
+		if (!Number.isInteger(handle) || (handle as number) < 0 || !value) {
 			return;
 		}
-		this.links
-			.get(target)
-			?.handleNotification(handle as number, Buffer.from(data, "base64"));
+		this.links.get(target)?.handleNotification(handle as number, value);
 	}
 
 	/**
