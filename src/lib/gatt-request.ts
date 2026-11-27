@@ -73,8 +73,7 @@ export function parseGattRequest(
 		withResponse: true,
 		options: {
 			// An explicitly named gateway is used even if it never reported the device
-			gateways:
-				gatewayId === undefined ? undefined : [gatewayId],
+			gateways: gatewayId === undefined ? undefined : [gatewayId],
 			addressType,
 		},
 	};
