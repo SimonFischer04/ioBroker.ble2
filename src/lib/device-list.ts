@@ -28,3 +28,23 @@ export function parseDeviceList(setting: unknown): {
 	}
 	return { addresses, invalid };
 }
+
+/**
+ * Reads a setting with a list of devices and reports the invalid entries
+ *
+ * @param adapter Where the invalid entries are reported
+ * @param setting Value of the setting
+ * @param label What the devices are, e.g. "Mi Flora sensor"
+ * @returns The valid addresses
+ */
+export function readDeviceList(
+	adapter: Pick<ioBroker.Adapter, "log">,
+	setting: unknown,
+	label: string,
+): string[] {
+	const { addresses, invalid } = parseDeviceList(setting);
+	for (const entry of invalid) {
+		adapter.log.warn(`Ignoring the invalid ${label} address "${entry}"`);
+	}
+	return addresses;
+}

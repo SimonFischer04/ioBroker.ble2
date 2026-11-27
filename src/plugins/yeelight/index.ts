@@ -1,5 +1,5 @@
 import { GatewayError } from "../../lib/gateway-error";
-import { parseGattRequest } from "../../lib/gatt-request";
+import { parseDeviceRequest, requireInteger } from "../../lib/gatt-request";
 import { NO_DECODER, type Plugin } from "../plugin";
 import { setCandelaBrightness } from "./candela";
 
@@ -11,22 +11,13 @@ const plugin: Plugin<undefined> = {
 	start: ({ connections, devices }) => ({
 		commands: {
 			setCandelaBrightness: async (message) => {
-				const { address } = parseGattRequest(message, {
-					characteristic: false,
-					data: false,
-				});
-				const { brightness } = message as { brightness?: unknown };
-				if (
-					typeof brightness !== "number" ||
-					!Number.isInteger(brightness) ||
-					brightness < 0 ||
-					brightness > 100
-				) {
-					throw new GatewayError(
-						"INVALID_PAYLOAD",
-						"brightness must be a whole number from 0 to 100",
-					);
-				}
+				const { address, options } = parseDeviceRequest(message);
+				const brightness = requireInteger(
+					message,
+					"brightness",
+					0,
+					100,
+				);
 				const device = devices
 					.getDevices()
 					.find((entry) => entry.address === address);
@@ -36,7 +27,12 @@ const plugin: Plugin<undefined> = {
 						"The device has not advertised as a Yeelight Candela",
 					);
 				}
-				await setCandelaBrightness(connections, address, brightness);
+				await setCandelaBrightness(
+					connections,
+					address,
+					brightness,
+					options,
+				);
 				return { brightness };
 			},
 		},

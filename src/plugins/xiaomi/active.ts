@@ -1,7 +1,7 @@
 // Declares the settings of this plugin
 import type {} from "./config";
-import { parseDeviceList } from "../../lib/device-list";
-import { parseGattRequest } from "../../lib/gatt-request";
+import { readDeviceList } from "../../lib/device-list";
+import { parseDeviceRequest } from "../../lib/gatt-request";
 import type { PluginContext, PluginInstance } from "../plugin";
 import { syncLywsd02Clock } from "./lywsd02-clock";
 import { MiFloraBattery } from "./mi-flora-battery";
@@ -16,24 +16,26 @@ import { MiFloraBattery } from "./mi-flora-battery";
 export function startXiaomi(ctx: PluginContext): PluginInstance {
 	const { adapter, connections } = ctx;
 
-	const plants = parseDeviceList(adapter.config.miFloraBatteryDevices);
-	for (const address of plants.invalid) {
-		adapter.log.warn(`Ignoring invalid Mi Flora address "${address}"`);
-	}
-	const battery =
-		plants.addresses.length > 0
-			? new MiFloraBattery(adapter, connections, plants.addresses)
-			: undefined;
+	const battery = new MiFloraBattery(
+		adapter,
+		connections,
+		readDeviceList(
+			adapter,
+			adapter.config.miFloraBatteryDevices,
+			"Mi Flora sensor",
+		),
+	);
 
 	return {
-		observe: (peripheral) => battery?.observe(peripheral),
+		observe: (peripheral) => battery.observe(peripheral),
 		commands: {
 			syncLywsd02Clock: async (message) => {
-				const { address } = parseGattRequest(message, {
-					characteristic: false,
-					data: false,
-				});
-				const timestamp = await syncLywsd02Clock(connections, address);
+				const { address, options } = parseDeviceRequest(message);
+				const timestamp = await syncLywsd02Clock(
+					connections,
+					address,
+					options,
+				);
 				await adapter.setObjectNotExistsAsync(address, {
 					type: "device",
 					common: { name: address },
@@ -55,6 +57,6 @@ export function startXiaomi(ctx: PluginContext): PluginInstance {
 				return { timestamp };
 			},
 		},
-		dispose: () => battery?.dispose(),
+		dispose: () => battery.dispose(),
 	};
 }

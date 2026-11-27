@@ -98,3 +98,50 @@ export function parseGattRequest(
 	}
 	return request;
 }
+
+/**
+ * Validates the payload of a command that addresses a device as a whole, e.g. the commands of
+ * plugins. Throws GatewayError("INVALID_PAYLOAD").
+ *
+ * @param payload The message as received
+ * @returns The device and the gateway and address type the caller asked for
+ */
+export function parseDeviceRequest(payload: unknown): {
+	address: string;
+	options: SessionOptions;
+} {
+	const { address, options } = parseGattRequest(payload, {
+		characteristic: false,
+		data: false,
+	});
+	return { address, options };
+}
+
+/**
+ * Reads a whole number in a range from the payload. Throws GatewayError("INVALID_PAYLOAD").
+ *
+ * @param payload The message as received, already checked to be an object
+ * @param key Name of the field
+ * @param min Smallest allowed value
+ * @param max Largest allowed value
+ */
+export function requireInteger(
+	payload: unknown,
+	key: string,
+	min: number,
+	max: number,
+): number {
+	const value = (payload as Record<string, unknown>)[key];
+	if (
+		typeof value !== "number" ||
+		!Number.isInteger(value) ||
+		value < min ||
+		value > max
+	) {
+		throw new GatewayError(
+			"INVALID_PAYLOAD",
+			`${key} must be a whole number from ${min} to ${max}`,
+		);
+	}
+	return value;
+}

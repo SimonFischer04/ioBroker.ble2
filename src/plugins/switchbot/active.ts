@@ -1,4 +1,4 @@
-import { parseGattRequest } from "../../lib/gatt-request";
+import { parseDeviceRequest } from "../../lib/gatt-request";
 import type { PluginContext, PluginInstance } from "../plugin";
 import { runSwitchBotAction } from "./bot";
 
@@ -12,12 +12,14 @@ export function startSwitchBot(ctx: PluginContext): PluginInstance {
 	return {
 		commands: {
 			switchBot: async (message) => {
-				const { address } = parseGattRequest(message, {
-					characteristic: false,
-					data: false,
-				});
+				const { address, options } = parseDeviceRequest(message);
 				const { action } = message as { action?: unknown };
-				return runSwitchBotAction(ctx.connections, address, action);
+				return runSwitchBotAction(
+					ctx.connections,
+					address,
+					action,
+					options,
+				);
 			},
 		},
 	};

@@ -1,6 +1,6 @@
 // Declares the settings of this plugin
 import type {} from "./config";
-import { parseDeviceList } from "../../lib/device-list";
+import { readDeviceList } from "../../lib/device-list";
 import { NO_DECODER, type Plugin } from "../plugin";
 import { FlowerPower } from "./flower-power";
 
@@ -10,19 +10,18 @@ const plugin: Plugin<undefined> = {
 	description: "Parrot Flower Power sensors, read over a gateway",
 	...NO_DECODER,
 	start: ({ adapter, connections }) => {
-		const sensors = parseDeviceList(adapter.config.flowerPowerDevices);
-		for (const address of sensors.invalid) {
-			adapter.log.warn(
-				`Ignoring invalid Flower Power sensor address "${address}"`,
-			);
-		}
-		const flowerPower =
-			sensors.addresses.length > 0
-				? new FlowerPower(adapter, connections, sensors.addresses)
-				: undefined;
+		const flowerPower = new FlowerPower(
+			adapter,
+			connections,
+			readDeviceList(
+				adapter,
+				adapter.config.flowerPowerDevices,
+				"Flower Power sensor",
+			),
+		);
 		return {
-			observe: (peripheral) => flowerPower?.observe(peripheral),
-			dispose: () => flowerPower?.dispose(),
+			observe: (peripheral) => flowerPower.observe(peripheral),
+			dispose: () => flowerPower.dispose(),
 		};
 	},
 };

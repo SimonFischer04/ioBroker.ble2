@@ -1,5 +1,4 @@
-import { GatewayError } from "../../lib/gateway-error";
-import { parseGattRequest } from "../../lib/gatt-request";
+import { parseDeviceRequest, requireInteger } from "../../lib/gatt-request";
 import { NO_DECODER, type Plugin } from "../plugin";
 import { readSkyrcMc3000Slot } from "./mc3000";
 
@@ -11,23 +10,9 @@ const plugin: Plugin<undefined> = {
 	start: ({ connections }) => ({
 		commands: {
 			readSkyrcMc3000Slot: async (message) => {
-				const { address } = parseGattRequest(message, {
-					characteristic: false,
-					data: false,
-				});
-				const { slot } = message as { slot?: unknown };
-				if (
-					typeof slot !== "number" ||
-					!Number.isInteger(slot) ||
-					slot < 1 ||
-					slot > 4
-				) {
-					throw new GatewayError(
-						"INVALID_PAYLOAD",
-						"slot must be an integer from 1 to 4",
-					);
-				}
-				return readSkyrcMc3000Slot(connections, address, slot);
+				const { address, options } = parseDeviceRequest(message);
+				const slot = requireInteger(message, "slot", 1, 4);
+				return readSkyrcMc3000Slot(connections, address, slot, options);
 			},
 		},
 	}),

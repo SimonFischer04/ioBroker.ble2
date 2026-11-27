@@ -1,5 +1,5 @@
 import { GatewayError } from "../../lib/gateway-error";
-import { parseGattRequest } from "../../lib/gatt-request";
+import { parseDeviceRequest } from "../../lib/gatt-request";
 import type { PluginContext, PluginInstance } from "../plugin";
 import { runMagicSwitchBotAction } from "./actions";
 
@@ -13,10 +13,7 @@ export function startMagicSwitchBot(ctx: PluginContext): PluginInstance {
 	return {
 		commands: {
 			runMagicSwitchBotAction: async (message) => {
-				const { address } = parseGattRequest(message, {
-					characteristic: false,
-					data: false,
-				});
+				const { address, options } = parseDeviceRequest(message);
 				const { action, pin } = message as Record<string, unknown>;
 				if (action !== "on" && action !== "off" && action !== "push") {
 					throw new GatewayError(
@@ -38,6 +35,7 @@ export function startMagicSwitchBot(ctx: PluginContext): PluginInstance {
 					address,
 					action,
 					pin,
+					options,
 				);
 				return { action };
 			},

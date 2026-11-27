@@ -1,4 +1,7 @@
-import type { ConnectionManager } from "../../connections/connection-manager";
+import type {
+	ConnectionManager,
+	SessionOptions,
+} from "../../connections/connection-manager";
 import { GatewayError } from "../../lib/gateway-error";
 import { normalizeUuid } from "../../lib/uuid";
 
@@ -25,6 +28,7 @@ export async function readCometBlue(
 	connections: Pick<ConnectionManager, "withSession">,
 	address: string,
 	pin: unknown,
+	options: SessionOptions = {},
 ): Promise<CometBlueStatus> {
 	if (
 		typeof pin !== "string" ||
@@ -36,65 +40,71 @@ export async function readCometBlue(
 			'"pin" must be the thermostat PIN in decimal digits',
 		);
 	}
-	return connections.withSession(address, async (session) => {
-		const services = await session.getServices();
-		const service = services.find(({ characteristics }) => {
-			const ids = characteristics.map(({ uuid }) => normalizeUuid(uuid));
-			return (
-				ids.includes(pinCharacteristic) &&
-				ids.includes(temperaturesCharacteristic)
-			);
-		});
-		if (!service) {
-			throw new GatewayError(
-				"GATT_ERROR",
-				"Comet Blue PIN and temperature characteristics were not found",
-			);
-		}
-
-		const access = Buffer.alloc(4);
-		access.writeUInt32LE(Number(pin));
-		await session.write(service.uuid, pinCharacteristic, access, true);
-
-		const data = await session.read(
-			service.uuid,
-			temperaturesCharacteristic,
-		);
-		if (data.length !== 7) {
-			throw new GatewayError(
-				"GATT_ERROR",
-				"Invalid Comet Blue temperature data",
-			);
-		}
-
-		const status: CometBlueStatus = {};
-		const fields = [
-			"temperature",
-			"manualSetpoint",
-			"ecoSetpoint",
-			"comfortSetpoint",
-		] as const;
-		for (const [offset, field] of fields.entries()) {
-			const value = data.readInt8(offset);
-			if (value !== -128) {
-				status[field] = value / 2;
+	return connections.withSession(
+		address,
+		async (session) => {
+			const services = await session.getServices();
+			const service = services.find(({ characteristics }) => {
+				const ids = characteristics.map(({ uuid }) =>
+					normalizeUuid(uuid),
+				);
+				return (
+					ids.includes(pinCharacteristic) &&
+					ids.includes(temperaturesCharacteristic)
+				);
+			});
+			if (!service) {
+				throw new GatewayError(
+					"GATT_ERROR",
+					"Comet Blue PIN and temperature characteristics were not found",
+				);
 			}
-		}
 
-		const batteryService = services.find(({ characteristics }) =>
-			characteristics.some(
-				({ uuid }) => normalizeUuid(uuid) === batteryCharacteristic,
-			),
-		);
-		if (batteryService) {
-			const value = await session.read(
-				batteryService.uuid,
-				batteryCharacteristic,
+			const access = Buffer.alloc(4);
+			access.writeUInt32LE(Number(pin));
+			await session.write(service.uuid, pinCharacteristic, access, true);
+
+			const data = await session.read(
+				service.uuid,
+				temperaturesCharacteristic,
 			);
-			if (value.length === 1 && value[0] <= 100) {
-				status.battery = value[0];
+			if (data.length !== 7) {
+				throw new GatewayError(
+					"GATT_ERROR",
+					"Invalid Comet Blue temperature data",
+				);
 			}
-		}
-		return status;
-	});
+
+			const status: CometBlueStatus = {};
+			const fields = [
+				"temperature",
+				"manualSetpoint",
+				"ecoSetpoint",
+				"comfortSetpoint",
+			] as const;
+			for (const [offset, field] of fields.entries()) {
+				const value = data.readInt8(offset);
+				if (value !== -128) {
+					status[field] = value / 2;
+				}
+			}
+
+			const batteryService = services.find(({ characteristics }) =>
+				characteristics.some(
+					({ uuid }) => normalizeUuid(uuid) === batteryCharacteristic,
+				),
+			);
+			if (batteryService) {
+				const value = await session.read(
+					batteryService.uuid,
+					batteryCharacteristic,
+				);
+				if (value.length === 1 && value[0] <= 100) {
+					status.battery = value[0];
+				}
+			}
+			return status;
+		},
+		options,
+	);
 }

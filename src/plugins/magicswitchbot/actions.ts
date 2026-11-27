@@ -1,6 +1,9 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { setTimeout as wait } from "node:timers/promises";
-import type { ConnectionManager } from "../../connections/connection-manager";
+import type {
+	ConnectionManager,
+	SessionOptions,
+} from "../../connections/connection-manager";
 import { GatewayError } from "../../lib/gateway-error";
 
 const SERVICE = "fee7";
@@ -35,73 +38,78 @@ export async function runMagicSwitchBotAction(
 	address: string,
 	action: MagicSwitchBotAction,
 	pin?: string,
+	options: SessionOptions = {},
 ): Promise<void> {
-	await connections.withSession(address, async (session) => {
-		let onReply: ((data: Buffer) => void) | undefined;
-		await session.subscribe(SERVICE, NOTIFY, (data) => {
-			if (data.length === 16) {
-				onReply?.(crypt(data, true));
-			}
-		});
-		const request = async (
-			command: number,
-			parameters: Buffer,
-			token?: Buffer,
-		): Promise<Buffer> => {
-			const block = randomBytes(16);
-			block.set([command, 1, parameters.length]);
-			parameters.copy(block, 3);
-			token?.copy(block, 3 + parameters.length);
-			const reply = Promise.withResolvers<Buffer>();
-			onReply = (data) => {
-				if (data[0] === command) {
-					reply.resolve(data);
+	await connections.withSession(
+		address,
+		async (session) => {
+			let onReply: ((data: Buffer) => void) | undefined;
+			await session.subscribe(SERVICE, NOTIFY, (data) => {
+				if (data.length === 16) {
+					onReply?.(crypt(data, true));
+				}
+			});
+			const request = async (
+				command: number,
+				parameters: Buffer,
+				token?: Buffer,
+			): Promise<Buffer> => {
+				const block = randomBytes(16);
+				block.set([command, 1, parameters.length]);
+				parameters.copy(block, 3);
+				token?.copy(block, 3 + parameters.length);
+				const reply = Promise.withResolvers<Buffer>();
+				onReply = (data) => {
+					if (data[0] === command) {
+						reply.resolve(data);
+					}
+				};
+				const timer = setTimeout(
+					() =>
+						reply.reject(
+							new GatewayError(
+								"TIMEOUT",
+								"MagicSwitchBot did not answer",
+							),
+						),
+					4000,
+				);
+				try {
+					const [, answer] = await Promise.all([
+						session.write(SERVICE, WRITE, crypt(block), true),
+						reply.promise,
+					]);
+					return answer;
+				} finally {
+					onReply = undefined;
+					clearTimeout(timer);
 				}
 			};
-			const timer = setTimeout(
-				() =>
-					reply.reject(
-						new GatewayError(
-							"TIMEOUT",
-							"MagicSwitchBot did not answer",
-						),
-					),
-				4000,
-			);
-			try {
-				const [, answer] = await Promise.all([
-					session.write(SERVICE, WRITE, crypt(block), true),
-					reply.promise,
-				]);
-				return answer;
-			} finally {
-				onReply = undefined;
-				clearTimeout(timer);
-			}
-		};
 
-		const auth = await request(0x06, Buffer.from(pin ?? "", "ascii"));
-		if (
-			auth[1] !== 0x02 ||
-			(auth[2] !== 4 && (auth[2] !== 9 || auth[10] !== 0x07))
-		) {
-			throw new GatewayError(
-				"GATT_ERROR",
-				"MagicSwitchBot did not accept the PIN or identify the device",
+			const auth = await request(0x06, Buffer.from(pin ?? "", "ascii"));
+			if (
+				auth[1] !== 0x02 ||
+				(auth[2] !== 4 && (auth[2] !== 9 || auth[10] !== 0x07))
+			) {
+				throw new GatewayError(
+					"GATT_ERROR",
+					"MagicSwitchBot did not accept the PIN or identify the device",
+				);
+			}
+			const result = await request(
+				0x05,
+				Buffer.from([ACTIONS[action]]),
+				auth.subarray(3, 7),
 			);
-		}
-		const result = await request(
-			0x05,
-			Buffer.from([ACTIONS[action]]),
-			auth.subarray(3, 7),
-		);
-		if (result[1] !== 0x02 || result[2] !== 1 || result[3] !== 0) {
-			throw new GatewayError(
-				"GATT_ERROR",
-				"MagicSwitchBot rejected the action",
-			);
-		}
-		// Let the arm finish moving before another queued command can begin.
-		await wait(2250);
-	});
+			if (result[1] !== 0x02 || result[2] !== 1 || result[3] !== 0) {
+				throw new GatewayError(
+					"GATT_ERROR",
+					"MagicSwitchBot rejected the action",
+				);
+			}
+			// Let the arm finish moving before another queued command can begin.
+			await wait(2250);
+		},
+		options,
+	);
 }

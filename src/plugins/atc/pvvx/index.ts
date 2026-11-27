@@ -1,6 +1,6 @@
 // Declares the settings of this plugin
 import type {} from "./config";
-import { parseDeviceList } from "../../../lib/device-list";
+import { readDeviceList } from "../../../lib/device-list";
 import { errorMessage } from "../../../lib/gateway-error";
 import type { PluginContext, PluginInstance } from "../../plugin";
 import {
@@ -31,10 +31,11 @@ export function startPvvx(ctx: PluginContext): PluginInstance {
 		clearInterval: (timer: any) => adapter.clearInterval(timer),
 	};
 
-	const list = parseDeviceList(adapter.config.pvvxDevices);
-	for (const entry of list.invalid) {
-		adapter.log.warn(`Ignoring the invalid pvvx device address "${entry}"`);
-	}
+	const addresses = readDeviceList(
+		adapter,
+		adapter.config.pvvxDevices,
+		"pvvx device",
+	);
 	const interval = adapter.config.pvvxSyncInterval;
 
 	// The driver asks the updater, which is created below
@@ -48,7 +49,7 @@ export function startPvvx(ctx: PluginContext): PluginInstance {
 			isBusy: (address) => ref.updater?.isBusy(address) ?? false,
 		},
 		{
-			addresses: list.addresses,
+			addresses,
 			syncIntervalHours:
 				typeof interval === "number" && interval >= 0 ? interval : 24,
 		},
@@ -72,7 +73,7 @@ export function startPvvx(ctx: PluginContext): PluginInstance {
 			requestTimeSync: (address) => driver.requestSync(address),
 		},
 		{
-			addresses: list.addresses,
+			addresses,
 			dailyCheck: adapter.config.pvvxFirmwareCheck !== false,
 		},
 	);

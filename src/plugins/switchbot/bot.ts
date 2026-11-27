@@ -1,4 +1,7 @@
-import type { ConnectionManager } from "../../connections/connection-manager";
+import type {
+	ConnectionManager,
+	SessionOptions,
+} from "../../connections/connection-manager";
 import { GatewayError } from "../../lib/gateway-error";
 
 const service = "cba20d00-224d-11e6-9fb8-0002a5d5c51b";
@@ -22,6 +25,7 @@ export async function runSwitchBotAction(
 	connections: Pick<ConnectionManager, "withSession">,
 	address: string,
 	action: unknown,
+	options: SessionOptions = {},
 ): Promise<Record<string, never>> {
 	const value = typeof action === "string" ? actions.get(action) : undefined;
 	if (value == null) {
@@ -62,6 +66,6 @@ export async function runSwitchBotAction(
 			}
 			return {};
 		},
-		{ timeoutMs: 30_000 },
+		{ ...options, timeoutMs: 30_000 },
 	);
 }

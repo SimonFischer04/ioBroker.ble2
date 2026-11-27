@@ -1,4 +1,4 @@
-import { parseGattRequest } from "../../lib/gatt-request";
+import { parseDeviceRequest } from "../../lib/gatt-request";
 import { NO_DECODER, type Plugin } from "../plugin";
 import { readCometBlue } from "./comet-blue";
 
@@ -10,12 +10,9 @@ const plugin: Plugin<undefined> = {
 	start: ({ connections }) => ({
 		commands: {
 			readCometBlue: async (message) => {
-				const { address } = parseGattRequest(message, {
-					characteristic: false,
-					data: false,
-				});
+				const { address, options } = parseDeviceRequest(message);
 				const { pin } = message as { pin?: unknown };
-				return readCometBlue(connections, address, pin);
+				return readCometBlue(connections, address, pin, options);
 			},
 		},
 	}),
