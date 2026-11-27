@@ -12,6 +12,7 @@ const CONTROL_HANDLE = 0x001f;
  * @param connections
  * @param address
  * @param brightness
+ * @param options Gateway and address type the caller asked for
  */
 export async function setCandelaBrightness(
 	connections: ConnectionManager,

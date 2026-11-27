@@ -13,6 +13,7 @@ const CLOCK = "ebe0ccb7-7a0a-4b0c-8a1a-6ff2997da3a6";
  *
  * @param connections
  * @param address
+ * @param options Gateway and address type the caller asked for
  */
 export async function syncLywsd02Clock(
 	connections: ConnectionManager,

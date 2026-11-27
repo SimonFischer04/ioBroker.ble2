@@ -1,7 +1,7 @@
 import type { ConnectionManager } from "../../connections/connection-manager";
+import { DevicePoller } from "../../connections/device-poller";
 import type { PeripheralInfo } from "../../lib/advertisement";
-import { normalizeAddress } from "../../lib/advertisement";
-import { errorMessage, GatewayError } from "../../lib/gateway-error";
+import { GatewayError } from "../../lib/gateway-error";
 import { extendDevice, extendState } from "../../lib/iobroker-objects";
 import { normalizeUuid } from "../../lib/uuid";
 
@@ -11,8 +11,7 @@ const retryDelay = 15 * 60_000;
 
 /** Reads Mi Flora battery levels on configured plants through a connecting gateway. */
 export class MiFloraBattery {
-	private readonly nextRead = new Map<string, number>();
-	private stopped = false;
+	private readonly poller: DevicePoller;
 
 	public constructor(
 		private readonly adapter: ioBroker.Adapter,
@@ -22,44 +21,31 @@ export class MiFloraBattery {
 		>,
 		addresses: readonly string[],
 	) {
-		for (const address of addresses) {
-			this.nextRead.set(address, 0);
-		}
-	}
-
-	public observe(peripheral: PeripheralInfo): void {
-		const address = normalizeAddress(peripheral.address);
-		const due = address ? this.nextRead.get(address) : undefined;
-		if (
-			!address ||
-			due == null ||
-			this.stopped ||
-			Date.now() < due ||
-			!this.connections.bestGateway(address)
-		) {
-			return;
-		}
-		this.nextRead.set(address, Infinity);
-		void this.read(address, peripheral).then(
-			() => {
-				if (!this.stopped) {
-					this.nextRead.set(address, Date.now() + oneDay);
-				}
+		this.poller = new DevicePoller(
+			adapter.log,
+			connections,
+			addresses,
+			{
+				intervalMs: oneDay,
+				retryMs: retryDelay,
+				what: "read the Mi Flora battery of",
 			},
-			(error: unknown) => {
-				if (!this.stopped) {
-					this.nextRead.set(address, Date.now() + retryDelay);
-					this.adapter.log.warn(
-						`Could not read Mi Flora battery for ${address}: ${errorMessage(error)}`,
-					);
-				}
-			},
+			(address, peripheral) => this.read(address, peripheral),
 		);
 	}
 
+	/**
+	 * To be called for every received advertisement
+	 *
+	 * @param peripheral The advertisement
+	 */
+	public observe(peripheral: PeripheralInfo): void {
+		this.poller.observe(peripheral);
+	}
+
+	/** Stops polling */
 	public dispose(): void {
-		this.stopped = true;
-		this.nextRead.clear();
+		this.poller.dispose();
 	}
 
 	private async read(
@@ -95,7 +81,7 @@ export class MiFloraBattery {
 				return data[0];
 			},
 		);
-		if (this.stopped) {
+		if (this.poller.disposed) {
 			return;
 		}
 		await extendDevice(address, peripheral, {
@@ -113,7 +99,7 @@ export class MiFloraBattery {
 				write: false,
 			},
 		});
-		if (!this.stopped) {
+		if (!this.poller.disposed) {
 			await this.adapter.setStateChangedAsync(id, battery, true);
 		}
 	}

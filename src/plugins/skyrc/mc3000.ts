@@ -30,6 +30,7 @@ function checksum(frame: Buffer): number {
  * @param connections
  * @param address
  * @param slot Slot number from 1 to 4
+ * @param options Gateway and address type the caller asked for
  */
 export async function readSkyrcMc3000Slot(
 	connections: ConnectionManager,

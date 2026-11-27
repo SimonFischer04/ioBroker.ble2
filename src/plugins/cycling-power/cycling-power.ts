@@ -1,7 +1,7 @@
 import type { ConnectionManager } from "../../connections/connection-manager";
+import { GATEWAY_CHECK_MS } from "../../connections/device-poller";
 import type { GattSession } from "../../connections/gatt-session";
 import type { PeripheralInfo } from "../../lib/advertisement";
-import { normalizeAddress } from "../../lib/advertisement";
 import { extendDevice, extendState } from "../../lib/iobroker-objects";
 import { errorMessage } from "../../lib/gateway-error";
 
@@ -36,16 +36,15 @@ export class CyclingPower {
 	}
 
 	public observe(peripheral: PeripheralInfo): void {
-		const address = normalizeAddress(peripheral.address);
-		const sensor = address ? this.sensors.get(address) : undefined;
-		if (
-			!address ||
-			!sensor ||
-			this.stopped ||
-			sensor.running ||
-			Date.now() < sensor.retryAt ||
-			!this.connections.bestGateway(address)
-		) {
+		const address = peripheral.address;
+		const sensor = this.sensors.get(address);
+		const now = Date.now();
+		if (!sensor || this.stopped || sensor.running || now < sensor.retryAt) {
+			return;
+		}
+		if (!this.connections.bestGateway(address)) {
+			// Received only by gateways that cannot connect: do not ask on every advertisement
+			sensor.retryAt = now + GATEWAY_CHECK_MS;
 			return;
 		}
 		sensor.running = true;

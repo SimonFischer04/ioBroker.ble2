@@ -23,6 +23,7 @@ interface CometBlueStatus {
  * @param connections Active gateway connection manager.
  * @param address MAC address of the thermostat.
  * @param pin Thermostat PIN as a decimal string.
+ * @param options Gateway and address type the caller asked for
  */
 export async function readCometBlue(
 	connections: Pick<ConnectionManager, "withSession">,

@@ -20,6 +20,7 @@ const actions = new Map([
  * @param connections The gateway connection manager.
  * @param address The normalized Bot MAC address.
  * @param action The requested action.
+ * @param options Gateway and address type the caller asked for
  */
 export async function runSwitchBotAction(
 	connections: Pick<ConnectionManager, "withSession">,

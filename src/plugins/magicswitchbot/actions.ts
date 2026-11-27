@@ -32,6 +32,7 @@ function crypt(block: Buffer, decrypt = false): Buffer {
  * @param address
  * @param action
  * @param pin The device owner's existing six-digit PIN, if enabled
+ * @param options Gateway and address type the caller asked for
  */
 export async function runMagicSwitchBotAction(
 	connections: ConnectionManager,

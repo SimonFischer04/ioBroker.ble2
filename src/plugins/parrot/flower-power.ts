@@ -1,7 +1,7 @@
 import type { ConnectionManager } from "../../connections/connection-manager";
+import { DevicePoller } from "../../connections/device-poller";
 import type { PeripheralInfo } from "../../lib/advertisement";
-import { normalizeAddress } from "../../lib/advertisement";
-import { errorMessage, GatewayError } from "../../lib/gateway-error";
+import { GatewayError } from "../../lib/gateway-error";
 import { extendDevice, extendState } from "../../lib/iobroker-objects";
 import { normalizeUuid } from "../../lib/uuid";
 
@@ -55,8 +55,7 @@ const fields = [
 
 /** Polls calibrated Parrot Flower Power readings through a connecting gateway. */
 export class FlowerPower {
-	private stopped = false;
-	private readonly nextRead: Map<string, number>;
+	private readonly poller: DevicePoller;
 
 	public constructor(
 		private readonly adapter: ioBroker.Adapter,
@@ -66,42 +65,31 @@ export class FlowerPower {
 		>,
 		addresses: readonly string[],
 	) {
-		this.nextRead = new Map(addresses.map((address) => [address, 0]));
-	}
-
-	public observe(peripheral: PeripheralInfo): void {
-		const address = normalizeAddress(peripheral.address);
-		const due = address ? this.nextRead.get(address) : undefined;
-		if (
-			!address ||
-			due == null ||
-			this.stopped ||
-			Date.now() < due ||
-			!this.connections.bestGateway(address)
-		) {
-			return;
-		}
-		this.nextRead.set(address, Infinity);
-		void this.poll(address, peripheral).then(
-			() => {
-				if (!this.stopped) {
-					this.nextRead.set(address, Date.now() + sampleIntervalMs);
-				}
+		this.poller = new DevicePoller(
+			adapter.log,
+			connections,
+			addresses,
+			{
+				intervalMs: sampleIntervalMs,
+				retryMs: retryMs,
+				what: "poll the Flower Power at",
 			},
-			(error: unknown) => {
-				if (!this.stopped) {
-					this.nextRead.set(address, Date.now() + retryMs);
-					this.adapter.log.warn(
-						`Could not poll Flower Power at ${address}: ${errorMessage(error)}`,
-					);
-				}
-			},
+			(address, peripheral) => this.poll(address, peripheral),
 		);
 	}
 
+	/**
+	 * To be called for every received advertisement
+	 *
+	 * @param peripheral The advertisement
+	 */
+	public observe(peripheral: PeripheralInfo): void {
+		this.poller.observe(peripheral);
+	}
+
+	/** Stops polling */
 	public dispose(): void {
-		this.stopped = true;
-		this.nextRead.clear();
+		this.poller.dispose();
 	}
 
 	private async poll(
@@ -165,7 +153,7 @@ export class FlowerPower {
 				return readings;
 			},
 		);
-		if (this.stopped) {
+		if (this.poller.disposed) {
 			return;
 		}
 		await extendDevice(address, peripheral, {
@@ -175,7 +163,7 @@ export class FlowerPower {
 			},
 		});
 		for (const { field, value } of readings) {
-			if (this.stopped) {
+			if (this.poller.disposed) {
 				return;
 			}
 			const id = `${address}.${field.id}`;
