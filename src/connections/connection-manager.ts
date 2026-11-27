@@ -249,18 +249,20 @@ export class ConnectionManager {
 			}, timeoutMs);
 		});
 
-		const work = (async () => {
-			const link = await this.connect(address, job.options);
-			const session = new GattSession(link);
+		const connected = (async () => {
+			const session = new GattSession(
+				await this.connect(address, job.options),
+			);
 			if (aborted || this.disposed) {
-				await session.close().catch(() => {});
+				await this.closeSession(session);
 				throw this.disposed
 					? stoppingError()
 					: new GatewayError("TIMEOUT", "");
 			}
 			queue.session = session;
-			return job.run(session);
+			return session;
 		})();
+		const work = connected.then((session) => job.run(session));
 		// The result of an aborted job is not of interest any more
 		work.catch(() => {});
 
@@ -271,6 +273,12 @@ export class ConnectionManager {
 		} finally {
 			aborted = true;
 			this.ctx.clearTimeout(timer);
+			// A connection attempt that is still running would replace or close the link of the
+			// next job for the device. It ends by itself (the gatt:connect timeout) and a late link
+			// is closed right away, so the next job waits for that.
+			if (!queue.session) {
+				await connected.catch(() => {});
+			}
 			const session = queue.session;
 			queue.session = undefined;
 			if (session) {

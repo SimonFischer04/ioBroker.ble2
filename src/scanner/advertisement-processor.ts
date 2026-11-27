@@ -11,6 +11,7 @@ import {
 } from "../lib/iobroker-objects";
 import { RssiExpiry } from "../lib/rssi-expiry";
 import { RssiUpdates } from "../lib/rssi-updates";
+import { ValueWriter } from "../lib/value-writer";
 import type { Plugin } from "../plugins/plugin";
 
 /** The configuration of the AdvertisementProcessor */
@@ -59,6 +60,7 @@ export class AdvertisementProcessor {
 
 	private readonly rssiUpdates: RssiUpdates;
 	private readonly rssiExpiry?: RssiExpiry;
+	private valueWriter?: ValueWriter;
 
 	/** Restarts the RSSI timeouts for the RSSI states that are set, so they are reset after a restart, too */
 	public async restoreRssiTimers(): Promise<void> {
@@ -338,11 +340,8 @@ export class AdvertisementProcessor {
 					if (debugTraffic) {
 						log.debug(`setting state ${iobStateId}`);
 					}
-					await _.adapter.setStateChangedAsync(
-						iobStateId,
-						value ?? null,
-						true,
-					);
+					this.valueWriter ??= new ValueWriter(_.adapter);
+					await this.valueWriter.write(iobStateId, value ?? null);
 				} else {
 					_.adapter.log.warn(
 						`skipping state ${iobStateId} because the object does not exist`,

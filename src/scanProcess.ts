@@ -177,7 +177,6 @@ async function startScanning(): Promise<void> {
 	if (isScanning) {
 		return;
 	}
-	await sendAsync({ type: "connected" });
 	await sendAsync({
 		type: "log",
 		message: `starting scan for services ${JSON.stringify(argv.services)}`,
@@ -196,7 +195,10 @@ async function startScanning(): Promise<void> {
 		await sendAsync({ type: "disconnected" });
 		throw error;
 	}
+	// Only now: a client that connects in between gets "disconnected" from the snapshot and
+	// must still learn that the scan runs
 	isScanning = true;
+	await sendAsync({ type: "connected" });
 }
 
 async function stopScanning(): Promise<void> {

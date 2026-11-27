@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { GatewayFeature, GatewayInfo } from "../lib/gateway-protocol";
 
 /** Timings of the GatewayRegistry, can be shortened for tests */
@@ -277,7 +278,7 @@ export class GatewayRegistry {
 				duplicates: 0,
 				connect: false,
 				features: [],
-				objectId: `gateways.${this.toObjectId(description.id)}`,
+				objectId: `gateways.${toObjectId(description.id)}`,
 				queue: Promise.resolve(),
 				lastAdvertisementWritten: 0,
 				lastMessage: 0,
@@ -330,12 +331,6 @@ export class GatewayRegistry {
 				);
 			}
 		}
-	}
-
-	private toObjectId(gatewayId: string): string {
-		return gatewayId
-			.replace(this.adapter.FORBIDDEN_CHARS, "_")
-			.replace(/[.:\s]/g, "_");
 	}
 
 	private async createObjects(gateway: GatewayEntry): Promise<void> {
@@ -394,4 +389,21 @@ export class GatewayRegistry {
 				);
 			});
 	}
+}
+
+/**
+ * The ID of the gateway's channel below "gateways.". Readable for the usual IDs
+ * ("esphome.0:proxy-og" → "esphome_0_proxy-og"). An ID with "_" or other characters that become
+ * "_" gets a hash of the ID appended, so that e.g. "proxy.garage" and "proxy_garage" do not
+ * share their states.
+ *
+ * @param gatewayId Full ID of the gateway
+ */
+export function toObjectId(gatewayId: string): string {
+	const readable = gatewayId.replace(/[^A-Za-z0-9-]/g, "_");
+	if (/^[A-Za-z0-9.:-]+$/.test(gatewayId)) {
+		return readable;
+	}
+	const hash = createHash("sha256").update(gatewayId).digest("hex");
+	return `${readable}__${hash.slice(0, 8)}`;
 }

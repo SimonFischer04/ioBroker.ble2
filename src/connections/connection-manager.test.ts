@@ -285,6 +285,27 @@ describe("connections/connection-manager => ConnectionManager", () => {
 		expect(link.disconnects).to.equal(1);
 	});
 
+	it("starts the next job only after a late link was closed", async () => {
+		const late = deferred<FakeLink>();
+		provider.behaviour.set(OG, () => late.promise);
+		const first = manager.withSession(DEVICE, async () => "never", {
+			timeoutMs: 50,
+		});
+		const second = manager.withSession(DEVICE, async (s) => s.gatewayId);
+		expect((await rejection(first)).code).to.equal("TIMEOUT");
+		await tick();
+		// The first connection attempt is still running
+		expect(provider.connects).to.have.lengthOf(1);
+
+		provider.behaviour.delete(OG);
+		const link = new FakeLink(OG, DEVICE);
+		late.resolve(link);
+		expect(await second).to.equal(OG);
+		expect(link.disconnects).to.equal(1);
+		expect(provider.connects).to.have.lengthOf(2);
+		expect(provider.links[1]).to.not.equal(link);
+	});
+
 	it("rejects an invalid address", async () => {
 		const error = await rejection(
 			manager.withSession("not a mac", async () => undefined),

@@ -484,6 +484,26 @@ describe("plugins/atc/pvvx/pvvx-updater => PvvxUpdater", () => {
 			});
 		}
 
+		it("checks the signal again after loading firmware.json", async () => {
+			await createUpdater().start();
+			source.getIndex = () => {
+				// The signal drops while firmware.json is loading
+				connections.best = {
+					gatewayId: "esphome.0:proxy-og",
+					rssi: -91,
+					features: ["writeSequence"],
+				};
+				return Promise.resolve(index);
+			};
+
+			await updater.update(FIRST);
+
+			expect(String(adapter.val(`${FIRST}.pvvx.firmwareError`))).to.match(
+				/^WEAK_SIGNAL: /,
+			);
+			expect(connections.sessions).to.deep.equal([]);
+		});
+
 		it("UP_TO_DATE, NO_IMAGE and UNKNOWN_HARDWARE write nothing to the update characteristic", async () => {
 			await createUpdater().start();
 

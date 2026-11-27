@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import { createGatewayRegistry } from "../connections/test-fakes";
+import { toObjectId } from "./gateway-registry";
 
 describe("gateways/gateway-registry => GatewayRegistry", () => {
 	const description = {
@@ -43,5 +44,24 @@ describe("gateways/gateway-registry => GatewayRegistry", () => {
 		);
 		expect(registry.list().map((g) => g.features)).to.deep.equal([[]]);
 		registry.dispose();
+	});
+
+	it("gives every gateway ID its own object ID", () => {
+		expect(toObjectId("esphome.0:proxy-og")).to.equal("esphome_0_proxy-og");
+		expect(toObjectId("server:192.168.1.20:9000")).to.equal(
+			"server_192_168_1_20_9000",
+		);
+		expect(toObjectId("local")).to.equal("local");
+
+		const ids = [
+			"esphome.0:proxy.garage",
+			"esphome.0:proxy_garage",
+			"esphome.0:proxy__garage",
+			"esphome.0:proxy garage",
+		].map(toObjectId);
+		expect(new Set(ids).size).to.equal(ids.length);
+		for (const id of ids) {
+			expect(id).to.match(/^[A-Za-z0-9_-]+$/);
+		}
 	});
 });

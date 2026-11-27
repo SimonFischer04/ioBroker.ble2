@@ -1,4 +1,7 @@
-import type { ConnectionManager } from "../../../connections/connection-manager";
+import type {
+	ConnectionManager,
+	GatewayCandidate,
+} from "../../../connections/connection-manager";
 import { PvvxCommandChannel } from "./command-channel";
 import { type FirmwareCatalog, selectImage } from "./firmware-catalog";
 import { checkPreconditions, MIN_RSSI } from "./ota-checks";
@@ -422,16 +425,24 @@ export class PvvxUpdater {
 			} catch {
 				battery = undefined;
 			}
-			const gateways = ctx.connections
-				.candidates(address)
-				.filter(({ features }) => features.includes("writeSequence"));
-			checkPreconditions({
-				address,
-				now: ctx.clock.now(),
-				battery,
-				bestGateway: gateways[0],
-			});
+			const check = (): GatewayCandidate[] => {
+				const gateways = ctx.connections
+					.candidates(address)
+					.filter(({ features }) =>
+						features.includes("writeSequence"),
+					);
+				checkPreconditions({
+					address,
+					now: ctx.clock.now(),
+					battery,
+					bestGateway: gateways[0],
+				});
+				return gateways;
+			};
+			check();
 			const index = await ctx.catalog.getIndex(false);
+			// The signal may have changed during the download
+			const gateways = check();
 
 			let expected = 0;
 			await ctx.connections.withSession(
