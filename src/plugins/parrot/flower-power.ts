@@ -3,7 +3,6 @@ import { DevicePoller } from "../../connections/device-poller";
 import type { PeripheralInfo } from "../../lib/advertisement";
 import { GatewayError } from "../../lib/gateway-error";
 import { extendDevice, extendState } from "../../lib/iobroker-objects";
-import { normalizeUuid } from "../../lib/uuid";
 
 const liveService = "39e1fa00-84a8-11e2-afba-0002a5d5c51b";
 const batteryService = "0000180f-0000-1000-8000-00805f9b34fb";
@@ -100,11 +99,7 @@ export class FlowerPower {
 			address,
 			async (session) => {
 				const services = await session.getServices();
-				if (
-					!services.some(
-						({ uuid }) => normalizeUuid(uuid) === liveService,
-					)
-				) {
+				if (!services.some(({ uuid }) => uuid === liveService)) {
 					throw new GatewayError(
 						"GATT_ERROR",
 						"The Flower Power Live service was not found",
@@ -116,12 +111,12 @@ export class FlowerPower {
 				}[] = [];
 				for (const field of fields) {
 					const service = services.find(
-						({ uuid }) => normalizeUuid(uuid) === field.service,
+						({ uuid }) => uuid === field.service,
 					);
 					if (
 						!service?.characteristics.some(
 							({ uuid, properties }) =>
-								normalizeUuid(uuid) === field.uuid &&
+								uuid === field.uuid &&
 								(properties & 0x02) !== 0,
 						)
 					) {

@@ -10,6 +10,7 @@ import {
 	type GattWriteSequenceResult,
 } from "../lib/gateway-protocol";
 import { sendRequest, type RequestSender } from "../lib/send-request";
+import { normalizeUuid } from "../lib/uuid";
 
 /** Timeouts of the gatt:* commands, see the specification of phase 2, A2 */
 export const GATT_TIMEOUTS_MS = {
@@ -109,20 +110,24 @@ export class RemoteGattLink implements GattLink {
 		});
 	}
 
-	/** Sends gatt:getServices and checks that the answer contains a list of services */
+	/**
+	 * Sends gatt:getServices and checks the answer. The UUIDs come back in the canonical form
+	 * (128 bit, lowercase, with dashes), whatever form the gateway used.
+	 */
 	public async getServices(): Promise<GattServiceInfo[]> {
 		const result = await this.request<GattGetServicesResult>(
 			GattCommands.getServices,
 			{},
 			GATT_TIMEOUTS_MS.getServices,
 		);
-		if (!Array.isArray(result?.services)) {
+		const services = parseServices(result?.services);
+		if (!services) {
 			throw new GatewayError(
 				"GATT_ERROR",
 				`Unexpected answer to ${GattCommands.getServices}`,
 			);
 		}
-		return result.services;
+		return services;
 	}
 
 	/**
@@ -304,4 +309,71 @@ export class RemoteGattLink implements GattLink {
 		this.pending.clear();
 		this.onEnd();
 	}
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null;
+}
+
+function isHandle(value: unknown): value is number {
+	return Number.isInteger(value) && (value as number) >= 0;
+}
+
+/**
+ * Checks the services of a gatt:getServices answer and brings their UUIDs into the canonical form
+ *
+ * @param value The "services" of the answer
+ * @returns The checked copy, undefined if anything does not match the protocol
+ */
+export function parseServices(value: unknown): GattServiceInfo[] | undefined {
+	if (!Array.isArray(value)) {
+		return undefined;
+	}
+	const services: GattServiceInfo[] = [];
+	for (const service of value) {
+		const uuid = isRecord(service)
+			? normalizeUuid(service.uuid)
+			: undefined;
+		if (
+			!uuid ||
+			!isHandle(service.handle) ||
+			!Array.isArray(service.characteristics)
+		) {
+			return undefined;
+		}
+		const characteristics: GattServiceInfo["characteristics"] = [];
+		for (const characteristic of service.characteristics) {
+			const charUuid = isRecord(characteristic)
+				? normalizeUuid(characteristic.uuid)
+				: undefined;
+			if (
+				!charUuid ||
+				!isHandle(characteristic.handle) ||
+				!isHandle(characteristic.properties)
+			) {
+				return undefined;
+			}
+			const descriptors: GattServiceInfo["characteristics"][number]["descriptors"] =
+				[];
+			for (const descriptor of Array.isArray(characteristic.descriptors)
+				? characteristic.descriptors
+				: []) {
+				const descUuid = isRecord(descriptor)
+					? normalizeUuid(descriptor.uuid)
+					: undefined;
+				if (!descUuid || !isHandle(descriptor.handle)) {
+					return undefined;
+				}
+				descriptors.push({ uuid: descUuid, handle: descriptor.handle });
+			}
+			characteristics.push({
+				uuid: charUuid,
+				handle: characteristic.handle,
+				properties: characteristic.properties,
+				descriptors,
+			});
+		}
+		services.push({ uuid, handle: service.handle, characteristics });
+	}
+	return services;
 }

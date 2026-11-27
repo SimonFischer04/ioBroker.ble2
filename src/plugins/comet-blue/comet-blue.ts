@@ -3,7 +3,6 @@ import type {
 	SessionOptions,
 } from "../../connections/connection-manager";
 import { GatewayError } from "../../lib/gateway-error";
-import { normalizeUuid } from "../../lib/uuid";
 
 const pinCharacteristic = "47e9ee30-47e9-11e4-8939-164230d1df67";
 const temperaturesCharacteristic = "47e9ee2b-47e9-11e4-8939-164230d1df67";
@@ -46,9 +45,7 @@ export async function readCometBlue(
 		async (session) => {
 			const services = await session.getServices();
 			const service = services.find(({ characteristics }) => {
-				const ids = characteristics.map(({ uuid }) =>
-					normalizeUuid(uuid),
-				);
+				const ids = characteristics.map(({ uuid }) => uuid);
 				return (
 					ids.includes(pinCharacteristic) &&
 					ids.includes(temperaturesCharacteristic)
@@ -92,7 +89,7 @@ export async function readCometBlue(
 
 			const batteryService = services.find(({ characteristics }) =>
 				characteristics.some(
-					({ uuid }) => normalizeUuid(uuid) === batteryCharacteristic,
+					({ uuid }) => uuid === batteryCharacteristic,
 				),
 			);
 			if (batteryService) {

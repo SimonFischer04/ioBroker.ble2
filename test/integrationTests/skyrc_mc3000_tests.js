@@ -21,11 +21,12 @@ class ChargerGateway extends FakeGattGateway {
 				result: {
 					services: [
 						{
-							uuid: "0000ffe0-0000-1000-8000-00805f9b34fb",
+							// Short and uppercase: the adapter must normalize what gateways send
+							uuid: "FFE0",
 							handle: 28,
 							characteristics: [
 								{
-									uuid: "0000ffe1-0000-1000-8000-00805f9b34fb",
+									uuid: "0xFFE1",
 									handle: 30,
 									properties: 0x14,
 									descriptors: [],

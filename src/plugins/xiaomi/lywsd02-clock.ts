@@ -3,7 +3,6 @@ import type {
 	SessionOptions,
 } from "../../connections/connection-manager";
 import { GatewayError } from "../../lib/gateway-error";
-import { normalizeUuid } from "../../lib/uuid";
 
 const CLOCK = "ebe0ccb7-7a0a-4b0c-8a1a-6ff2997da3a6";
 
@@ -27,8 +26,7 @@ export async function syncLywsd02Clock(
 			const service = services.find(({ characteristics }) =>
 				characteristics.some(
 					({ uuid, properties }) =>
-						normalizeUuid(uuid) === CLOCK &&
-						(properties & 0x08) !== 0,
+						uuid === CLOCK && (properties & 0x08) !== 0,
 				),
 			);
 			if (!service) {

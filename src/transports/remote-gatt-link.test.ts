@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { createGatewayRegistry } from "../connections/test-fakes";
 import { GatewayError } from "../lib/gateway-error";
-import type { RemoteGattLink } from "./remote-gatt-link";
+import { parseServices, type RemoteGattLink } from "./remote-gatt-link";
 import { RemoteGatewayTransport } from "./remote-gateway";
 
 const EPOCH = 1790000000000;
@@ -401,5 +401,78 @@ describe("transports/remote-gateway => links through gateways of other adapters"
 		const result = link.read(32);
 		adapter.answer("gatt:read", { data: "%%%" });
 		expect((await rejection(result)).code).to.equal("GATT_ERROR");
+	});
+});
+
+describe("parseServices", () => {
+	it("brings short, prefixed and uppercase UUIDs into the canonical form", () => {
+		expect(
+			parseServices([
+				{
+					uuid: "180F",
+					handle: 1,
+					characteristics: [
+						{
+							uuid: "0x2A19",
+							handle: 3,
+							properties: 0x12,
+							descriptors: [{ uuid: "2902", handle: 4 }],
+						},
+						{
+							uuid: "EBE0CCB77A0A4B0C8A1A6FF2997DA3A6",
+							handle: 6,
+							properties: 0x08,
+						},
+					],
+				},
+			]),
+		).to.deep.equal([
+			{
+				uuid: "0000180f-0000-1000-8000-00805f9b34fb",
+				handle: 1,
+				characteristics: [
+					{
+						uuid: "00002a19-0000-1000-8000-00805f9b34fb",
+						handle: 3,
+						properties: 0x12,
+						descriptors: [
+							{
+								uuid: "00002902-0000-1000-8000-00805f9b34fb",
+								handle: 4,
+							},
+						],
+					},
+					{
+						uuid: "ebe0ccb7-7a0a-4b0c-8a1a-6ff2997da3a6",
+						handle: 6,
+						properties: 0x08,
+						descriptors: [],
+					},
+				],
+			},
+		]);
+	});
+
+	it("rejects answers that do not match the protocol", () => {
+		const characteristic = { uuid: "2a19", handle: 3, properties: 2 };
+		for (const services of [
+			undefined,
+			{},
+			[null],
+			[{ uuid: "180f", handle: 1 }],
+			[{ uuid: "no uuid", handle: 1, characteristics: [] }],
+			[{ uuid: "180f", handle: -1, characteristics: [] }],
+			[{ uuid: "180f", handle: 1, characteristics: [{ uuid: "2a19" }] }],
+			[
+				{
+					uuid: "180f",
+					handle: 1,
+					characteristics: [{ ...characteristic, descriptors: [{}] }],
+				},
+			],
+		]) {
+			expect(parseServices(services), JSON.stringify(services)).to.be
+				.undefined;
+		}
 	});
 });

@@ -3,7 +3,6 @@ import { DevicePoller } from "../../connections/device-poller";
 import type { PeripheralInfo } from "../../lib/advertisement";
 import { GatewayError } from "../../lib/gateway-error";
 import { extendDevice, extendState } from "../../lib/iobroker-objects";
-import { normalizeUuid } from "../../lib/uuid";
 
 const batteryCharacteristic = "00001a02-0000-1000-8000-00805f9b34fb";
 const oneDay = 24 * 60 * 60_000;
@@ -58,8 +57,7 @@ export class MiFloraBattery {
 				const services = await session.getServices();
 				const service = services.find(({ characteristics }) =>
 					characteristics.some(
-						({ uuid }) =>
-							normalizeUuid(uuid) === batteryCharacteristic,
+						({ uuid }) => uuid === batteryCharacteristic,
 					),
 				);
 				if (!service) {
