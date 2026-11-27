@@ -125,8 +125,12 @@ export class DeviceRegistry {
 		now: number = Date.now(),
 	): Observation {
 		const gatewayId = peripheral.gatewayId ?? UNKNOWN_GATEWAY;
-		this.track(peripheral, now);
-		const device = this.devices.get(peripheral.address)!;
+		// Normally tracked already when it was received, see main.ts
+		let device = this.devices.get(peripheral.address);
+		if (!device) {
+			this.track(peripheral, now);
+			device = this.devices.get(peripheral.address)!;
+		}
 
 		// A packet is a duplicate when a different gateway delivered the same payload just before.
 		// The same gateway delivering it again is a retransmission of the device and treated as
@@ -134,9 +138,13 @@ export class DeviceRegistry {
 		// Several packets are remembered: gateway A may deliver P1 and P2 before gateway B
 		// delivers the same pair.
 		const fingerprint = getFingerprint(peripheral);
-		device.processed = device.processed.filter(
-			(p) => now - p.at < this.options.dedupeWindowMs,
-		);
+		// Oldest first: drop what left the window, without a new array per advertisement
+		while (
+			device.processed.length > 0 &&
+			now - device.processed[0].at >= this.options.dedupeWindowMs
+		) {
+			device.processed.shift();
+		}
 		const duplicate = device.processed.some(
 			(p) => p.fingerprint === fingerprint && p.gateway !== gatewayId,
 		);

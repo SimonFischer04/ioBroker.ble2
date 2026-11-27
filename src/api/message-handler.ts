@@ -58,6 +58,9 @@ export function createMessageHandler(
 			}
 		}
 
+		// The instance that sent the message: "system.adapter.esphome.0" -> "esphome.0"
+		const sender = obj.from.replace(/^system\.adapter\./, "");
+
 		switch (obj.command) {
 			case "getHCIOptions":
 			case "getHCIPorts":
@@ -80,8 +83,6 @@ export function createMessageHandler(
 				return;
 
 			case GatewayCommands.advertisements: {
-				// "system.adapter.esphome.0" -> "esphome.0"
-				const sender = obj.from.replace(/^system\.adapter\./, "");
 				respond(
 					ctx.remoteGateway.handleAdvertisements(sender, obj.message),
 				);
@@ -89,20 +90,17 @@ export function createMessageHandler(
 			}
 
 			case GatewayCommands.announce: {
-				const sender = obj.from.replace(/^system\.adapter\./, "");
 				respond(ctx.remoteGateway.handleAnnounce(sender, obj.message));
 				return;
 			}
 
 			case GatewayCommands.connectionState: {
-				const sender = obj.from.replace(/^system\.adapter\./, "");
 				ctx.remoteGateway.handleConnectionState(sender, obj.message);
 				respond({ error: null, result: {} });
 				return;
 			}
 
 			case GatewayCommands.notification: {
-				const sender = obj.from.replace(/^system\.adapter\./, "");
 				ctx.remoteGateway.handleNotification(sender, obj.message);
 				respond({ error: null, result: {} });
 				return;

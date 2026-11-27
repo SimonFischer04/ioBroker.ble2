@@ -205,10 +205,22 @@ const adapter = utils.adapter({
 				);
 			});
 		};
+		// The same path for every source of advertisements
 		const transportContext: TransportContext = {
 			adapter,
 			gateways,
-			onAdvertisement: handleAdvertisement,
+			onAdvertisement: (peripheral) => {
+				// Connections need to know every device in range, also the ones that are not decoded
+				devices.track(peripheral);
+				// Plugins that connect to devices need to know when they are in range
+				pluginHost?.observe(peripheral);
+				// The local scanner filters itself already, the others are filtered here
+				if (
+					matchesServiceFilter(peripheral, services, manufacturerIds)
+				) {
+					handleAdvertisement(peripheral);
+				}
+			},
 		};
 
 		// monitor our own states and objects
@@ -221,23 +233,9 @@ const adapter = utils.adapter({
 
 		// The local scanner applies the service filter while scanning. Advertisements from other
 		// adapters and from remote scan servers are filtered here, so every source behaves the same.
-		const filteredContext: TransportContext = {
-			...transportContext,
-			onAdvertisement: (peripheral) => {
-				// Connections need to know every device in range, also the ones that are not decoded
-				devices.track(peripheral);
-				// Plugins that connect to devices need to know when they are in range
-				pluginHost?.observe(peripheral);
-				if (
-					matchesServiceFilter(peripheral, services, manufacturerIds)
-				) {
-					handleAdvertisement(peripheral);
-				}
-			},
-		};
 
 		// Other adapters can always deliver advertisements
-		remoteGateway = new RemoteGatewayTransport(filteredContext, epoch);
+		remoteGateway = new RemoteGatewayTransport(transportContext, epoch);
 		transports.push(remoteGateway);
 		// Connections through a gateway that went offline have ended
 		gateways.onGatewayOffline = (gatewayId) =>
@@ -286,7 +284,7 @@ const adapter = utils.adapter({
 		}
 		for (const server of servers) {
 			transports.push(
-				new NobleRemoteTransport(filteredContext, server, {
+				new NobleRemoteTransport(transportContext, server, {
 					// info.driverState has a single source: the local Bluetooth adapter, or the only
 					// remote scan server, as up to 0.14
 					reportDriverState: !useLocalScanner && servers.length === 1,
