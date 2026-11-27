@@ -2,12 +2,11 @@ import { execFile } from "node:child_process";
 import type { ConnectionManager } from "../connections/connection-manager";
 import type { DeviceRegistry } from "../devices/device-registry";
 import type { GatewayRegistry } from "../gateways/gateway-registry";
-import { toErrorResponse } from "../lib/gateway-error";
+import { toResponse } from "../lib/gateway-error";
 import {
 	GatewayCommands,
 	type GattGetServicesResult,
 	type GattReadResult,
-	type GatewayResponse,
 } from "../lib/gateway-protocol";
 import { parseGattRequest } from "../lib/gatt-request";
 import { getHciOptions, parseHciPorts } from "../lib/hci-ports";
@@ -35,21 +34,6 @@ export interface MessageHandlerContext {
 	connections: ConnectionManager;
 	/** Answers the commands of the plugins, e.g. of a manufacturer */
 	plugins: PluginHost;
-}
-
-/**
- * Runs a GATT command and turns the result or the error into the answer
- *
- * @param run The command, may throw a GatewayError
- */
-async function runGattCommand<T>(
-	run: () => Promise<T>,
-): Promise<GatewayResponse<T>> {
-	try {
-		return { error: null, result: await run() };
-	} catch (e) {
-		return toErrorResponse(e);
-	}
 }
 
 /**
@@ -125,7 +109,7 @@ export function createMessageHandler(
 			}
 
 			case GatewayCommands.discoverServices:
-				void runGattCommand<GattGetServicesResult>(async () => {
+				void toResponse<GattGetServicesResult>(async () => {
 					const { address, options } = parseGattRequest(obj.message, {
 						characteristic: false,
 						data: false,
@@ -140,7 +124,7 @@ export function createMessageHandler(
 				return;
 
 			case GatewayCommands.readCharacteristic:
-				void runGattCommand<GattReadResult>(async () => {
+				void toResponse<GattReadResult>(async () => {
 					const { address, service, characteristic, options } =
 						parseGattRequest(obj.message, {
 							characteristic: true,
@@ -156,7 +140,7 @@ export function createMessageHandler(
 				return;
 
 			case GatewayCommands.writeCharacteristic:
-				void runGattCommand<Record<string, never>>(async () => {
+				void toResponse<Record<string, never>>(async () => {
 					const {
 						address,
 						service,
@@ -193,13 +177,10 @@ export function createMessageHandler(
 
 			default:
 				// Commands of the plugins, e.g. actions of a manufacturer's devices
-				if (ctx.plugins.hasCommand(obj.command)) {
-					void ctx.plugins
-						.runCommand(obj.command, obj.message)
-						.then(respond);
-					return;
-				}
-				respond({ error: "Unknown command!" });
+				void (
+					ctx.plugins.runCommand(obj.command, obj.message) ??
+					Promise.resolve({ error: "Unknown command!" })
+				).then(respond);
 				return;
 		}
 	};

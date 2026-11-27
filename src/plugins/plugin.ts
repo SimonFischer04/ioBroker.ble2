@@ -63,8 +63,9 @@ export interface Plugin<TContext = any> {
 	 * Optional active part: talks to the devices of the manufacturer, e.g. over GATT. Started once
 	 * when the adapter starts, independent of the setting "plugins", which only selects the decoders.
 	 * It does nothing until it is configured (e.g. a list of devices) or one of its commands is used.
+	 * It must return at once; setup that takes time (objects, states) runs in the background.
 	 */
-	start?: (ctx: PluginContext) => PluginInstance | Promise<PluginInstance>;
+	start?: (ctx: PluginContext) => PluginInstance;
 }
 
 /** What the core of the adapter gives the active part of a plugin */

@@ -40,9 +40,9 @@ describe("lib/plugin-host => PluginHost", () => {
 		});
 	});
 
-	it("starts the active parts and skips plugins without one", async () => {
+	it("starts the active parts and skips plugins without one", () => {
 		const started: string[] = [];
-		await host.start(
+		host.start(
 			[
 				plugin("a", () => {
 					started.push("a");
@@ -51,7 +51,7 @@ describe("lib/plugin-host => PluginHost", () => {
 				plugin("b"),
 				plugin("c", () => {
 					started.push("c");
-					return Promise.resolve({});
+					return {};
 				}),
 			],
 			ctx,
@@ -59,9 +59,9 @@ describe("lib/plugin-host => PluginHost", () => {
 		expect(started).to.deep.equal(["a", "c"]);
 	});
 
-	it("reports a plugin that fails to start and starts the others", async () => {
+	it("reports a plugin that fails to start and starts the others", () => {
 		const started: string[] = [];
-		await host.start(
+		host.start(
 			[
 				plugin("broken", () => {
 					throw new Error("no");
@@ -78,7 +78,7 @@ describe("lib/plugin-host => PluginHost", () => {
 	});
 
 	it("runs the commands of the plugins and turns errors into answers", async () => {
-		await host.start(
+		host.start(
 			[
 				plugin("p", () => ({
 					commands: {
@@ -92,8 +92,7 @@ describe("lib/plugin-host => PluginHost", () => {
 			],
 			ctx,
 		);
-		expect(host.hasCommand("ok")).to.equal(true);
-		expect(host.hasCommand("other")).to.equal(false);
+		expect(host.runCommand("other", {})).to.equal(undefined);
 		expect(await host.runCommand("ok", 1)).to.deep.equal({
 			error: null,
 			result: { echo: 1 },
@@ -105,7 +104,7 @@ describe("lib/plugin-host => PluginHost", () => {
 
 	it("does not let a plugin take over a command of the core or of another plugin", async () => {
 		const handler = (): Promise<string> => Promise.resolve("x");
-		await host.start(
+		host.start(
 			[
 				plugin("first", () => ({ commands: { shared: handler } })),
 				plugin("second", () => ({
@@ -118,7 +117,7 @@ describe("lib/plugin-host => PluginHost", () => {
 			ctx,
 			["getDevices"],
 		);
-		expect(host.hasCommand("getDevices")).to.equal(false);
+		expect(host.runCommand("getDevices", {})).to.equal(undefined);
 		expect(await host.runCommand("shared", undefined)).to.deep.equal({
 			error: null,
 			result: "x",
@@ -126,9 +125,9 @@ describe("lib/plugin-host => PluginHost", () => {
 		expect(logs).to.have.lengthOf(2);
 	});
 
-	it("hands advertisements to every plugin, a failing one does not stop the others", async () => {
+	it("hands advertisements to every plugin, a failing one does not stop the others", () => {
 		const seen: string[] = [];
-		await host.start(
+		host.start(
 			[
 				plugin("broken", () => ({
 					observe: () => {
@@ -146,7 +145,7 @@ describe("lib/plugin-host => PluginHost", () => {
 		expect(logs[0]).to.match(/^warn Plugin broken failed/);
 	});
 
-	it("passes a state change to the plugins until one takes it", async () => {
+	it("passes a state change to the plugins until one takes it", () => {
 		const asked: string[] = [];
 		const instance = (name: string, takes: boolean): PluginInstance => ({
 			handleStateChange: () => {
@@ -154,7 +153,7 @@ describe("lib/plugin-host => PluginHost", () => {
 				return takes;
 			},
 		});
-		await host.start(
+		host.start(
 			[
 				plugin("a", () => instance("a", false)),
 				plugin("b", () => instance("b", true)),
@@ -166,42 +165,22 @@ describe("lib/plugin-host => PluginHost", () => {
 		expect(asked).to.deep.equal(["a", "b"]);
 	});
 
-	it("passes on button presses that arrive while the plugins start", async () => {
-		const handled: string[] = [];
-		let release!: () => void;
-		const gate = new Promise<void>((resolve) => (release = resolve));
-		const starting = host.start(
+	it("registers the commands at once, also of a plugin that sets itself up in the background", () => {
+		host.start(
 			[
-				plugin("slow", async () => {
-					await gate;
-					return {
-						handleStateChange: (id) => {
-							handled.push(id);
-							return true;
-						},
-					};
+				plugin("slow", () => {
+					void new Promise(() => {});
+					return { commands: { cmd: () => Promise.resolve(1) } };
 				}),
 			],
 			ctx,
 		);
-
-		// Own state, not acknowledged: held
-		expect(
-			host.handleStateChange("ble2.0.dev.button", state(true)),
-		).to.equal(false);
-		// Foreign or acknowledged states are not held
-		host.handleStateChange("system.adapter.esphome.0.alive", state(false));
-		host.handleStateChange("ble2.0.dev.value", state(1, true));
-		expect(handled).to.deep.equal([]);
-
-		release();
-		await starting;
-		expect(handled).to.deep.equal(["ble2.0.dev.button"]);
+		expect(host.runCommand("cmd", undefined)).to.not.equal(undefined);
 	});
 
-	it("stops the plugins and forgets their commands", async () => {
+	it("stops the plugins and forgets their commands", () => {
 		const stopped: string[] = [];
-		await host.start(
+		host.start(
 			[
 				plugin("p", () => ({
 					commands: { cmd: () => Promise.resolve(1) },
@@ -212,6 +191,6 @@ describe("lib/plugin-host => PluginHost", () => {
 		);
 		host.dispose();
 		expect(stopped).to.deep.equal(["p"]);
-		expect(host.hasCommand("cmd")).to.equal(false);
+		expect(host.runCommand("cmd", undefined)).to.equal(undefined);
 	});
 });

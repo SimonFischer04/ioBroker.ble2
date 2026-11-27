@@ -303,7 +303,7 @@ const adapter = utils.adapter({
 		}
 
 		// The plugins decide themselves whether they have something to do, e.g. a list of devices
-		await pluginHost.start(
+		pluginHost.start(
 			plugins,
 			{ adapter, connections, devices },
 			CORE_COMMANDS,

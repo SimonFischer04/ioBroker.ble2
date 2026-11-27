@@ -1,6 +1,7 @@
 // Declares the settings of this plugin
 import type {} from "./config";
 import { parseDeviceList } from "../../../lib/device-list";
+import { errorMessage } from "../../../lib/gateway-error";
 import type { PluginContext, PluginInstance } from "../../plugin";
 import {
 	createHttpFirmwareSource,
@@ -19,7 +20,7 @@ import { systemClock } from "./time-sync";
  * @param ctx What the core gives the plugins
  * @returns The started time sync and firmware updater
  */
-export async function startPvvx(ctx: PluginContext): Promise<PluginInstance> {
+export function startPvvx(ctx: PluginContext): PluginInstance {
 	const { adapter, connections } = ctx;
 	const timers = {
 		setTimeout: (callback: () => void, ms: number) =>
@@ -77,8 +78,10 @@ export async function startPvvx(ctx: PluginContext): Promise<PluginInstance> {
 	);
 
 	ref.updater = updater;
-	await driver.start();
-	await updater.start();
+	// Objects and states are set up in the background, both know their devices already
+	Promise.all([driver.start(), updater.start()]).catch((e: unknown) =>
+		adapter.log.warn(`pvvx could not start: ${errorMessage(e)}`),
+	);
 	return {
 		handleStateChange: (id, state) =>
 			driver.handleStateChange(id, state) ||

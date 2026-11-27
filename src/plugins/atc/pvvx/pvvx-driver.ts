@@ -142,9 +142,11 @@ export class PvvxDriver {
 			return;
 		}
 		const { adapter, clock } = this.ctx;
-		for (const address of this.devices.keys()) {
-			await this.createObjects(address);
-		}
+		await Promise.all(
+			[...this.devices.keys()].map((address) =>
+				this.createObjects(address),
+			),
+		);
 		const now = clock.now();
 		for (const device of this.devices.values()) {
 			device.nextDue = now + START_DELAY_MS;
@@ -174,13 +176,15 @@ export class PvvxDriver {
 				common: { name: "pvvx firmware" },
 				native: {},
 			});
-			for (const [id, common] of Object.entries(STATES)) {
-				await adapter.setObjectNotExistsAsync(`${address}.pvvx.${id}`, {
-					type: "state",
-					common,
-					native: {},
-				});
-			}
+			await Promise.all(
+				Object.entries(STATES).map(([id, common]) =>
+					adapter.setObjectNotExistsAsync(`${address}.pvvx.${id}`, {
+						type: "state",
+						common,
+						native: {},
+					}),
+				),
+			);
 		} catch (e) {
 			adapter.log.warn(
 				`Could not create the pvvx objects of ${address}: ${errorMessage(e)}`,

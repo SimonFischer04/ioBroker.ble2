@@ -209,51 +209,40 @@ export class PvvxUpdater {
 				common: { name: "pvvx firmware" },
 				native: {},
 			});
-			for (const [id, common] of Object.entries(INSTANCE_STATES)) {
-				await adapter.setObjectNotExistsAsync(`pvvx.${id}`, {
-					type: "state",
-					common,
-					native: {},
-				});
-			}
-			for (const address of this.options.addresses) {
-				for (const [id, common] of Object.entries(DEVICE_STATES)) {
-					await adapter.setObjectNotExistsAsync(
-						`${address}.pvvx.${id}`,
-						{ type: "state", common, native: {} },
-					);
-				}
-			}
+			const states: [string, ioBroker.StateCommon][] = [
+				...Object.entries(INSTANCE_STATES).map(
+					([id, common]): [string, ioBroker.StateCommon] => [
+						`pvvx.${id}`,
+						common,
+					],
+				),
+				...this.options.addresses.flatMap((address) =>
+					Object.entries(DEVICE_STATES).map(
+						([id, common]): [string, ioBroker.StateCommon] => [
+							`${address}.pvvx.${id}`,
+							common,
+						],
+					),
+				),
+			];
+			await Promise.all(
+				states.map(([id, common]) =>
+					adapter.setObjectNotExistsAsync(id, {
+						type: "state",
+						common,
+						native: {},
+					}),
+				),
+			);
 		} catch (e) {
 			adapter.log.warn(
 				`Could not create the pvvx firmware objects: ${errorMessage(e)}`,
 			);
 		}
 
-		for (const address of this.options.addresses) {
-			let status: ioBroker.State | null | undefined;
-			try {
-				status = await adapter.getStateAsync(
-					`${address}.pvvx.firmwareStatus`,
-				);
-			} catch {
-				status = undefined;
-			}
-			if (status?.val == undefined) {
-				await this.setStates(address, {
-					firmwareStatus: "idle",
-					firmwareProgress: 0,
-				});
-			} else if (BUSY_STATUS.includes(status.val)) {
-				// The adapter stopped in the middle of an update
-				await this.setStates(address, {
-					firmwareStatus: "idle",
-					firmwareProgress: 0,
-					firmwareError:
-						"NOT_CONNECTED: The adapter was restarted during the update",
-				});
-			}
-		}
+		await Promise.all(
+			this.options.addresses.map((address) => this.resetStatus(address)),
+		);
 
 		if (this.options.dailyCheck && !this.disposed) {
 			const timer = this.ctx.setTimeout(() => {
@@ -265,6 +254,37 @@ export class PvvxUpdater {
 				() => void this.checkAll(false),
 				CHECK_INTERVAL_MS,
 			);
+		}
+	}
+
+	/**
+	 * Resets the status of a device that the adapter stopped in the middle of an update
+	 *
+	 * @param address The device
+	 */
+	private async resetStatus(address: string): Promise<void> {
+		const { adapter } = this.ctx;
+		let status: ioBroker.State | null | undefined;
+		try {
+			status = await adapter.getStateAsync(
+				`${address}.pvvx.firmwareStatus`,
+			);
+		} catch {
+			status = undefined;
+		}
+		if (status?.val == undefined) {
+			await this.setStates(address, {
+				firmwareStatus: "idle",
+				firmwareProgress: 0,
+			});
+		} else if (BUSY_STATUS.includes(status.val)) {
+			// The adapter stopped in the middle of an update
+			await this.setStates(address, {
+				firmwareStatus: "idle",
+				firmwareProgress: 0,
+				firmwareError:
+					"NOT_CONNECTED: The adapter was restarted during the update",
+			});
 		}
 	}
 
