@@ -29,7 +29,7 @@ export class PluginHost {
 	>();
 
 	/**
-	 * Starts the active part of every plugin that has one. A plugin that fails to start is reported
+	 * Starts the active part of every given (selected) plugin that has one. A plugin that fails to start is reported
 	 * and left out, the others start anyway. The plugins return at once, so their handlers and
 	 * commands are available right away; they set themselves up in the background.
 	 *
@@ -42,10 +42,13 @@ export class PluginHost {
 		ctx: PluginContext,
 		reservedCommands: readonly string[] = [],
 	): void {
+		// An alias shares the active part of its plugin, it runs once
+		const seen = new Set<Plugin["start"]>();
 		for (const plugin of plugins) {
-			if (!plugin.start) {
+			if (!plugin.start || seen.has(plugin.start)) {
 				continue;
 			}
+			seen.add(plugin.start);
 			let instance: PluginInstance;
 			try {
 				instance = plugin.start(ctx);

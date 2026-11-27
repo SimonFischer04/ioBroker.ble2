@@ -2,6 +2,7 @@ import { expect } from "chai";
 import type { ConnectionManager } from "../connections/connection-manager";
 import type { DeviceRegistry } from "../devices/device-registry";
 import {
+	alias,
 	NO_DECODER,
 	type Plugin,
 	type PluginInstance,
@@ -57,6 +58,16 @@ describe("lib/plugin-host => PluginHost", () => {
 			ctx,
 		);
 		expect(started).to.deep.equal(["a", "c"]);
+	});
+
+	it("starts an active part shared with an alias only once", () => {
+		let starts = 0;
+		const original = plugin("xiaomi", () => {
+			starts++;
+			return {};
+		});
+		host.start([original, alias("mi-flora", original)], ctx);
+		expect(starts).to.equal(1);
 	});
 
 	it("reports a plugin that fails to start and starts the others", () => {

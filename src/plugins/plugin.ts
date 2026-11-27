@@ -61,7 +61,7 @@ export interface Plugin<TContext = any> {
 
 	/**
 	 * Optional active part: talks to the devices of the manufacturer, e.g. over GATT. Started once
-	 * when the adapter starts, independent of the setting "plugins", which only selects the decoders.
+	 * when the adapter starts, if the plugin is selected in the setting "plugins", like the decoder.
 	 * It does nothing until it is configured (e.g. a list of devices) or one of its commands is used.
 	 * It must return at once; setup that takes time (objects, states) runs in the background.
 	 */
@@ -130,8 +130,8 @@ export function getServiceData(
  * @param oldPlugin Plugin to reuse
  */
 export function alias(newName: string, oldPlugin: Plugin): Plugin {
-	// The active part runs once, for the original plugin
-	const { name, start, ...plugin } = oldPlugin;
+	// Selecting the alias also starts the active part; the host starts it only once
+	const { name, ...plugin } = oldPlugin;
 	return {
 		name: newName,
 		...plugin,

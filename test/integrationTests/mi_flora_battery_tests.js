@@ -48,7 +48,10 @@ exports.runTests = function (suite) {
 		before(async function () {
 			this.timeout(60000);
 			harness = getHarness();
-			await startAdapter(harness, { miFloraBatteryDevices: plant });
+			await startAdapter(harness, {
+				plugins: "xiaomi",
+				miFloraBatteryDevices: plant,
+			});
 		});
 		after(() => stopAdapter(harness));
 

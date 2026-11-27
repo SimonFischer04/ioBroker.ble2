@@ -94,9 +94,9 @@
                     "type": "select",
                     "multiple": true,
                     "label": "Active plugins:",
-                    "help": "Select the plugins for your sensors. Basic advertisement data is always available.",
+                    "help": "Select the plugins for your sensors and devices. A plugin also enables its connections to the devices, e.g. setting a clock. Basic advertisement data is always available.",
                     "doNotSave": true,
-                    "defaultFunc": "[...new Set((Array.isArray(data.plugins) ? data.plugins : String(data.plugins || '').split(',')).map(p => p.trim().toLowerCase()).filter(p => ['xiaomi', 'mi-flora', 'ruuvi-tag', 'atc', 'bthome', 'mopeka', 'switchbot', 'magicswitchbot', 'eddystone', 'mi-scale', 'govee'].includes(p)))]",
+                    "defaultFunc": "[...new Set((Array.isArray(data.plugins) ? data.plugins : String(data.plugins || '').split(',')).map(p => p.trim().toLowerCase()).filter(p => ['xiaomi', 'mi-flora', 'eddystone', 'ruuvi-tag', 'atc', 'magicswitchbot', 'switchbot', 'bthome', 'mi-scale', 'govee', 'mopeka', 'parrot', 'cycling-power', 'comet-blue', 'yeelight', 'skyrc'].includes(p)))]",
                     "onChange": {
                         "calculateFunc": "const selection = data._pluginSelection || []; data.plugins = selection.join(','); return selection;"
                     },
@@ -126,7 +126,7 @@
                             "value": "magicswitchbot"
                         },
                         {
-                            "label": "SwitchBot Meter",
+                            "label": "SwitchBot",
                             "value": "switchbot"
                         },
                         {
@@ -144,6 +144,26 @@
                         {
                             "label": "Mopeka Pro Check",
                             "value": "mopeka"
+                        },
+                        {
+                            "label": "Parrot Flower Power",
+                            "value": "parrot"
+                        },
+                        {
+                            "label": "Cycling Power sensors",
+                            "value": "cycling-power"
+                        },
+                        {
+                            "label": "Comet Blue thermostats",
+                            "value": "comet-blue"
+                        },
+                        {
+                            "label": "Yeelight Candela",
+                            "value": "yeelight"
+                        },
+                        {
+                            "label": "SkyRC MC3000",
+                            "value": "skyrc"
                         }
                     ],
                     "xs": 12,
@@ -379,7 +399,8 @@
                     "help": "Add one address per line. A gateway that can connect is required.",
                     "minRows": 2,
                     "xs": 12,
-                    "sm": 6
+                    "sm": 6,
+                    "hidden": "!['xiaomi', 'mi-flora'].some(p => (data._pluginSelection || []).includes(p))"
                 },
                 "flowerPowerDevices": {
                     "type": "text",
@@ -387,7 +408,8 @@
                     "help": "Add one Parrot Flower Power sensor per line. A gateway that can connect is required.",
                     "minRows": 2,
                     "xs": 12,
-                    "sm": 6
+                    "sm": 6,
+                    "hidden": "!['parrot'].some(p => (data._pluginSelection || []).includes(p))"
                 },
                 "cyclingPowerDevices": {
                     "type": "text",
@@ -395,7 +417,8 @@
                     "help": "Add one cycling power sensor address per line. A gateway that can connect is required.",
                     "minRows": 2,
                     "xs": 12,
-                    "sm": 6
+                    "sm": 6,
+                    "hidden": "!['cycling-power'].some(p => (data._pluginSelection || []).includes(p))"
                 },
                 "pvvxDevices": {
                     "type": "text",
@@ -405,7 +428,8 @@
                     "minRows": 3,
                     "trim": false,
                     "xs": 12,
-                    "sm": 6
+                    "sm": 6,
+                    "hidden": "!['atc'].some(p => (data._pluginSelection || []).includes(p))"
                 },
                 "pvvxSyncInterval": {
                     "type": "number",
@@ -414,7 +438,8 @@
                     "min": 0,
                     "default": 24,
                     "xs": 12,
-                    "sm": 6
+                    "sm": 6,
+                    "hidden": "!['atc'].some(p => (data._pluginSelection || []).includes(p))"
                 },
                 "pvvxFirmwareCheck": {
                     "type": "checkbox",
@@ -422,7 +447,8 @@
                     "help": "Once a day, the adapter looks up the newest firmware for the pvvx thermometers on GitHub (pvvx/ATC_MiThermometer) and shows it in pvvx.firmwareAvailable. Nothing is installed without pressing a button.",
                     "default": true,
                     "xs": 12,
-                    "sm": 6
+                    "sm": 6,
+                    "hidden": "!['atc'].some(p => (data._pluginSelection || []).includes(p))"
                 }
             }
         },

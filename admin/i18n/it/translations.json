@@ -12,7 +12,7 @@
     "Use remote server:": "Usa server remoto:",
     "when configured, the local bluetooth adapter is not used": "Se configurato, l’adattatore Bluetooth locale non viene utilizzato",
     "address:port": "indirizzo:porta",
-    "Select the plugins for your sensors. Basic advertisement data is always available.": "Seleziona i plugin per i tuoi sensori. I dati di base dei pacchetti di advertising Bluetooth sono sempre disponibili.",
+    "Select the plugins for your sensors and devices. A plugin also enables its connections to the devices, e.g. setting a clock. Basic advertisement data is always available.": "Seleziona i plugin per i tuoi sensori e dispositivi. Un plugin attiva anche le sue connessioni ai dispositivi, ad es. per impostare un orologio. I dati di base degli annunci Bluetooth sono sempre disponibili.",
     "Xiaomi": "Xiaomi",
     "Mi Flora": "Mi Flora",
     "Ruuvi Tag": "Ruuvi Tag",

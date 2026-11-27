@@ -12,7 +12,7 @@
     "Use remote server:": "使用远程服务器：",
     "when configured, the local bluetooth adapter is not used": "配置后将不使用本地蓝牙适配器",
     "address:port": "地址:端口",
-    "Select the plugins for your sensors. Basic advertisement data is always available.": "选择传感器所需的插件。蓝牙广播包的基本数据始终可用。",
+    "Select the plugins for your sensors and devices. A plugin also enables its connections to the devices, e.g. setting a clock. Basic advertisement data is always available.": "为您的传感器和设备选择插件。插件也会启用与设备的连接，例如设置时钟。蓝牙广播中的基本数据始终可用。",
     "Xiaomi": "Xiaomi",
     "Mi Flora": "Mi Flora",
     "Ruuvi Tag": "Ruuvi Tag",

@@ -18,6 +18,7 @@ const { createPvvxHandler } = require("./fakePvvxThermometer");
 const {
 	NAMESPACE,
 	PACKETS,
+	delay,
 	deliver,
 	getValue,
 	sendToAdapter,
@@ -114,7 +115,7 @@ exports.runTests = function (suite) {
 			await startAdapter(
 				harness,
 				{
-					plugins: "bthome",
+					plugins: "bthome, atc",
 					pvvxDevices: "A4:C1:38:12:34:56",
 					pvvxSyncInterval: 24,
 				},
@@ -260,7 +261,7 @@ exports.runTests = function (suite) {
 			await startAdapter(
 				harness,
 				{
-					plugins: "bthome",
+					plugins: "bthome, atc",
 					pvvxDevices: "A4:C1:38:12:34:56",
 					pvvxSyncInterval: 24,
 				},
@@ -300,7 +301,7 @@ exports.runTests = function (suite) {
 			await startAdapter(
 				harness,
 				{
-					plugins: "bthome",
+					plugins: "bthome, atc",
 					pvvxDevices: "a4:c1:38:12:34:56, not-a-mac",
 				},
 				ENV,
@@ -337,6 +338,34 @@ exports.runTests = function (suite) {
 			});
 			const ids = objects.rows.map((row) => row.id);
 			expect(ids.length, "objects of the instance").to.be.greaterThan(0);
+			expect(ids.filter((id) => id.includes(".pvvx"))).to.deep.equal([]);
+		});
+	});
+
+	suite("pvvx - plugin not selected", (getHarness) => {
+		let harness;
+
+		before(async function () {
+			this.timeout(60000);
+			harness = getHarness();
+			// Devices are configured, but the plugin "atc" is not selected
+			await startAdapter(
+				harness,
+				{ plugins: "bthome", pvvxDevices: DEVICE },
+				ENV,
+			);
+		});
+
+		after(() => stopAdapter(harness));
+
+		it("does not start the time sync", async function () {
+			this.timeout(30000);
+			await delay(2000);
+			const objects = await harness.objects.getObjectListAsync({
+				startkey: `${NAMESPACE}.`,
+				endkey: `${NAMESPACE}.\u9999`,
+			});
+			const ids = objects.rows.map((row) => row.id);
 			expect(ids.filter((id) => id.includes(".pvvx"))).to.deep.equal([]);
 		});
 	});

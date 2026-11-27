@@ -56,7 +56,8 @@ src/lib/plugin-host.ts                starts the active parts of the plugins, ha
 src/lib/gatt-request.ts, device-list.ts  parseGattRequest() and parseDeviceList(), also for plugins
 src/plugins/                          one plugin per manufacturer or device family (plugin.ts: the interface). A plugin
                                       has a decoder for advertisements and optionally an active part (start(): GATT,
-                                      timers, buttons, commands). Plugins with an active part have their own folder:
+                                      timers, buttons, commands). Both run only when the plugin is selected (setting
+                                      plugins); an alias (mi-flora) shares the active part of its plugin. Plugins with an active part have their own folder:
                                       atc/ (decoder + pvvx/: time sync and firmware update of the pvvx firmware),
                                       xiaomi/ (Mi Flora battery, LYWSD02 clock), switchbot/, magicswitchbot/, parrot/,
                                       cycling-power/, comet-blue/, yeelight/, skyrc/. Their settings are typed in

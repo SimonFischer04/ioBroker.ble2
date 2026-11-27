@@ -12,7 +12,7 @@
     "Use remote server:": "Externe server gebruiken:",
     "when configured, the local bluetooth adapter is not used": "Indien ingesteld, wordt de lokale Bluetooth-adapter niet gebruikt",
     "address:port": "adres:poort",
-    "Select the plugins for your sensors. Basic advertisement data is always available.": "Selecteer de plug-ins voor je sensoren. De basisgegevens uit Bluetooth-broadcastpakketten zijn altijd beschikbaar.",
+    "Select the plugins for your sensors and devices. A plugin also enables its connections to the devices, e.g. setting a clock. Basic advertisement data is always available.": "Kies de plug-ins voor je sensoren en apparaten. Een plug-in schakelt ook zijn verbindingen met de apparaten in, bijv. om een klok gelijk te zetten. De basisgegevens uit Bluetooth-advertenties zijn altijd beschikbaar.",
     "Xiaomi": "Xiaomi",
     "Mi Flora": "Mi Flora",
     "Ruuvi Tag": "Ruuvi Tag",

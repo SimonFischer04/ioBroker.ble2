@@ -47,7 +47,11 @@ exports.runTests = function (suite) {
 		before(async function () {
 			this.timeout(60000);
 			harness = getHarness();
-			await startAdapter(harness, {}, { TZ: "Etc/GMT+3" });
+			await startAdapter(
+				harness,
+				{ plugins: "xiaomi" },
+				{ TZ: "Etc/GMT+3" },
+			);
 		});
 		after(() => stopAdapter(harness));
 

@@ -109,7 +109,7 @@ Pro MAC-Adresse speichert die Registry `{ gateways: Map<gatewayId, { rssi, lastS
 
 **E5: Gerätelogik läuft im Adapter (`drivers/`). Die externe API ist zusätzlich da, nicht der Hauptweg.**
 
-> Stand 2026-11-27: Es gibt kein eigenes `drivers/` mehr. Die Gerätelogik ist der optionale aktive Teil eines Plugins (`Plugin.start`, `src/plugins/plugin.ts`), ein Plugin pro Hersteller oder Gerätefamilie. Der Kern (`main.ts`, `message-handler.ts`, `src/lib/plugin-host.ts`) kennt keinen Hersteller.
+> Stand 2026-11-27: Es gibt kein eigenes `drivers/` mehr. Die Gerätelogik ist der optionale aktive Teil eines Plugins (`Plugin.start`, `src/plugins/plugin.ts`), ein Plugin pro Hersteller oder Gerätefamilie. Der Kern (`main.ts`, `message-handler.ts`, `src/lib/plugin-host.ts`) kennt keinen Hersteller. Der aktive Teil läuft nur, wenn das Plugin unter „Active plugins“ ausgewählt ist, wie der Decoder.
 Ein pvvx-OTA-Update dauert laut pvvx etwa 4 Minuten und besteht aus Tausenden kleinen Writes. Die Gerätelogik kommt deshalb als **Driver** in `ble`, analog zu den Decoder-Plugins, und nicht in Fremdadapter, die jeden Schritt per `sendTo` anstoßen. Weil der Weg zum ESP aber selbst über `sendTo` zum `esphome`-Adapter führt, braucht die Gateway-Schnittstelle eine **Sammel-Schreiboperation** (`gatt:writeSequence`, siehe §4a). Damit läuft nicht jeder 20-Byte-Write einzeln durch die States-DB. Die `sendTo`-API (Abschnitt 4) bleibt für Fremdadapter mit einfachen GATT-Operationen gedacht.
 
 **E6: ESPHome-Proxies sind das erste neue Backend. Lokale GATT-Verbindungen kommen später.**

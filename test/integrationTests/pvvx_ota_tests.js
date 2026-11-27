@@ -191,7 +191,7 @@ exports.runTests = function (suite) {
 			harness = getHarness();
 			server = await startFirmwareServer();
 			await startAdapter(harness, {
-				plugins: "bthome",
+				plugins: "bthome, atc",
 				pvvxDevices: DEVICE,
 				pvvxFirmwareCheck: false,
 				pvvxFirmwareUrl: server.url,
@@ -378,7 +378,7 @@ exports.runTests = function (suite) {
 			harness = getHarness();
 			server = await startFirmwareServer();
 			await startAdapter(harness, {
-				plugins: "bthome",
+				plugins: "bthome, atc",
 				pvvxDevices: DEVICE,
 				pvvxFirmwareCheck: false,
 				pvvxFirmwareUrl: server.url,

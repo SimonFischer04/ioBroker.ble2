@@ -48,7 +48,10 @@ exports.runTests = function (suite) {
 		before(async function () {
 			this.timeout(60000);
 			harness = getHarness();
-			await startAdapter(harness, { cyclingPowerDevices: sensor });
+			await startAdapter(harness, {
+				plugins: "cycling-power",
+				cyclingPowerDevices: sensor,
+			});
 		});
 		after(() => stopAdapter(harness));
 

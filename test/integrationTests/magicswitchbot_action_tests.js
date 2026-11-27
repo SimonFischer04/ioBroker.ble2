@@ -89,7 +89,7 @@ exports.runTests = function (suite) {
 		before(async function () {
 			this.timeout(60000);
 			harness = getHarness();
-			await startAdapter(harness);
+			await startAdapter(harness, { plugins: "magicswitchbot" });
 		});
 		after(() => stopAdapter(harness));
 

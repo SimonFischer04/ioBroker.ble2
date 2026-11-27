@@ -12,7 +12,7 @@
     "Use remote server:": "Использовать удалённый сервер:",
     "when configured, the local bluetooth adapter is not used": "При настройке удалённого сервера локальный Bluetooth-адаптер не используется",
     "address:port": "адрес:порт",
-    "Select the plugins for your sensors. Basic advertisement data is always available.": "Выберите плагины для ваших датчиков. Базовые данные из широковещательных пакетов Bluetooth всегда доступны.",
+    "Select the plugins for your sensors and devices. A plugin also enables its connections to the devices, e.g. setting a clock. Basic advertisement data is always available.": "Выберите плагины для своих датчиков и устройств. Плагин также включает свои подключения к устройствам, например для установки часов. Основные данные из Bluetooth-объявлений доступны всегда.",
     "Xiaomi": "Xiaomi",
     "Mi Flora": "Mi Flora",
     "Ruuvi Tag": "Ruuvi Tag",

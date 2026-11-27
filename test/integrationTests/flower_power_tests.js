@@ -58,7 +58,10 @@ exports.runTests = function (suite) {
 		before(async function () {
 			this.timeout(60000);
 			harness = getHarness();
-			await startAdapter(harness, { flowerPowerDevices: plant });
+			await startAdapter(harness, {
+				plugins: "parrot",
+				flowerPowerDevices: plant,
+			});
 		});
 		after(() => stopAdapter(harness));
 

@@ -124,17 +124,25 @@ An adapter that provides such gateways announces them with `gateway:announce` (`
 
 ## Reading the Mi Flora battery level
 
+Select the plugin **Xiaomi** (or **Mi Flora**) under **Active plugins**.
+
 Enter the addresses of your Mi Flora sensors in **Mi Flora battery polling (MAC addresses)**. When a connection-capable gateway sees a configured plant, the adapter reads its battery level and writes `<mac>.battery`. The first reading is due immediately. After a successful read, another is due the next day. A failed read can be retried after 15 minutes when the gateway sees the sensor again.
 
 ## Reading Parrot Flower Power sensors
+
+Select the plugin **Parrot Flower Power** under **Active plugins**.
 
 Enter your sensor addresses in **Parrot Flower Power sensors (MAC addresses)**. When a connection-capable gateway receives an advertisement from a configured sensor, the adapter reads the available calibrated moisture, air temperature, sunlight and battery characteristics. The first reading is due immediately. Further readings are due every 15 minutes, or after one minute following an unsuccessful read. The firmware must expose the calibrated Flower Power Live service for the plant measurements.
 
 ## Reading a Comet Blue thermostat
 
+Select the plugin **Comet Blue thermostats** under **Active plugins**.
+
 Use `sendToAsync("ble2.0", "readCometBlue", { address, pin })` with the thermostat's Bluetooth MAC address and its PIN as a string. A connecting gateway must be in range. The command returns the ambient temperature, manual, eco and comfort setpoints in °C, and a battery percentage when the device provides it. It authenticates using the supplied PIN for the current session.
 
 ## Controlling a SwitchBot Bot
+
+Select the plugin **SwitchBot** under **Active plugins**.
 
 Use the `switchBot` command to press, switch on, switch off, or stop a SwitchBot Bot that a connection-capable gateway can reach. The supported actions are `press`, `on`, `off`, and `stop`. This command uses the standard unencrypted Bot protocol.
 
@@ -149,9 +157,12 @@ A successful reply contains `{ error: null, result: {} }` after the Bot confirms
 
 ## Reading cycling power
 
+Select the plugin **Cycling Power sensors** under **Active plugins**.
+
 Enter each sensor's MAC address in **Cycling Power sensors (MAC addresses)**. When a connection-capable gateway sees the sensor, the adapter subscribes to the standard Cycling Power Measurement characteristic (`2a63` under service `1818`). Instantaneous power is recorded in watts under `<mac>.cyclingPower`. The connection is released after ten seconds without a reading or after fifteen minutes. A later advertisement can start the next session.
 
 ## Setting the clock of pvvx thermometers
+Select the plugin **ATC1441 and PVVX** under **Active plugins**.
 Thermometers with the [pvvx firmware](https://github.com/pvvx/ATC_MiThermometer) (e.g. Xiaomi LYWSD03MMC) have a clock that drifts and does not know summer time. The adapter can set it to the local time of the ioBroker host, through a gateway that can connect, e.g. an ESPHome Bluetooth proxy with `bluetooth_proxy: active: true` and ioBroker.esphome.
 
 * **pvvx thermometers (MAC addresses):** the devices whose clock is set, separated by commas, spaces or line breaks.
@@ -174,6 +185,8 @@ The device must be received by a gateway that can connect. Devices protected wit
 
 ## Setting the Xiaomi LYWSD02 clock
 
+Select the plugin **Xiaomi** under **Active plugins**.
+
 After a connection-capable gateway has seen the thermometer, call
 `sendTo("ble2.0", "syncLywsd02Clock", { address: "AA:BB:CC:11:22:33" }, callback)`
 to set the factory firmware clock from the adapter host. On success,
@@ -183,6 +196,7 @@ from a scheduled ioBroker JavaScript script to update the clock periodically.
 LYWSD02 firmware stores the time zone as a whole-hour UTC offset.
 
 ## Updating the firmware of pvvx thermometers
+Select the plugin **ATC1441 and PVVX** under **Active plugins**.
 The adapter can also install a newer [pvvx firmware](https://github.com/pvvx/ATC_MiThermometer) on the thermometers configured above, through a gateway. **A firmware update is done at your own risk.** According to pvvx, an interrupted update leaves the old firmware in place, but nobody can guarantee that for every device.
 
 * Once a day (setting **Check daily for new pvvx firmware**, on by default) and with the button `pvvx.checkFirmware`, the adapter looks up the newest firmware in [`firmware.json`](https://github.com/pvvx/ATC_MiThermometer/blob/master/firmware.json) of the pvvx repository on GitHub and shows it in `<mac>.pvvx.firmwareAvailable`. This needs the version and hardware ID from a time sync. Nothing is installed by this check.
@@ -209,6 +223,8 @@ After the update the adapter connects again, checks the new version and sets the
 
 ## Reading a SkyRC MC3000 charging slot
 
+Select the plugin **SkyRC MC3000** under **Active plugins**.
+
 After a connection-capable gateway has seen the charger, call
 `sendTo("ble2.0", "readSkyrcMc3000Slot", { address: "AA:BB:CC:11:22:33", slot: 1 }, callback)`.
 Slots are numbered 1 to 4. The result includes the status code, elapsed seconds, voltage
@@ -229,7 +245,7 @@ Add a device's MAC address to **Presence tracking** to create a boolean `present
 
 Run `npm run lint` to check the adapter, tests, and JavaScript helpers using the shared ioBroker ESLint configuration. Use `npm run lint -- --fix` to apply automatic fixes.
 
-The adapter supports extension via plugins, one per manufacturer or device family. A plugin defines which advertised services should be listened to and how to translate the data. Optionally it also has an active part that connects to the devices through a gateway, for example to set a clock, read values that are not advertised or send commands; it runs independently of the **Active plugins** selection and does nothing until it is configured or its command is used. The core of the adapter stays plain Bluetooth Low Energy and knows no manufacturer. The plugin structure is defined in https://github.com/SimonFischer04/ioBroker.ble2/blob/master/src/plugins/plugin.ts and an example of a working plugin is defined here https://github.com/SimonFischer04/ioBroker.ble2/blob/master/src/plugins/_default.ts
+The adapter supports extension via plugins, one per manufacturer or device family. A plugin defines which advertised services should be listened to and how to translate the data. Optionally it also has an active part that connects to the devices through a gateway, for example to set a clock, read values that are not advertised or send commands; like the decoder it only runs when the plugin is selected under **Active plugins**, and it does nothing until it is configured or its command is used. The core of the adapter stays plain Bluetooth Low Energy and knows no manufacturer. The plugin structure is defined in https://github.com/SimonFischer04/ioBroker.ble2/blob/master/src/plugins/plugin.ts and an example of a working plugin is defined here https://github.com/SimonFischer04/ioBroker.ble2/blob/master/src/plugins/_default.ts
 
 Plugins can also declare `manufacturerIds`, an optional list of Bluetooth company identifiers, to receive manufacturer data from devices that do not advertise a matching service. The Ruuvi Tag plugin uses company identifier `0x0499`. When running a remote scanner, include `--manufacturerIds 1177` alongside its service filters to receive these packets.
 
@@ -277,11 +293,15 @@ The standard Pro Check layout is verified against [ESPHome](https://github.com/e
 
 #### Yeelight Candela YLFW01YL
 
+Select the plugin **Yeelight Candela** under **Active plugins**.
+
 After a connection-capable gateway has seen the lamp advertise as `yeelight_ms`, call
 `sendTo("ble2.0", "setCandelaBrightness", { address: "AA:BB:CC:11:22:33", brightness: 70 }, callback)`.
 A brightness of 1–100 turns the lamp on and sets its intensity. Set brightness to 0 to turn it off.
 
 #### Controlling MagicSwitchBot
+
+Select the plugin **MagicSwitchBot** under **Active plugins**.
 
 Use `sendTo("ble2.0", "runMagicSwitchBotAction", { address, action, pin }, callback)`
 after a connection-capable gateway has seen the bot. Actions are `on`, `off` and `push`.
@@ -352,6 +372,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * The monitored services also apply to the advertisements of remote scan servers
 * Read individual charging slot measurements from a SkyRC MC3000 through a Bluetooth gateway.
 * Connections to devices through gateways of other adapters, e.g. ESPHome Bluetooth proxies: `discoverServices`, `readCharacteristic` and `writeCharacteristic`
+* Plugins can have an active part that connects to the devices through a gateway; it runs only when the plugin is selected
 * The clock of pvvx thermometers can be set automatically through such gateways: at start, in an interval, after each change between summer and winter time and with a button. Firmware version, hardware ID and the deviation of the clock are shown
 * Set the Xiaomi LYWSD02 factory firmware clock and record its last successful sync.
 * Newer pvvx firmware can be installed on the thermometers through gateways that support it (`gatt:writeSequence`), after checks of battery and signal. The newest version is looked up once a day

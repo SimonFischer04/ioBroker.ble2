@@ -300,9 +300,9 @@ const adapter = utils.adapter({
 			transport.start();
 		}
 
-		// The plugins decide themselves whether they have something to do, e.g. a list of devices
+		// The selected plugins, the same as for decoding (setting "plugins")
 		pluginHost.start(
-			plugins,
+			enabledPlugins,
 			{ adapter, connections, devices },
 			CORE_COMMANDS,
 		);
