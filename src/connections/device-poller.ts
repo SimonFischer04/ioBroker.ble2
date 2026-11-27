@@ -33,7 +33,7 @@ export class DevicePoller {
 	 */
 	public constructor(
 		private readonly log: Pick<ioBroker.Logger, "warn">,
-		private readonly connections: Pick<ConnectionManager, "bestGateway">,
+		private readonly connections: Pick<ConnectionManager, "candidates">,
 		addresses: readonly string[],
 		private readonly options: DevicePollerOptions,
 		private readonly poll: (
@@ -56,7 +56,7 @@ export class DevicePoller {
 		if (due === undefined || this.stopped || now < due) {
 			return;
 		}
-		if (!this.connections.bestGateway(address)) {
+		if (this.connections.candidates(address).length === 0) {
 			// Received only by gateways that cannot connect: do not ask on every advertisement
 			this.nextPoll.set(address, now + GATEWAY_CHECK_MS);
 			return;

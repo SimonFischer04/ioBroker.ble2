@@ -22,7 +22,7 @@ export interface PreconditionInput {
 		  }
 		| null
 		| undefined;
-	/** From ConnectionManager.bestGateway(address, "writeSequence") */
+	/** The first of ConnectionManager.candidates(address) that supports writeSequence */
 	bestGateway:
 		| {
 				/** The gateway that would run the update */

@@ -1,6 +1,9 @@
 import { expect } from "chai";
 import type { GattSession } from "../../../connections/gatt-session";
-import type { SessionOptions } from "../../../connections/connection-manager";
+import type {
+	GatewayCandidate,
+	SessionOptions,
+} from "../../../connections/connection-manager";
 import { GatewayError } from "../../../lib/gateway-error";
 import { createFakeSession, FakePvvxDevice } from "./fake-pvvx-device";
 import { FirmwareCatalog, type FirmwareSource } from "./firmware-catalog";
@@ -13,7 +16,6 @@ import {
 	VERIFY_DELAY_MS,
 	VERIFY_RETRY_MS,
 } from "./pvvx-updater";
-import { MIN_RSSI } from "./ota-checks";
 import { buildTestImage } from "./test-image";
 
 const FIRST = "a4:c1:38:12:34:56";
@@ -118,9 +120,10 @@ class FakeConnections {
 	public readonly failures = new Map<string, GatewayError>();
 	public readonly sessions: { address: string; options: SessionOptions }[] =
 		[];
-	public best: { gatewayId: string; rssi: number } | undefined = {
+	public best: GatewayCandidate | undefined = {
 		gatewayId: "esphome.0:proxy-og",
 		rssi: -60,
+		features: ["writeSequence"],
 	};
 	/** When set, the next session waits for it */
 	public gate: Promise<void> | undefined;
@@ -147,14 +150,14 @@ class FakeConnections {
 		return job(createFakeSession(device));
 	}
 
-	public bestGateway(): { gatewayId: string; rssi: number } | undefined {
-		return this.best;
+	public candidates(): GatewayCandidate[] {
+		return this.best ? [this.best] : [];
 	}
 
 	/** Sessions that wrote firmware, not the ones that only read the version */
 	public get updateSessions(): string[] {
 		return this.sessions
-			.filter((s) => s.options.requireFeature === "writeSequence")
+			.filter((s) => s.options.gateways !== undefined)
 			.map((s) => s.address);
 	}
 }
@@ -401,8 +404,7 @@ describe("plugins/atc/pvvx/pvvx-updater => PvvxUpdater", () => {
 			expect(connections.sessions[0].options).to.deep.equal({
 				priority: "high",
 				timeoutMs: OTA_SESSION_TIMEOUT_MS,
-				requireFeature: "writeSequence",
-				minRssi: MIN_RSSI,
+				gateways: ["esphome.0:proxy-og"],
 			});
 			// The update session, then one to read the new version
 			expect(connections.sessions).to.have.lengthOf(2);
@@ -439,9 +441,24 @@ describe("plugins/atc/pvvx/pvvx-updater => PvvxUpdater", () => {
 			[
 				"a weak signal",
 				(): void => {
-					connections.best = { gatewayId: "esphome.0:x", rssi: -90 };
+					connections.best = {
+						gatewayId: "esphome.0:x",
+						rssi: -90,
+						features: ["writeSequence"],
+					};
 				},
 				"WEAK_SIGNAL",
+			],
+			[
+				"only a gateway without writeSequence",
+				(): void => {
+					connections.best = {
+						gatewayId: "esphome.0:old",
+						rssi: -50,
+						features: [],
+					};
+				},
+				"NO_GATEWAY",
 			],
 			[
 				"no gateway that can update",

@@ -26,7 +26,7 @@ export class CyclingPower {
 		private readonly adapter: ioBroker.Adapter,
 		private readonly connections: Pick<
 			ConnectionManager,
-			"withSession" | "bestGateway"
+			"withSession" | "candidates"
 		>,
 		addresses: readonly string[],
 	) {
@@ -42,7 +42,7 @@ export class CyclingPower {
 		if (!sensor || this.stopped || sensor.running || now < sensor.retryAt) {
 			return;
 		}
-		if (!this.connections.bestGateway(address)) {
+		if (this.connections.candidates(address).length === 0) {
 			// Received only by gateways that cannot connect: do not ask on every advertisement
 			sensor.retryAt = now + GATEWAY_CHECK_MS;
 			return;

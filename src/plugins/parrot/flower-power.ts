@@ -60,7 +60,7 @@ export class FlowerPower {
 		private readonly adapter: ioBroker.Adapter,
 		private readonly connections: Pick<
 			ConnectionManager,
-			"withSession" | "bestGateway"
+			"withSession" | "candidates"
 		>,
 		addresses: readonly string[],
 	) {

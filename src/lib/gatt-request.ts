@@ -71,7 +71,12 @@ export function parseGattRequest(
 		characteristic: "",
 		data: Buffer.alloc(0),
 		withResponse: true,
-		options: { gatewayId, addressType },
+		options: {
+			// An explicitly named gateway is used even if it never reported the device
+			gateways:
+				gatewayId === undefined ? undefined : [gatewayId],
+			addressType,
+		},
 	};
 	if (fields.characteristic) {
 		const serviceUuid = normalizeUuid(service);

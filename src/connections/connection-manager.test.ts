@@ -204,11 +204,44 @@ describe("connections/connection-manager => ConnectionManager", () => {
 		expect(provider.connects).to.deep.equal([`${OG} ${DEVICE} public`]);
 	});
 
-	it("tries the preferred gateway first", async () => {
-		await manager.withSession(DEVICE, async () => undefined, {
-			preferGateway: KELLER,
+	it("tries only the given gateways, in their order", async () => {
+		provider.behaviour.set(KELLER, "CONNECT_FAILED");
+		const error = await rejection(
+			manager.withSession(DEVICE, async () => undefined, {
+				gateways: [KELLER],
+			}),
+		);
+		expect(error.code).to.equal("CONNECT_FAILED");
+		// OG receives the device better, but was not given
+		expect(provider.connects).to.deep.equal([`${KELLER} ${DEVICE} public`]);
+	});
+
+	it("uses a given gateway that never reported the device", async () => {
+		await manager.withSession(OTHER, async () => undefined, {
+			gateways: [KELLER],
 		});
-		expect(provider.connects[0]).to.equal(`${KELLER} ${DEVICE} public`);
+		expect(provider.connects).to.deep.equal([`${KELLER} ${OTHER} public`]);
+	});
+
+	it("skips given gateways that cannot connect", async () => {
+		const passive = "esphome.0:proxy-passive";
+		announce(passive, { connect: false });
+		await manager.withSession(DEVICE, async () => undefined, {
+			gateways: [passive, "esphome.0:unknown", KELLER],
+		});
+		expect(provider.connects).to.deep.equal([`${KELLER} ${DEVICE} public`]);
+	});
+
+	it("reports NO_GATEWAY for an empty or useless gateway list", async () => {
+		for (const list of [[], ["esphome.0:unknown"]]) {
+			const error = await rejection(
+				manager.withSession(DEVICE, async () => undefined, {
+					gateways: list,
+				}),
+			);
+			expect(error.code).to.equal("NO_GATEWAY");
+		}
+		expect(provider.connects).to.deep.equal([]);
 	});
 
 	it("reports NO_GATEWAY without trying when no gateway can connect", async () => {
@@ -292,104 +325,20 @@ describe("connections/connection-manager => ConnectionManager", () => {
 		).to.equal("The adapter is stopping");
 	});
 
-	describe("gateways with a feature", () => {
-		function announceWithFeature(id: string): void {
-			gateways.announce(
-				{ id, type: "remote", sender: "esphome.0" },
-				{ connect: true, features: ["writeSequence"] },
-			);
-		}
+	it("candidates() lists the gateways that can connect, strongest first", () => {
+		gateways.announce(
+			{ id: KELLER, type: "remote", sender: "esphome.0" },
+			{ connect: true, features: ["writeSequence"] },
+		);
+		const passive = "esphome.0:proxy-passive";
+		announce(passive, { connect: false });
+		devices.track(reception(DEVICE, passive, -30));
 
-		it("skips gateways without the required feature", async () => {
-			// KELLER receives the device worse, but can write sequences
-			announceWithFeature(KELLER);
-			await manager.withSession(DEVICE, async () => {}, {
-				requireFeature: "writeSequence",
-			});
-			expect(provider.connects).to.deep.equal([
-				`${KELLER} ${DEVICE} public`,
-			]);
-		});
-
-		it("fails with NO_GATEWAY when no gateway has the feature", async () => {
-			const error = await rejection(
-				manager.withSession(DEVICE, async () => {}, {
-					requireFeature: "writeSequence",
-				}),
-			);
-			expect(error.code).to.equal("NO_GATEWAY");
-			expect(error.message).to.equal(
-				`No gateway with writeSequence receives ${DEVICE}`,
-			);
-			expect(provider.connects).to.deep.equal([]);
-		});
-
-		it("with minRssi, does not fall back to a gateway that receives the device worse", async () => {
-			announceWithFeature(OG);
-			announceWithFeature(KELLER);
-			provider.behaviour.set(OG, "CONNECT_FAILED");
-
-			const error = await rejection(
-				manager.withSession(DEVICE, async () => {}, {
-					requireFeature: "writeSequence",
-					minRssi: -80,
-				}),
-			);
-
-			// KELLER (-85 dBm) is not tried
-			expect(provider.connects).to.deep.equal([`${OG} ${DEVICE} public`]);
-			expect(error.code).to.equal("CONNECT_FAILED");
-		});
-
-		it("with minRssi, NO_GATEWAY when no gateway receives the device well enough", async () => {
-			announceWithFeature(KELLER);
-			const error = await rejection(
-				manager.withSession(DEVICE, async () => {}, {
-					requireFeature: "writeSequence",
-					minRssi: -80,
-				}),
-			);
-			expect(error.code).to.equal("NO_GATEWAY");
-			expect(error.message).to.equal(
-				`No gateway with writeSequence receives ${DEVICE} with at least -80 dBm`,
-			);
-			expect(provider.connects).to.deep.equal([]);
-		});
-
-		it("a named gateway must also meet minRssi", async () => {
-			const error = await rejection(
-				manager.withSession(DEVICE, async () => {}, {
-					gatewayId: KELLER,
-					minRssi: -80,
-				}),
-			);
-			expect(error.code).to.equal("NO_GATEWAY");
-			expect(error.message).to.equal(
-				`Gateway ${KELLER} does not receive ${DEVICE} with at least -80 dBm`,
-			);
-			expect(provider.connects).to.deep.equal([]);
-
-			await manager.withSession(DEVICE, async () => {}, {
-				gatewayId: OG,
-				minRssi: -80,
-			});
-			expect(provider.connects).to.deep.equal([`${OG} ${DEVICE} public`]);
-		});
-
-		it("bestGateway() tells the first candidate and its signal", () => {
-			expect(manager.bestGateway(DEVICE)).to.deep.equal({
-				gatewayId: OG,
-				rssi: -55,
-			});
-			expect(manager.bestGateway(DEVICE, "writeSequence")).to.equal(
-				undefined,
-			);
-			announceWithFeature(KELLER);
-			expect(manager.bestGateway(DEVICE, "writeSequence")).to.deep.equal({
-				gatewayId: KELLER,
-				rssi: -85,
-			});
-			expect(manager.bestGateway(OTHER)).to.equal(undefined);
-		});
+		expect(manager.candidates("A4-C1-38-12-34-56")).to.deep.equal([
+			{ gatewayId: OG, rssi: -55, features: [] },
+			{ gatewayId: KELLER, rssi: -85, features: ["writeSequence"] },
+		]);
+		expect(manager.candidates(OTHER)).to.deep.equal([]);
+		expect(manager.candidates("not a mac")).to.deep.equal([]);
 	});
 });

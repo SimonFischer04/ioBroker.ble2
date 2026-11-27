@@ -28,8 +28,10 @@ describe("connections/device-poller => DevicePoller", () => {
 		poller = new DevicePoller(
 			{ warn: (message: string) => warnings.push(message) },
 			{
-				bestGateway: () =>
-					gateway ? { gatewayId: "test.0:og", rssi: -60 } : undefined,
+				candidates: () =>
+					gateway
+						? [{ gatewayId: "test.0:og", rssi: -60, features: [] }]
+						: [],
 			},
 			[DEVICE],
 			{ intervalMs: 1000, retryMs: 100, what: "read" },

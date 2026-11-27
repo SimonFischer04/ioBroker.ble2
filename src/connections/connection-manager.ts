@@ -12,16 +12,23 @@ export interface SessionOptions {
 	priority?: "normal" | "high";
 	/** After this time the session is closed and the job fails with TIMEOUT. Default: 60000 */
 	timeoutMs?: number;
-	/** Full ID of the gateway to try first */
-	preferGateway?: string;
-	/** Route to this gateway even when it has never reported the device. */
-	gatewayId?: string;
+	/**
+	 * Full IDs of the gateways to try, in this order. Only these are used, even if they have never
+	 * reported the device. Default: candidates(address).
+	 */
+	gateways?: string[];
 	/** Override the address type when it is known by the caller. */
 	addressType?: "public" | "random";
-	/** Only gateways with this feature are used */
-	requireFeature?: GatewayFeature;
-	/** Only gateways that receive the device at least this well (dBm) are used, also as fallback */
-	minRssi?: number;
+}
+
+/** A gateway that can connect to a device, see ConnectionManager.candidates() */
+export interface GatewayCandidate {
+	/** Full ID of the gateway */
+	gatewayId: string;
+	/** Signal strength the gateway receives the device with, in dBm */
+	rssi: number;
+	/** What the gateway supports beyond the basic commands */
+	features: readonly GatewayFeature[];
 }
 
 /** What the ConnectionManager needs from the adapter, injected so tests can replace it */
@@ -146,112 +153,56 @@ export class ConnectionManager {
 	}
 
 	/**
-	 * The gateway a session would try first, with the signal strength it receives the device with
+	 * The gateways that receive the device and can connect now, strongest signal first. A session
+	 * without SessionOptions.gateways tries them in this order. Callers with special needs (a
+	 * feature, a minimum signal) filter the list and pass the result as SessionOptions.gateways.
 	 *
 	 * @param address MAC address of the device
-	 * @param requireFeature Only gateways with this feature are considered
 	 */
-	public bestGateway(
-		address: string,
-		requireFeature?: GatewayFeature,
-	): { gatewayId: string; rssi: number } | undefined {
+	public candidates(address: string): GatewayCandidate[] {
 		const normalized = normalizeAddress(address);
 		if (!normalized) {
-			return undefined;
+			return [];
 		}
-		const [gatewayId] = this.getCandidates(
-			normalized,
-			undefined,
-			requireFeature,
-		);
-		if (!gatewayId) {
-			return undefined;
-		}
-		const receiver = this.ctx.devices
+		return this.ctx.devices
 			.getReceivers(normalized)
-			.find((r) => r.gatewayId === gatewayId);
-		return receiver && { gatewayId, rssi: receiver.rssi };
+			.flatMap(({ gatewayId, rssi }) => {
+				const gateway = this.connectable(gatewayId);
+				return gateway
+					? [{ gatewayId, rssi, features: gateway.features }]
+					: [];
+			});
 	}
 
 	/**
-	 * The gateways to try, best first
+	 * The gateway, if it is online, can connect and has a free slot
 	 *
-	 * @param address Normalized MAC address of the device
-	 * @param preferGateway Full ID of the gateway to put first, if it qualifies
-	 * @param requireFeature Only gateways with this feature are used
-	 * @param minRssi Only gateways that receive the device at least this well (dBm) are used
+	 * @param gatewayId Full ID of the gateway
 	 */
-	private getCandidates(
-		address: string,
-		preferGateway?: string,
-		requireFeature?: GatewayFeature,
-		minRssi?: number,
-	): string[] {
-		const candidates = this.ctx.devices
-			.getReceivers(address)
-			.filter((r) => minRssi === undefined || r.rssi >= minRssi)
-			.map((r) => r.gatewayId)
-			.filter((id) => this.canConnect(id, requireFeature));
-		if (preferGateway && candidates.includes(preferGateway)) {
-			candidates.splice(candidates.indexOf(preferGateway), 1);
-			candidates.unshift(preferGateway);
-		}
-		return candidates;
-	}
-
-	private canConnect(id: string, requireFeature?: GatewayFeature): boolean {
-		const gateway = this.ctx.gateways.get(id);
-		return (
-			gateway?.connected === true &&
+	private connectable(
+		gatewayId: string,
+	): { features: readonly GatewayFeature[] } | undefined {
+		const gateway = this.ctx.gateways.get(gatewayId);
+		return gateway?.connected === true &&
 			gateway.connect === true &&
-			gateway.freeSlots !== 0 &&
-			(!requireFeature || gateway.features.includes(requireFeature))
-		);
+			gateway.freeSlots !== 0
+			? gateway
+			: undefined;
 	}
 
 	private async connect(
 		address: string,
 		options: SessionOptions,
 	): Promise<GattLink> {
-		let candidates: string[];
-		if (options.gatewayId !== undefined) {
-			const reception = this.ctx.devices
-				.getReceivers(address)
-				.find((r) => r.gatewayId === options.gatewayId);
-			if (!this.canConnect(options.gatewayId, options.requireFeature)) {
-				throw new GatewayError(
-					"NO_GATEWAY",
-					`Gateway ${options.gatewayId} cannot connect`,
-				);
-			}
-			// A named gateway must meet the signal requirement as well
-			if (
-				options.minRssi !== undefined &&
-				(reception === undefined || reception.rssi < options.minRssi)
-			) {
-				throw new GatewayError(
-					"NO_GATEWAY",
-					`Gateway ${options.gatewayId} does not receive ${address} with at least ${options.minRssi} dBm`,
-				);
-			}
-			candidates = [options.gatewayId];
-		} else {
-			candidates = this.getCandidates(
-				address,
-				options.preferGateway,
-				options.requireFeature,
-				options.minRssi,
-			);
-		}
+		const candidates =
+			options.gateways?.filter((id) => this.connectable(id)) ??
+			this.candidates(address).map(({ gatewayId }) => gatewayId);
 		if (candidates.length === 0) {
 			throw new GatewayError(
 				"NO_GATEWAY",
-				(options.requireFeature
-					? `No gateway with ${options.requireFeature} receives ${address}`
-					: `No gateway that can connect receives ${address}`) +
-					(options.minRssi === undefined
-						? ""
-						: ` with at least ${options.minRssi} dBm`),
+				options.gateways
+					? `None of the gateways ${options.gateways.join(", ") || "(none)"} can connect`
+					: `No gateway that can connect receives ${address}`,
 			);
 		}
 		const addressType =

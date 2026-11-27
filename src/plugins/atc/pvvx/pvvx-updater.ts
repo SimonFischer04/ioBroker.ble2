@@ -119,7 +119,7 @@ export interface PvvxUpdaterContext {
 		| "getStateAsync"
 	>;
 	/** Chooses the gateway and opens the GATT sessions to the devices */
-	connections: Pick<ConnectionManager, "withSession" | "bestGateway">;
+	connections: Pick<ConnectionManager, "withSession" | "candidates">;
 	/** firmware.json and the images */
 	catalog: FirmwareCatalog;
 	/** Current time, e.g. for the age of the battery value */
@@ -422,14 +422,14 @@ export class PvvxUpdater {
 			} catch {
 				battery = undefined;
 			}
+			const gateways = ctx.connections
+				.candidates(address)
+				.filter(({ features }) => features.includes("writeSequence"));
 			checkPreconditions({
 				address,
 				now: ctx.clock.now(),
 				battery,
-				bestGateway: ctx.connections.bestGateway(
-					address,
-					"writeSequence",
-				),
+				bestGateway: gateways[0],
 			});
 			const index = await ctx.catalog.getIndex(false);
 
@@ -480,9 +480,10 @@ export class PvvxUpdater {
 				{
 					priority: "high",
 					timeoutMs: OTA_SESSION_TIMEOUT_MS,
-					requireFeature: "writeSequence",
 					// Not through a weaker gateway either, if the best one cannot connect
-					minRssi: MIN_RSSI,
+					gateways: gateways
+						.filter(({ rssi }) => rssi >= MIN_RSSI)
+						.map(({ gatewayId }) => gatewayId),
 				},
 			);
 
