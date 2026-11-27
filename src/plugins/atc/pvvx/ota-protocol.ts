@@ -1,5 +1,6 @@
 // Firmware update of the Telink chips the pvvx firmware runs on (Telink OTA), see docs/pvvx-protocol.md 6.
-// Only pure functions, no imports from the adapter.
+// Pure functions without dependencies on the adapter. The updater, the simulated devices of the
+// unit and integration tests and the tests themselves all use this module, nothing is duplicated.
 
 export const OTA_SERVICE = "00010203-0405-0607-0809-0a0b0c0d1912";
 export const OTA_CHARACTERISTIC = "00010203-0405-0607-0809-0a0b0c0d2b12";
