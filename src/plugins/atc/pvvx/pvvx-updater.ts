@@ -6,6 +6,7 @@ import { PvvxCommandChannel } from "./command-channel";
 import { type FirmwareCatalog, selectImage } from "./firmware-catalog";
 import {
 	checkPreconditions,
+	MAX_RECEPTION_AGE_MS,
 	MIN_RSSI,
 	type PreconditionInput,
 } from "./ota-checks";
@@ -463,20 +464,22 @@ export class PvvxUpdater {
 				address,
 				async (session) => {
 					// The job may have waited in the queue: check the gateway that is actually
-					// used with its latest signal. During the connection the device does not
-					// advertise, so this is the last measurement before the transfer.
-					const rssi = ctx.connections.reception(
+					// used, with a recent signal
+					const gatewayId = session.gatewayId;
+					const reception = ctx.connections.reception(
 						address,
-						session.gatewayId,
+						gatewayId,
 					);
-					if (rssi === undefined) {
+					if (
+						reception === undefined ||
+						reception.ageMs > MAX_RECEPTION_AGE_MS
+					) {
 						throw new PvvxUpdateError(
 							"WEAK_SIGNAL",
-							`${session.gatewayId} has not received the device recently`,
+							`${gatewayId} has not received the device recently`,
 						);
 					}
-					const gateway = { gatewayId: session.gatewayId, rssi };
-					await check(gateway);
+					await check({ gatewayId, rssi: reception.rssi });
 					const channel = new PvvxCommandChannel(session, ctx);
 					await channel.open();
 					const config = parseConfigResponse(
@@ -507,8 +510,15 @@ export class PvvxUpdater {
 					const { image, length } = await ctx.catalog.getImage(
 						selection.path,
 					);
-					// Loading the image may have taken a while
-					await check(gateway);
+					// Loading the image may have taken a while. Gateways deliver advertisements in
+					// batches, so a sample from before the connection may have arrived only now:
+					// check the newest one.
+					await check({
+						gatewayId,
+						rssi:
+							ctx.connections.reception(address, gatewayId)
+								?.rssi ?? reception.rssi,
+					});
 					await this.setStates(address, {
 						firmwareStatus: "transferring",
 					});

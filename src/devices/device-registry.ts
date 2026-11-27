@@ -194,6 +194,27 @@ export class DeviceRegistry {
 	}
 
 	/**
+	 * The newest signal a gateway measured for the device, however old
+	 *
+	 * @param address MAC address of the device
+	 * @param gatewayId Full ID of the gateway
+	 * @param now Current time in ms
+	 */
+	public getReception(
+		address: string,
+		gatewayId: string,
+		now: number = Date.now(),
+	): { rssi: number; ageMs: number } | undefined {
+		const reception = this.devices.get(address)?.gateways.get(gatewayId);
+		return (
+			reception && {
+				rssi: reception.rssi,
+				ageMs: now - reception.lastSeen,
+			}
+		);
+	}
+
+	/**
 	 * The address type the device reported. "public" if it is unknown.
 	 *
 	 * @param address MAC address of the device

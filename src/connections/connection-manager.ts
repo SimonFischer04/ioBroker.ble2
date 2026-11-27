@@ -191,18 +191,19 @@ export class ConnectionManager {
 	}
 
 	/**
-	 * The signal strength a gateway received the device with recently, whether or not it can
-	 * connect right now. undefined if it did not receive the device within the last 30 s.
+	 * The newest signal strength a gateway measured for the device and how old it is, whether or
+	 * not the gateway can connect right now. undefined if it never received the device.
 	 *
 	 * @param address MAC address of the device
 	 * @param gatewayId Full ID of the gateway
 	 */
-	public reception(address: string, gatewayId: string): number | undefined {
+	public reception(
+		address: string,
+		gatewayId: string,
+	): { rssi: number; ageMs: number } | undefined {
 		const normalized = normalizeAddress(address);
 		return normalized
-			? this.ctx.devices
-					.getReceivers(normalized)
-					.find((r) => r.gatewayId === gatewayId)?.rssi
+			? this.ctx.devices.getReception(normalized, gatewayId)
 			: undefined;
 	}
 

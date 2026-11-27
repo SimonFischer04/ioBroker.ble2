@@ -154,8 +154,16 @@ class FakeConnections {
 		return this.best ? [this.best] : [];
 	}
 
-	public reception(_address: string, gatewayId: string): number | undefined {
-		return this.best?.gatewayId === gatewayId ? this.best.rssi : undefined;
+	/** How old the signal of best is, in ms */
+	public bestAgeMs = 0;
+
+	public reception(
+		_address: string,
+		gatewayId: string,
+	): { rssi: number; ageMs: number } | undefined {
+		return this.best?.gatewayId === gatewayId
+			? { rssi: this.best.rssi, ageMs: this.bestAgeMs }
+			: undefined;
 	}
 
 	/** Sessions that wrote firmware, not the ones that only read the version */
@@ -529,6 +537,39 @@ describe("plugins/atc/pvvx/pvvx-updater => PvvxUpdater", () => {
 			);
 			expect(first.writes).to.deep.equal([]);
 			expect(first.ota.writes).to.deep.equal([]);
+		});
+
+		it("checks the newest signal right before the transfer", async () => {
+			await createUpdater().start();
+			source.getImage = () => {
+				// A batched advertisement with a weak signal arrives after the session started
+				connections.best = {
+					gatewayId: "esphome.0:proxy-og",
+					rssi: -91,
+					features: ["writeSequence"],
+				};
+				connections.bestAgeMs = 45000;
+				return Promise.resolve(image);
+			};
+
+			await updater.update(FIRST);
+
+			expect(String(adapter.val(`${FIRST}.pvvx.firmwareError`))).to.match(
+				/^WEAK_SIGNAL: /,
+			);
+			expect(first.ota.writes).to.deep.equal([]);
+		});
+
+		it("refuses a session whose gateway has no recent signal", async () => {
+			await createUpdater().start();
+			connections.bestAgeMs = 31000;
+
+			await updater.update(FIRST);
+
+			expect(String(adapter.val(`${FIRST}.pvvx.firmwareError`))).to.match(
+				/^WEAK_SIGNAL: .*not received the device recently/,
+			);
+			expect(first.writes).to.deep.equal([]);
 		});
 
 		it("checks the battery again right before the transfer", async () => {

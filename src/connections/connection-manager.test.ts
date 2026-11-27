@@ -325,9 +325,11 @@ describe("connections/connection-manager => ConnectionManager", () => {
 		expect(provider.connects).to.have.lengthOf(2);
 	});
 
-	it("reception() tells the recent signal of a gateway, even if it cannot connect", () => {
+	it("reception() tells the newest signal of a gateway and its age, even if it cannot connect", () => {
 		announce(OG, { connect: true, freeSlots: 0 });
-		expect(manager.reception("A4-C1-38-12-34-56", OG)).to.equal(-55);
+		const reception = manager.reception("A4-C1-38-12-34-56", OG);
+		expect(reception?.rssi).to.equal(-55);
+		expect(reception?.ageMs).to.be.within(0, 1000);
 		expect(manager.reception(DEVICE, "esphome.0:unknown")).to.equal(
 			undefined,
 		);

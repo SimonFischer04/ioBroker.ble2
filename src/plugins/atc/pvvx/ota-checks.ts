@@ -5,6 +5,8 @@ export const MIN_BATTERY_PERCENT = 40;
 /** A battery value older than this is not used */
 export const MAX_BATTERY_AGE_MS = 3600000;
 export const MIN_RSSI = -80;
+/** How old the signal of the gateway in use may be when the update session starts, in ms */
+export const MAX_RECEPTION_AGE_MS = 30000;
 
 /** What checkPreconditions() needs to decide whether an update may start */
 export interface PreconditionInput {
