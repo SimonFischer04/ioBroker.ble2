@@ -1,4 +1,4 @@
-import { Socket } from "net";
+import { Socket } from "node:net";
 import type { GatewayDescription } from "../gateways/gateway-registry";
 import {
 	getMessageReviver,
@@ -80,7 +80,7 @@ export class NobleRemoteTransport implements Transport {
 
 	private socket: Socket | undefined;
 	private stopped = false;
-	private reconnectTimer: NodeJS.Timeout | undefined;
+	private reconnectTimer: ioBroker.Timeout | undefined;
 	/** Whether the last attempt to connect failed, so a server that is down is not reported every 10 seconds */
 	private failing = false;
 	private lastDriverState: string | undefined;
@@ -120,7 +120,7 @@ export class NobleRemoteTransport implements Transport {
 				gateways.setConnected(this.gateway, false);
 				// Try again later, the server may be restarting
 				if (!this.stopped) {
-					this.reconnectTimer = setTimeout(
+					this.reconnectTimer = this.ctx.adapter.setTimeout(
 						() => this.connect(),
 						this.options.reconnectIntervalMs ??
 							RECONNECT_INTERVAL_MS,
@@ -182,7 +182,8 @@ export class NobleRemoteTransport implements Transport {
 	public stop(): void {
 		this.stopped = true;
 		if (this.reconnectTimer) {
-			clearTimeout(this.reconnectTimer);
+			this.ctx.adapter.clearTimeout(this.reconnectTimer);
+			this.reconnectTimer = undefined;
 		}
 		try {
 			this.socket?.destroy();

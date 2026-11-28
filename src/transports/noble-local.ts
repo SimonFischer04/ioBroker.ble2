@@ -1,5 +1,5 @@
-import { fork, type ChildProcess } from "child_process";
-import * as path from "path";
+import { fork, type ChildProcess } from "node:child_process";
+import * as path from "node:path";
 import { performance } from "node:perf_hooks";
 import type { GatewayDescription } from "../gateways/gateway-registry";
 import {

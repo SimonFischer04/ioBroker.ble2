@@ -12,7 +12,7 @@ describe("Local scanner offset errors", () => {
 		const { NobleLocalTransport } = proxyquire.noPreserveCache()<
 			typeof LocalModule
 		>("./noble-local", {
-			child_process: { fork: () => child },
+			"node:child_process": { fork: () => child },
 		});
 		const context = {
 			adapter: {
