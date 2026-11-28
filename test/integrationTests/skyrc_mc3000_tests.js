@@ -129,5 +129,65 @@ exports.runTests = function (suite) {
 			expect(gateway.open.size).to.equal(0);
 			expect(gateway.commands.at(-1).command).to.equal("gatt:disconnect");
 		});
+
+		it("starts and stops the preset program for one slot after checking its status", async function () {
+			this.timeout(20000);
+			const gateway = new ChargerGateway(harness);
+			const query = "0f55010000000000000000000000000000000065";
+			const start = "0f05020000000000000000000000000000000016";
+			const stop = "0ffe02000000000000000000000000000000000f";
+			const responses = new Map([
+				[query, `0f5501${status.slice(6, -2)}d9`],
+				[start, `0f0502f0ffff${"00".repeat(13)}04`],
+				[stop, `0ffe02f0ffff${"00".repeat(13)}fd`],
+			]);
+			const writes = [];
+			gateway.setWriteHandler((_, handle, data) => {
+				expect(handle).to.equal(30);
+				writes.push(data);
+				return [responses.get(data)];
+			});
+			const control = (action) =>
+				sendToAdapter(harness, "controlSkyrcMc3000Slot", {
+					address,
+					slot: 2,
+					action,
+				});
+			expect((await control("pause")).error.code).to.equal(
+				"INVALID_PAYLOAD",
+			);
+			expect(writes).to.be.empty;
+			expect(await control("start")).to.deep.equal({
+				error: null,
+				result: { slot: 2, action: "start" },
+			});
+			expect(await control("stop")).to.deep.equal({
+				error: null,
+				result: { slot: 2, action: "stop" },
+			});
+			expect(writes).to.deep.equal([query, start, query, stop]);
+		});
+
+		it("sends no control packet when the status probe receives no reply", async function () {
+			this.timeout(20000);
+			const gateway = new ChargerGateway(harness);
+			const result = await sendToAdapter(
+				harness,
+				"controlSkyrcMc3000Slot",
+				{
+					address,
+					slot: 2,
+					action: "start",
+				},
+			);
+			expect(result.error.code).to.equal("TIMEOUT");
+			const writes = gateway.commands.filter(
+				({ command }) => command === "gatt:write",
+			);
+			expect(writes).to.have.length(1);
+			expect(Buffer.from(writes[0].message.data, "base64")[1]).to.equal(
+				0x55,
+			);
+		});
 	});
 };
