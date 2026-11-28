@@ -9,7 +9,6 @@ import type { PeripheralInfo } from "../../lib/scanProcessInterface";
 import { XiaomiAdvertisement, type XiaomiEvent } from "../lib/xiaomi_protocol";
 import { startXiaomi } from "./active";
 import {
-	getServiceData,
 	type DeviceObjectDefinition,
 	type Plugin,
 	type StateObjectDefinition,
@@ -92,8 +91,8 @@ const plugin: Plugin<XiaomiContext> = {
 
 	advertisedServices: ["fe95"],
 	isHandling: (p) => {
-		const data = getServiceData(p, "fe95");
-		if (data == undefined) {
+		const entries = p.advertisement?.serviceData;
+		if (!entries?.some(({ uuid }) => uuid === "fe95")) {
 			return false;
 		}
 
@@ -104,7 +103,13 @@ const plugin: Plugin<XiaomiContext> = {
 		}
 
 		// A status or incomplete frame can precede an event from the same device.
-		if (parseAdvertisementEvent(data, p.address) == undefined) {
+		if (
+			!entries.some(
+				({ uuid, data }) =>
+					uuid === "fe95" &&
+					parseAdvertisementEvent(data, p.address) != undefined,
+			)
+		) {
 			recognizedPeripherals.delete(mac);
 			return false;
 		}
@@ -113,19 +118,21 @@ const plugin: Plugin<XiaomiContext> = {
 	},
 
 	createContext: (peripheral: PeripheralInfo) => {
-		const data = getServiceData(peripheral, "fe95");
-		if (data == undefined) {
-			return;
+		let merged: XiaomiEvent | undefined;
+		// Some receivers collect multiple frames of the same service in order.
+		// Keep the most recent value of each measurement carried in those frames.
+		for (const { uuid, data } of peripheral.advertisement?.serviceData ??
+			[]) {
+			if (uuid !== "fe95") {
+				continue;
+			}
+			_.adapter.log.debug(`xiaomi >> got data: ${data.toString("hex")}`);
+			const event = parseAdvertisementEvent(data, peripheral.address);
+			if (event != undefined) {
+				Object.assign((merged ??= {}), event);
+			}
 		}
-
-		_.adapter.log.debug(`xiaomi >> got data: ${data.toString("hex")}`);
-
-		const event = parseAdvertisementEvent(data, peripheral.address);
-		if (event == undefined) {
-			return;
-		}
-
-		return { event };
+		return merged && { event: merged };
 	},
 
 	defineObjects: (context: XiaomiContext) => {
