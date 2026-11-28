@@ -156,9 +156,7 @@ function serializePeripheral(peripheral: Noble.Peripheral): PeripheralInfo {
 		"connectable",
 		"advertisement",
 		"rssi",
-		"services",
-		"state",
-	]);
+	]) as PeripheralInfo;
 }
 
 function onDiscover(peripheral?: Noble.Peripheral): void {
@@ -179,7 +177,6 @@ async function startScanning(): Promise<void> {
 	if (isScanning) {
 		return;
 	}
-	await sendAsync({ type: "connected" });
 	await sendAsync({
 		type: "log",
 		message: `starting scan for services ${JSON.stringify(argv.services)}`,
@@ -198,7 +195,10 @@ async function startScanning(): Promise<void> {
 		await sendAsync({ type: "disconnected" });
 		throw error;
 	}
+	// Only now: a client that connects in between gets "disconnected" from the snapshot and
+	// must still learn that the scan runs
 	isScanning = true;
+	await sendAsync({ type: "connected" });
 }
 
 async function stopScanning(): Promise<void> {
@@ -260,6 +260,20 @@ function maybeStartServer(): Promise<void> {
 		server = createServer((socket) => {
 			console.log("Client connected");
 			clients.add(socket);
+			// A new client needs to know whether the server is scanning right now, the messages
+			// "connected" and "disconnected" are only sent when that changes
+			const snapshot: ScanMessage[] = [
+				{ type: isScanning ? "connected" : "disconnected" },
+			];
+			if (noble) {
+				snapshot.push({
+					type: "driverState",
+					driverState: noble.state,
+				});
+			}
+			for (const message of snapshot) {
+				socket.write(`${JSON.stringify(message)}\n`);
+			}
 
 			// when the connection is closed, unpipe the streams
 			socket.on("close", () => {

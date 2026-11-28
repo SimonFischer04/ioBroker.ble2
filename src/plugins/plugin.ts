@@ -1,4 +1,7 @@
-﻿import type { PeripheralInfo } from "../lib/scanProcessInterface";
+﻿import type { ConnectionManager } from "../connections/connection-manager";
+import type { DeviceRegistry } from "../devices/device-registry";
+import type { PeripheralInfo as ReceivedPeripheral } from "../lib/advertisement";
+import type { PeripheralInfo } from "../lib/scanProcessInterface";
 
 export type DeviceObjectDefinition = Partial<
 	Pick<ioBroker.DeviceObject, "common" | "native">
@@ -55,7 +58,59 @@ export interface Plugin<TContext = any> {
 	defineObjects: (context: TContext) => PeripheralObjectStructure | undefined;
 	/** Returns the values extracted from the peripheral */
 	getValues: (context: TContext) => Record<string, any> | undefined;
+
+	/**
+	 * Optional active part: talks to the devices of the manufacturer, e.g. over GATT. Started once
+	 * when the adapter starts, if the plugin is selected in the setting "plugins", like the decoder.
+	 * It does nothing until it is configured (e.g. a list of devices) or one of its commands is used.
+	 * It must return at once; setup that takes time (objects, states) runs in the background.
+	 */
+	start?: (ctx: PluginContext) => PluginInstance;
 }
+
+/** What the core of the adapter gives the active part of a plugin */
+export interface PluginContext {
+	/** The adapter: configuration, objects, states, timers and log */
+	adapter: ioBroker.Adapter;
+	/** Opens GATT sessions through the gateways that can connect */
+	connections: ConnectionManager;
+	/** Which gateways receive which devices, and the names the devices advertise */
+	devices: DeviceRegistry;
+}
+
+/** A started active part of a plugin */
+export interface PluginInstance {
+	/** Called for every received advertisement of any device, before the service filter */
+	observe?: (peripheral: ReceivedPeripheral) => void;
+	/**
+	 * Own sendTo commands. The handler gets the message payload and resolves with the result;
+	 * a thrown GatewayError becomes an error answer with its code.
+	 */
+	commands?: Record<string, (message: unknown) => Promise<unknown>>;
+	/** Called for changes of the adapter's own states. Returns true if the state belongs to the plugin. */
+	handleStateChange?: (
+		id: string,
+		state: ioBroker.State | null | undefined,
+	) => boolean;
+	/** Called when the adapter stops, before the connections are closed */
+	dispose?: () => void;
+}
+
+/** Decoder of a plugin that has only an active part: it handles no advertisement */
+export const NO_DECODER: Pick<
+	Plugin<undefined>,
+	| "advertisedServices"
+	| "isHandling"
+	| "createContext"
+	| "defineObjects"
+	| "getValues"
+> = {
+	advertisedServices: [],
+	isHandling: () => false,
+	createContext: () => undefined,
+	defineObjects: () => undefined,
+	getValues: () => undefined,
+};
 
 export function getServiceData(
 	peripheral: PeripheralInfo,
@@ -75,6 +130,7 @@ export function getServiceData(
  * @param oldPlugin Plugin to reuse
  */
 export function alias(newName: string, oldPlugin: Plugin): Plugin {
+	// Selecting the alias also starts the active part; the host starts it only once
 	const { name, ...plugin } = oldPlugin;
 	return {
 		name: newName,

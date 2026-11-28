@@ -45,12 +45,199 @@ Remote scanner command-line flags and the TCP protocol are unchanged. For scanne
 
 Set **Local scan interval [min]** and **Local scan duration [s]** to leave the Bluetooth adapter idle between scan windows. The first scan starts immediately. The duration must be shorter than the interval. An interval of `0` keeps continuous scanning. The scanner's connection indicator follows the active scan windows. On a standalone remote scanner, use `--scanInterval` and `--scanDuration`, both in seconds.
 
+### Running without Bluetooth hardware
+The Bluetooth adapter of the host is optional. Disable **Use the Bluetooth adapter of this host** in the settings to run the adapter as a hub that only handles the advertisements other adapters deliver (see below). In this mode the Bluetooth driver is not loaded, so neither Bluetooth hardware, nor the `setcap` command above, nor host mode networking in Docker are needed.
+
+If the option is enabled but the Bluetooth adapter cannot be used (no hardware, missing permissions, driver not installed), the adapter logs an error and keeps running, so it can still receive advertisements from other adapters.
+
+### Remote scan servers
+A Linux computer with Bluetooth in another room, e.g. a Raspberry Pi, can scan for the adapter. It runs the scanner of this adapter as a small server, `bin/blerp.js`, without ioBroker:
+
+```bash
+mkdir blerp && cd blerp
+# Run npm run build:server in the source checkout, then copy bin/blerp.js here.
+npm install @stoprocent/noble
+sudo setcap cap_net_raw+eip $(eval readlink -f `which node`)
+node blerp.js --listenPort 8734 --hciDevice 0
+```
+
+Enter it under **Remote scan servers** in the settings as `host` or `host:port` (default port 8734), one per line. Several servers can be used at the same time, together with the Bluetooth adapter of the ioBroker host and with other adapters that deliver advertisements. Every server is a gateway of its own (`server:<host>:<port>`): a packet that several of them receive is decoded once, and when a server is unreachable the adapter tries again every 10 seconds.
+
+Things to know:
+* A server serves one adapter instance at a time.
+* The connection is neither authenticated nor encrypted. Only use it in a network you trust, and do not make the port reachable from outside.
+* The servers only receive advertisements, they cannot connect to devices.
+* The monitored services and plugin manufacturer IDs also apply to what the servers deliver. On the server, `--services` and `--manufacturerIds` can reduce traffic.
+* `info.driverState` shows the state of the Bluetooth driver of the local Bluetooth adapter, or of the server if it is the only source.
+
+Up to version 0.14 there was a single server (setting "Use remote server"), which disabled the Bluetooth adapter of the host. Such a configuration is moved to the new setting when the adapter starts, and the Bluetooth adapter of the host stays disabled.
+
+## Receiving advertisements from other adapters
+Other adapters can deliver the BLE advertisements they receive, e.g. from ESPHome Bluetooth proxies distributed in the house. They are handled exactly like the ones received by the local Bluetooth adapter: the same plugins, the same objects and states. The device ID is the MAC address in lowercase, no matter which receiver delivered the advertisement.
+
+```js
+const response = await adapter.sendToAsync("ble2.0", "gateway:advertisements", {
+	// Identifies the receiver within the sending instance
+	gatewayId: "proxy-og",
+	items: [
+		{
+			address: "a4:c1:38:12:34:56",
+			rssi: -67,
+			// The raw payload of the advertisement (the AD structures), base64 encoded
+			data: "AgEGDhbS/EAApQFkAsQJA78T",
+			// optional: addressType ("public" | "random"), connectable
+		},
+	],
+});
+// => { error: null, result: { accepted: 1, rejected: 0 } }
+// or { error: { code: "INVALID_PAYLOAD", message: "..." } }
+```
+
+* There is no registration. A gateway is created with the first message, its ID is `<sender>:<gatewayId>`, e.g. `esphome.0:proxy-og`.
+* Deliver the advertisements in batches (at most 500 per message), a few times per second at most.
+* A gateway is offline when it delivered nothing for 60 seconds, or when the delivering instance is stopped. An empty batch is enough to keep it online.
+* When several gateways receive the same packet, it is decoded once. The `rssi` state of a device is the signal strength measured by the gateway that receives it best.
+* The monitored services from the settings also apply to delivered advertisements, and new devices are only recorded while **Accept new devices** is enabled.
+
+The types of the interface are defined in [`src/lib/gateway-protocol.ts`](src/lib/gateway-protocol.ts). The file has no dependencies and can be copied.
+
+| Command | Result |
+|---|---|
+| `gateway:advertisements` | Delivers advertisements, see above |
+| `gateway:announce` | Announces gateways that can connect to devices, see below |
+| `getGateways` | All sources of advertisements: `[{ id, type, sender, connected, lastAdvertisement, advertisements, duplicates, connect, freeSlots, slotLimit, features }]` |
+| `getDevices` | The devices received in the last 10 minutes: `[{ address, name, gateways: [{ id, rssi, lastSeen }] }]`, strongest gateway first |
+| `discoverServices` | `{ address }` → `{ services: [{ uuid, handle, characteristics: [{ uuid, handle, properties, descriptors }] }] }` |
+| `readCharacteristic` | `{ address, service, characteristic }` → `{ data }` (base64) |
+| `writeCharacteristic` | `{ address, service, characteristic, data, withResponse? }` → `{}`. `withResponse` defaults to `true` |
+
+For every gateway the states `gateways.<id>.connected` and `gateways.<id>.lastAdvertisement` are created, for gateways that can connect also `gateways.<id>.freeSlots`. `<id>` is the gateway ID with `.` and `:` replaced by `_`, e.g. `gateways.esphome_0_proxy-og`. Scan servers and IDs containing `_` get a short hash appended (`gateways.server_192_168_1_20_9000__…`), so no two gateways share their states. `info.connection` is `true` while at least one source of advertisements is active.
+
+### Connecting to devices
+`discoverServices`, `readCharacteristic` and `writeCharacteristic` connect to a device, do their work and disconnect again. UUIDs can be given short (`"1f10"`, `"0x1F10"`) or in full, with or without dashes. The adapter connects through the gateway that receives the device best and can connect, tries the next one if that fails, and runs only one request per device at a time. Errors come as `{ error: { code, message } }`, e.g. `NO_GATEWAY` when no gateway that can connect receives the device.
+
+For a device that has not been observed, include the full `gatewayId` from `getGateways` in a `discoverServices`, `readCharacteristic`, or `writeCharacteristic` request. You can also pass `addressType: "public"` or `addressType: "random"`. This directs the connection attempt to the specified gateway while the device is connectable. Requests without a gateway ID still use the strongest receiver.
+
+So far, only gateways of other adapters can connect, e.g. ESPHome Bluetooth proxies through ioBroker.esphome, not the Bluetooth adapter of the host or the remote scan servers.
+
+An adapter that provides such gateways announces them with `gateway:announce` (`{ protocol: "ble-gateway/1", gateways: [{ gatewayId, connect: true, freeSlots, slotLimit, features }] }`). `features` lists optional commands, so far `"writeSequence"`: `gatt:writeSequence` writes up to 64 values to one handle and reads it afterwards, the firmware update needs it. The providing adapter answers the `gatt:*` commands this adapter sends to it and reports ended connections and notifications with `gateway:connectionState` and `gateway:notification`. The details are in [`docs/spec-phase-2-gatt.md`](docs/spec-phase-2-gatt.md), part A, for `gatt:writeSequence` in [`docs/spec-phase-4-pvvx-ota.md`](docs/spec-phase-4-pvvx-ota.md), part A, and the types in `src/lib/gateway-protocol.ts`.
+
+## Reading the Mi Flora battery level
+
+Select the plugin **Xiaomi** (or **Mi Flora**) under **Active plugins**.
+
+Enter the addresses of your Mi Flora sensors in **Mi Flora battery polling (MAC addresses)**. When a connection-capable gateway sees a configured plant, the adapter reads its battery level and writes `<mac>.battery`. The first reading is due immediately. After a successful read, another is due the next day. A failed read can be retried after 15 minutes when the gateway sees the sensor again.
+
+## Reading Parrot Flower Power sensors
+
+Select the plugin **Parrot Flower Power** under **Active plugins**.
+
+Enter your sensor addresses in **Parrot Flower Power sensors (MAC addresses)**. When a connection-capable gateway receives an advertisement from a configured sensor, the adapter reads the available calibrated moisture, air temperature, sunlight and battery characteristics. The first reading is due immediately. Further readings are due every 15 minutes, or after one minute following an unsuccessful read. The firmware must expose the calibrated Flower Power Live service for the plant measurements.
+
+## Reading a Comet Blue thermostat
+
+Select the plugin **Comet Blue thermostats** under **Active plugins**.
+
+Use `sendToAsync("ble2.0", "readCometBlue", { address, pin })` with the thermostat's Bluetooth MAC address and its PIN as a string. A connecting gateway must be in range. The command returns the ambient temperature, manual, eco and comfort setpoints in °C, and a battery percentage when the device provides it. It authenticates using the supplied PIN for the current session.
+
+## Controlling a SwitchBot Bot
+
+Select the plugin **SwitchBot** under **Active plugins**.
+
+Use the `switchBot` command to press, switch on, switch off, or stop a SwitchBot Bot that a connection-capable gateway can reach. The supported actions are `press`, `on`, `off`, and `stop`. This command uses the standard unencrypted Bot protocol.
+
+```js
+const result = await adapter.sendToAsync("ble2.0", "switchBot", {
+    address: "aa:bb:cc:dd:ee:ff",
+    action: "press",
+});
+```
+
+A successful reply contains `{ error: null, result: {} }` after the Bot confirms the action. Rejection and timeout return a gateway error. For protected or other devices, the gateway interface also provides generic `discoverServices`, `readCharacteristic`, and `writeCharacteristic` commands.
+
+## Reading cycling power
+
+Select the plugin **Cycling Power sensors** under **Active plugins**.
+
+Enter each sensor's MAC address in **Cycling Power sensors (MAC addresses)**. When a connection-capable gateway sees the sensor, the adapter subscribes to the standard Cycling Power Measurement characteristic (`2a63` under service `1818`). Instantaneous power is recorded in watts under `<mac>.cyclingPower`. The connection is released after ten seconds without a reading or after fifteen minutes. A later advertisement can start the next session.
+
+## Setting the clock of pvvx thermometers
+Select the plugin **ATC1441 and PVVX** under **Active plugins**.
+Thermometers with the [pvvx firmware](https://github.com/pvvx/ATC_MiThermometer) (e.g. Xiaomi LYWSD03MMC) have a clock that drifts and does not know summer time. The adapter can set it to the local time of the ioBroker host, through a gateway that can connect, e.g. an ESPHome Bluetooth proxy with `bluetooth_proxy: active: true` and ioBroker.esphome.
+
+* **pvvx thermometers (MAC addresses):** the devices whose clock is set, separated by commas, spaces or line breaks.
+* **Time sync interval [h]:** hours between two syncs of a device, default 24. `0` = only at start, after a change between summer and winter time and with the button.
+
+The clock is set one minute after the start, in the interval, within two minutes after each change between summer and winter time and with the button. When a device cannot be reached, it is tried again after 5, 15 and 60 minutes, then in the normal interval. One device is synced at a time.
+
+For every device these states are created below `<mac>.pvvx`:
+
+| State | Content |
+|---|---|
+| `syncTime` | Button: sets the clock now |
+| `lastTimeSync` | When the clock was set last |
+| `timeDeviation` | How far the clock was off before it was set, in seconds. Positive = it was ahead |
+| `firmwareVersion` | Version of the firmware, e.g. `5.9` |
+| `hardwareId` | Hardware ID the firmware reports |
+| `lastError` | Empty after a successful sync, otherwise `<CODE>: <message>`, e.g. `NO_GATEWAY: ...` |
+
+The device must be received by a gateway that can connect. Devices protected with a PIN code are not supported.
+
+## Setting the Xiaomi LYWSD02 clock
+
+Select the plugin **Xiaomi** under **Active plugins**.
+
+After a connection-capable gateway has seen the thermometer, call
+`sendTo("ble2.0", "syncLywsd02Clock", { address: "AA:BB:CC:11:22:33" }, callback)`
+to set the factory firmware clock from the adapter host. On success,
+`<mac>.lywsd02LastTimeSync` stores the timestamp in milliseconds. Call the same command
+from a scheduled ioBroker JavaScript script to update the clock periodically.
+
+LYWSD02 firmware stores the time zone as a whole-hour UTC offset.
+
+## Updating the firmware of pvvx thermometers
+Select the plugin **ATC1441 and PVVX** under **Active plugins**.
+The adapter can also install a newer [pvvx firmware](https://github.com/pvvx/ATC_MiThermometer) on the thermometers configured above, through a gateway. **A firmware update is done at your own risk.** According to pvvx, an interrupted update leaves the old firmware in place, but nobody can guarantee that for every device.
+
+* Once a day (setting **Check daily for new pvvx firmware**, on by default) and with the button `pvvx.checkFirmware`, the adapter looks up the newest firmware in [`firmware.json`](https://github.com/pvvx/ATC_MiThermometer/blob/master/firmware.json) of the pvvx repository on GitHub and shows it in `<mac>.pvvx.firmwareAvailable`. This needs the version and hardware ID from a time sync. Nothing is installed by this check.
+* `<mac>.pvvx.firmwareUpdate` installs it on one device, `pvvx.updateAll` on all devices with a newer firmware, one after the other.
+* Only the BLE firmware of pvvx for the hardware ID the device reports is installed, never the original firmware of the manufacturer, never an older or the same version, and no image over 128 KiB.
+
+Before an update the adapter checks:
+
+* a gateway that supports firmware updates receives the device (`features: ["writeSequence"]`, e.g. ESPHome Bluetooth proxies with a current ioBroker.esphome),
+* with at least −80 dBm,
+* the battery is at 40 % or more, read from `<mac>.battery`. The device must send its battery level, e.g. in the BTHome format.
+
+An update takes a few minutes. The states below `<mac>.pvvx`:
+
+| State | Content |
+|---|---|
+| `firmwareAvailable` | Newer version that can be installed, e.g. `6.0`. Empty if there is none |
+| `firmwareUpdate` | Button: installs it |
+| `firmwareProgress` | Progress in % |
+| `firmwareStatus` | `idle`, `queued`, `checking`, `transferring`, `verifying`, `done` or `failed` |
+| `firmwareError` | Empty after a successful update, otherwise `<CODE>: <message>`, e.g. `BATTERY_LOW: ...` |
+
+After the update the adapter connects again, checks the new version and sets the clock. A failed update is not repeated automatically. Devices with a PIN code are not supported.
+
+## Reading a SkyRC MC3000 charging slot
+
+Select the plugin **SkyRC MC3000** under **Active plugins**.
+
+After a connection-capable gateway has seen the charger, call
+`sendTo("ble2.0", "readSkyrcMc3000Slot", { address: "AA:BB:CC:11:22:33", slot: 1 }, callback)`.
+Slots are numbered 1 to 4. The result includes the status code, elapsed seconds, voltage
+in V, current in A, capacity in mAh and temperature in °C. The MC3000 accepts this status
+query over BLE without explicit pairing. The manufacturer documents this in the
+[MC3000 manual](https://www.skyrc.com/download/MC3000_Instruction_Manual_V1.17.pdf).
+
 ## Plugin system
 Build the adapter from source with `npm ci` followed by `npm run build`. The generated backend `build/` directory is not tracked in Git. Published npm packages include the generated files; installation directly from Git is disabled with `common.nogit`.
 
 For a standalone remote scanner, `npm run build:server` generates `bin/blerp.js`. This generated bundle is also ignored by Git; it loads the installed `@stoprocent/noble` driver at runtime.
 
-The admin interface is provided by ioBroker JSONConfig (`admin/jsonConfig.json`) and requires admin 7.6.20 or newer. It has no separate frontend build. **Accept new devices** controls the live `options.allowNewDevices` state and resets after five minutes.
+The admin interface is provided by ioBroker JSONConfig (`admin/jsonConfig.json`) and requires admin 7.6.20 or newer. The optional Bluetooth device map is built with the adapter. **Accept new devices** controls the live `options.allowNewDevices` state and resets after five minutes.
 
 Choose one or more entries from the **Active plugins** dropdown. Existing plugin settings are loaded automatically; the basic advertisement handler stays enabled even when no plugin is selected.
 
@@ -58,7 +245,7 @@ Add a device's MAC address to **Presence tracking** to create a boolean `present
 
 Run `npm run lint` to check the adapter, tests, and JavaScript helpers using the shared ioBroker ESLint configuration. Use `npm run lint -- --fix` to apply automatic fixes.
 
-The adapter supports extension via plugins. Those define which advertised services should be listened to and how to translate the data. The plugin structure is defined in https://github.com/SimonFischer04/ioBroker.ble2/blob/master/src/plugins/plugin.ts and an example of a working plugin is defined here https://github.com/SimonFischer04/ioBroker.ble2/blob/master/src/plugins/_default.ts
+The adapter supports extension via plugins, one per manufacturer or device family. A plugin defines which advertised services should be listened to and how to translate the data. Optionally it also has an active part that connects to the devices through a gateway, for example to set a clock, read values that are not advertised or send commands; like the decoder it only runs when the plugin is selected under **Active plugins**, and it does nothing until it is configured or its command is used. The core of the adapter stays plain Bluetooth Low Energy and knows no manufacturer. The plugin structure is defined in https://github.com/SimonFischer04/ioBroker.ble2/blob/master/src/plugins/plugin.ts and an example of a working plugin is defined here https://github.com/SimonFischer04/ioBroker.ble2/blob/master/src/plugins/_default.ts
 
 Plugins can also declare `manufacturerIds`, an optional list of Bluetooth company identifiers, to receive manufacturer data from devices that do not advertise a matching service. The Ruuvi Tag plugin uses company identifier `0x0499`. When running a remote scanner, include `--manufacturerIds 1177` alongside its service filters to receive these packets.
 
@@ -96,13 +283,30 @@ The Xiaomi Door and Window Sensor 2 (MCCGQ02HL) publishes `contactOpen` and `doo
 
 With pvvx firmware, choose **ATC1441** or **PVVX (Custom)** in the firmware settings and enable **ATC1441 and PVVX** in the adapter. These formats carry temperature, humidity, and battery in the same packet. The scanner must expose the Bluetooth MAC address and forward `181a` service data. The **Xiaomi** plugin remains available for MiBeacon mode, where a battery packet may arrive separately from temperature and humidity.
 
-For a Govee H5072 or H5075, enable **Govee H5072/H5075** under **Active plugins**. The scanner must deliver the `EC88` manufacturer data containing the measurements. The separate Apple iBeacon block beginning with `4c000215` contains no Govee sensor readings. Noble can report only the last manufacturer block on a platform that supplies them separately. For a supported remote scanner with service filters, forward service `ec88` or add `--manufacturerIds 60552`.
+For a Govee H5072 or H5075, enable **Govee H5072/H5075** under **Active plugins**. The scanner must deliver the `EC88` manufacturer data containing the measurements. The separate Apple iBeacon block beginning with `4c000215` contains no Govee sensor readings. A gateway that forwards the raw advertisement and scan response preserves separate manufacturer data blocks. For devices handled by the default decoder, `services.manufacturerDataBlocks` lists those blocks as a JSON array of hexadecimal strings. A local Noble backend may supply only the last block. For a supported remote scanner with service filters, forward service `ec88` or add `--manufacturerIds 60552`.
 
 For Mopeka, add `mopeka` to **Active plugins** and enable **Accept new devices** while discovering the sensor. Local scanning includes its manufacturer identifier automatically. A remote scanner with service filters also needs `--manufacturerIds 89` to forward manufacturer-only advertisements.
 
 The plugin creates `mopeka_level_raw` (uncalibrated ultrasonic reading), `mopeka_temperature` (°C), `mopeka_battery_v` (V), `mopeka_battery_percent` (CR2032 estimate), and `mopeka_reading_quality` (0: no valid echo, 1: low, 2: medium, 3: high). A reading with quality 0 clears the raw level to `null`; battery and temperature still update. Converting the raw reading to fill percentage, volume, or weight requires calibration for the tank and its contents.
 
 The standard Pro Check layout is verified against [ESPHome](https://github.com/esphome/esphome/blob/dev/esphome/components/mopeka_pro_check/mopeka_pro_check.cpp) and [mopeka-iot-ble](https://github.com/Bluetooth-Devices/mopeka-iot-ble/blob/main/src/mopeka_iot_ble/parser.py). Other Mopeka sensor types are not handled by this plugin.
+
+#### Yeelight Candela YLFW01YL
+
+Select the plugin **Yeelight Candela** under **Active plugins**.
+
+After a connection-capable gateway has seen the lamp advertise as `yeelight_ms`, call
+`sendTo("ble2.0", "setCandelaBrightness", { address: "AA:BB:CC:11:22:33", brightness: 70 }, callback)`.
+A brightness of 1–100 turns the lamp on and sets its intensity. Set brightness to 0 to turn it off.
+
+#### Controlling MagicSwitchBot
+
+Select the plugin **MagicSwitchBot** under **Active plugins**.
+
+Use `sendTo("ble2.0", "runMagicSwitchBotAction", { address, action, pin }, callback)`
+after a connection-capable gateway has seen the bot. Actions are `on`, `off` and `push`.
+Supply the device's six-digit PIN as a string if PIN protection is enabled. The command
+waits for the device to confirm it accepted the action.
 
 #### Xiaomi LYWSD03MMC temperature and humidity monitor
 
@@ -161,14 +365,35 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * **BREAKING:** Require js-controller 7.2.2 or newer; update adapter-core and release tools, repository metadata, and Dependabot configuration.
 -->
 ### __WORK IN PROGRESS__
+* Read Mi Flora battery levels through a connecting gateway.
+* Allow a named GATT gateway for devices that have not been observed.
+* Read calibrated Parrot Flower Power data through a connecting gateway.
+* Read protected temperature and battery data from Comet Blue thermostats.
+* Add the SwitchBot Bot `switchBot` command for external GATT gateways.
+* Read standard Cycling Power notifications through a connecting gateway.
+* Other adapters can deliver BLE advertisements they received, e.g. from ESPHome Bluetooth proxies (`gateway:advertisements`). Several receivers can be used at the same time.
+* The adapter can run without Bluetooth hardware: the Bluetooth adapter of the host can be disabled in the settings, and the Bluetooth driver is an optional dependency now
+* A problem with the Bluetooth adapter of the host no longer terminates the adapter
+* Several remote scan servers (`bin/blerp.js`) can be used at the same time, together with the Bluetooth adapter of the host. The setting of version 0.14 is migrated, its behaviour stays the same.
+* The connection to a remote scan server is re-established when it was lost, a server that is down is reported once instead of every 10 seconds
+* The monitored services also apply to the advertisements of remote scan servers
+* Read individual charging slot measurements from a SkyRC MC3000 through a Bluetooth gateway.
+* Connections to devices through gateways of other adapters, e.g. ESPHome Bluetooth proxies: `discoverServices`, `readCharacteristic` and `writeCharacteristic`
+* Plugins can have an active part that connects to the devices through a gateway; it runs only when the plugin is selected
+* The clock of pvvx thermometers can be set automatically through such gateways: at start, in an interval, after each change between summer and winter time and with a button. Firmware version, hardware ID and the deviation of the clock are shown
+* Set the Xiaomi LYWSD02 factory firmware clock and record its last successful sync.
+* Newer pvvx firmware can be installed on the thermometers through gateways that support it (`gatt:writeSequence`), after checks of battery and signal. The newest version is looked up once a day
 * Support encrypted BTHome v2 advertisements with per-device bindkeys.
 * Replace manual plugin names with a multi-select dropdown, preserving existing plugin settings.
+* Set brightness on the Yeelight Candela YLFW01YL through a Bluetooth gateway.
 * Add Mopeka Pro Check support with raw level, temperature, battery, and reading quality states.
 * Replace the custom React settings page with responsive native JSONConfig (requires admin 7.6.20 or newer), preserving settings and the live discovery switch.
 * **BREAKING:** Rename the maintained fork to `iobroker.ble2` with the `ble2` adapter namespace.
 * **BREAKING:** Require Node.js 22.19 or newer; test Node.js 22, 24, and 26 on Linux, Windows, and macOS.
 * Added BTHome signed counters, signed power, volume storage, and direction measurements.
+* Control MagicSwitchBot through a connection-capable Bluetooth gateway.
 * Fixed discovery and decoding of Ruuvi Tag manufacturer-only advertisements, including packets received after empty or unrelated frames.
+* Preserve separate manufacturer data blocks in raw gateway advertisements and decode Govee readings alongside iBeacon data.
 * Ignore invalid Mi Flora soil moisture readings above 100% to preserve the last valid measurement.
 * Decode button and rotation events from the Yeelight YLKG07YL and YLKG08YL dimmers.
 

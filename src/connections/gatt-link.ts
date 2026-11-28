@@ -1,0 +1,45 @@
+import type { GattServiceInfo } from "../lib/gateway-protocol";
+
+/** An open connection to a device through one gateway. All methods reject with a GatewayError. */
+export interface GattLink {
+	/** Full ID of the gateway, e.g. "esphome.0:proxy-og" */
+	readonly gatewayId: string;
+	/** MAC address of the connected device */
+	readonly address: string;
+	/** The MTU negotiated for the connection */
+	readonly mtu: number;
+	/** Discovers the services of the device with their characteristics and descriptors */
+	getServices(): Promise<GattServiceInfo[]>;
+	/** Reads the value of the characteristic or descriptor with this handle */
+	read(handle: number): Promise<Buffer>;
+	/** Writes the value to the characteristic or descriptor with this handle */
+	write(handle: number, data: Buffer, withResponse: boolean): Promise<void>;
+	/** Enables notifications of a characteristic. The listener is called for every notification. */
+	subscribe(handle: number, listener: (data: Buffer) => void): Promise<void>;
+	/**
+	 * Writes the values to the handle in this order and reads it afterwards if readAfter is set.
+	 * Only for gateways with the feature "writeSequence", the ConnectionManager makes sure of that.
+	 *
+	 * @returns The value read, undefined without readAfter
+	 */
+	writeSequence(
+		handle: number,
+		data: Buffer[],
+		withResponse: boolean,
+		readAfter: boolean,
+	): Promise<Buffer | undefined>;
+	/** Ends the connection. Never rejects. */
+	disconnect(): Promise<void>;
+	/** The listener is called once when the connection ended without disconnect() being called */
+	onDisconnect(listener: () => void): void;
+}
+
+/** Opens links through gateways */
+export interface GattLinkProvider {
+	/** @param gatewayId Full ID of the gateway */
+	connect(
+		gatewayId: string,
+		address: string,
+		addressType: "public" | "random",
+	): Promise<GattLink>;
+}
