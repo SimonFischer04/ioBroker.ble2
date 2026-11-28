@@ -3,15 +3,16 @@
  */
 
 import { entries } from "alcalzone-shared/objects";
-import type {} from "../lib/adapter-config";
-import { Global as _ } from "../lib/global";
-import type { PeripheralInfo } from "../lib/scanProcessInterface";
-import { XiaomiAdvertisement, type XiaomiEvent } from "./lib/xiaomi_protocol";
+import type {} from "../../lib/adapter-config";
+import { Global as _ } from "../../lib/global";
+import type { PeripheralInfo } from "../../lib/scanProcessInterface";
+import { XiaomiAdvertisement, type XiaomiEvent } from "../lib/xiaomi_protocol";
+import { startXiaomi } from "./active";
 import {
 	type DeviceObjectDefinition,
 	type Plugin,
 	type StateObjectDefinition,
-} from "./plugin";
+} from "../plugin";
 
 interface XiaomiContext {
 	event?: XiaomiEvent;
@@ -42,7 +43,7 @@ function findBindkey(mac: string): Buffer | undefined {
 					const key = row.key.trim();
 					if (
 						/^[0-9a-f]{12}$/.test(address) &&
-						/^[0-9a-f]{32}$/i.test(key)
+						/^(?:[0-9a-f]{24}|[0-9a-f]{32})$/i.test(key)
 					) {
 						bindkeys.set(address, Buffer.from(key, "hex"));
 					}
@@ -339,6 +340,8 @@ const plugin: Plugin<XiaomiContext> = {
 		// The event is simply the value dictionary itself
 		return context.event;
 	},
+	// Mi Flora battery and LYWSD02 clock over a gateway
+	start: startXiaomi,
 };
 
 export = plugin as Plugin;
