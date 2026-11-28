@@ -50,5 +50,7 @@
     "Bluetooth MAC address": "MAC-адреса Bluetooth",
     "Bindkey": "Ключ шифрування",
     "Enter a valid Bluetooth MAC address.": "Введіть дійсну MAC-адресу Bluetooth.",
-    "Enter a 32-digit hexadecimal bindkey.": "Введіть ключ із 32 шістнадцяткових цифр."
+    "Enter a 32-digit hexadecimal bindkey.": "Введіть ключ із 32 шістнадцяткових цифр.",
+    "LYWSD02 clock sync (MAC addresses)": "Синхронізація годинника LYWSD02 (MAC-адреси)",
+    "Add one factory-firmware LYWSD02 per line to set its clock daily through a gateway.": "Додайте по одному LYWSD02 із заводською прошивкою на рядок, щоб щодня встановлювати годинник через шлюз."
 }
