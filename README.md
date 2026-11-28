@@ -324,6 +324,13 @@ The stock firmware can send encrypted Xiaomi measurements. For passive readings 
 
 Keep the sensor near the scanner during discovery. If you run a remote scanner with an explicit service filter, include `fcd2` so BTHome advertisements reach the adapter.
 
+#### Yeelight YLKG07YL and YLKG08YL dimmers
+
+The Xiaomi plugin decodes presses and rotations from these dimmers under `dimmerAction`.
+Rotation events also set `dimmerSteps`. Configure the device's 24-digit hexadecimal bindkey for
+encrypted MiBeacon v3 advertisements. The battery state is updated when a MiBeacon battery
+measurement is received.
+
 ## Publishing releases
 
 The npm package is `iobroker.ble2`; its ioBroker adapter name is `ble2`. The GitHub repository is `SimonFischer04/ioBroker.ble2`.
@@ -396,6 +403,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * Fixed discovery and decoding of Ruuvi Tag manufacturer-only advertisements, including packets received after empty or unrelated frames.
 * Preserve separate manufacturer data blocks in raw gateway advertisements and decode Govee readings alongside iBeacon data.
 * Ignore invalid Mi Flora soil moisture readings above 100% to preserve the last valid measurement.
+* Decode button and rotation events from the Yeelight YLKG07YL and YLKG08YL dimmers.
 
 ### 0.14.2-beta.1 (2026-11-21)
 * Prepare a fresh prerelease version to verify npm Trusted Publishing.

@@ -60,6 +60,52 @@ function assertCapabilities(actual: number, expected: number | undefined) {
 }
 
 describe("xiaomi protocol => ", () => {
+	describe("Yeelight YLKG07YL and YLKG08YL dimmer events", () => {
+		const mac = "11:22:33:44:55:66";
+		const key = () => Buffer.from("000102030405060708090a0b", "hex");
+		const cases = [
+			[
+				"5830b60301665544332211dafc693e036c01020300",
+				{ dimmerAction: "rotate right", dimmerSteps: 7 },
+			],
+			[
+				"5830b603026655443322116e5a10c4ac1101020300",
+				{ dimmerAction: "rotate left (pressed)", dimmerSteps: 2 },
+			],
+			[
+				"5830b603036655443322112abe0ea003c4cc89beb901020300",
+				{ dimmerAction: "single press", battery: 90 },
+			],
+		] as const;
+
+		for (const [hex, expected] of cases) {
+			it(`decodes ${expected.dimmerAction} from a legacy frame`, () => {
+				const frame = new XiaomiAdvertisement(
+					Buffer.from(hex, "hex"),
+					mac,
+					key,
+				);
+				expect(frame.event).to.deep.equal(expected);
+			});
+		}
+
+		it("rejects legacy button bytes from other products and invalid dimmer actions", () => {
+			for (const hex of [
+				"5830aa010466554433221163579ebcf9d701020300",
+				"5830b603056655443322117317150c725501020300",
+			]) {
+				expect(
+					() =>
+						new XiaomiAdvertisement(
+							Buffer.from(hex, "hex"),
+							mac,
+							key,
+						),
+				).to.throw(/legacy mibeacon measurement/i);
+			}
+		});
+	});
+
 	describe("authenticated MiBeacon advertisements", () => {
 		const key = Buffer.from("000102030405060708090a0b0c0d0e0f", "hex");
 		const mac = "112233445566";
