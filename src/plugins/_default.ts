@@ -86,6 +86,20 @@ const plugin: Plugin = {
 			});
 		}
 
+		if (peripheral.advertisement?.manufacturerDataBlocks?.length) {
+			stateObjects.push({
+				id: `${channelId}.manufacturerDataBlocks`,
+				common: {
+					role: "json",
+					name: "Manufacturer data blocks",
+					type: "string",
+					read: true,
+					write: false,
+				},
+				native: undefined,
+			});
+		}
+
 		return {
 			device: deviceObject,
 			channels: [channelObject],
@@ -116,6 +130,12 @@ const plugin: Plugin = {
 			ret[stateId] = parseData(peripheral.advertisement.manufacturerData);
 			_.adapter.log.debug(
 				`_default: ${peripheral.address} > got manufacturer data ${ret[stateId]}`,
+			);
+		}
+		const blocks = peripheral.advertisement?.manufacturerDataBlocks;
+		if (blocks?.length) {
+			ret["services.manufacturerDataBlocks"] = JSON.stringify(
+				blocks.map((block) => block.toString("hex")),
 			);
 		}
 		return ret;

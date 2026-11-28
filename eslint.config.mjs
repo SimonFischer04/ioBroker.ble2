@@ -56,6 +56,27 @@ export default [
 		},
 	},
 	{
+		files: ["test/integrationTests/*.js"],
+		languageOptions: {
+			globals: {
+				before: "readonly",
+				beforeEach: "readonly",
+				after: "readonly",
+				it: "readonly",
+			},
+		},
+	},
+	{
+		files: [
+			"src/connections/connection-manager.test.ts",
+			"src/transports/remote-gatt-link.test.ts",
+		],
+		rules: {
+			// Async stubs implement promise-returning interfaces.
+			"@typescript-eslint/require-await": "off",
+		},
+	},
+	{
 		files: ["**/*.ts"],
 		rules: {
 			// The adapter is compiled to CommonJS and uses typed import assignments.

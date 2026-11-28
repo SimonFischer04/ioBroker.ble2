@@ -113,7 +113,7 @@
 		"hciDevice": 0,
 		"scanIntervalMinutes": 0,
 		"scanWindowSeconds": 10,
-		"server": "",
+		"remoteServers": "",
 		"plugins": "",
 		"xiaomiBindkeys": "",
 		"bthomeBindkeys": "",
@@ -121,7 +121,16 @@
 		"suggestRecurringDevices": false,
 		"presenceDevices": [],
 		"rssiThrottle": 0,
-		"rssiTimeoutSeconds": 0
+		"rssiTimeoutSeconds": 0,
+		"localScanner": true,
+		"gatewayTimeout": 60,
+		"pvvxDevices": "",
+		"miFloraBatteryDevices": "",
+		"flowerPowerDevices": "",
+		"cyclingPowerDevices": "",
+		"pvvxSyncInterval": 24,
+		"pvvxFirmwareCheck": true,
+		"pvvxFirmwareUrl": "https://raw.githubusercontent.com/pvvx/ATC_MiThermometer/master/"
 	},
 	"objects": [],
 	"instanceObjects": [
@@ -151,7 +160,7 @@
 			"type": "state",
 			"common": {
 				"role": "indicator.connected",
-				"name": "If BLE scan is active",
+				"name": "If at least one source of BLE advertisements is active",
 				"type": "boolean",
 				"read": true,
 				"write": false,
@@ -170,6 +179,14 @@
 				"read": true,
 				"write": false,
 				"def": "poweredOff"
+			},
+			"native": {}
+		},
+		{
+			"_id": "gateways",
+			"type": "channel",
+			"common": {
+				"name": "Sources of BLE advertisements"
 			},
 			"native": {}
 		},
