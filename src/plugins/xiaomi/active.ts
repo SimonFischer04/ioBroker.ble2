@@ -3,6 +3,7 @@ import type {} from "./config";
 import { readDeviceList } from "../../lib/device-list";
 import { parseDeviceRequest } from "../../lib/gatt-request";
 import type { PluginContext, PluginInstance } from "../plugin";
+import { readKettleProStatus } from "./kettle-pro";
 import { syncLywsd02Clock } from "./lywsd02-clock";
 import { MiFloraBattery } from "./mi-flora-battery";
 
@@ -29,6 +30,16 @@ export function startXiaomi(ctx: PluginContext): PluginInstance {
 	return {
 		observe: (peripheral) => battery.observe(peripheral),
 		commands: {
+			readXiaomiKettlePro: async (message) => {
+				const { address, options } = parseDeviceRequest(message);
+				const { token } = message as { token?: unknown };
+				return readKettleProStatus(
+					connections,
+					address,
+					token,
+					options,
+				);
+			},
 			syncLywsd02Clock: async (message) => {
 				const { address, options } = parseDeviceRequest(message);
 				const timestamp = await syncLywsd02Clock(

@@ -245,6 +245,14 @@ in V, current in A, capacity in mAh and temperature in °C. The MC3000 accepts t
 query over BLE without explicit pairing. The manufacturer documents this in the
 [MC3000 manual](https://www.skyrc.com/download/MC3000_Instruction_Manual_V1.17.pdf).
 
+## Reading a Xiaomi Mi Smart Kettle Pro
+
+Select **Xiaomi** under **Active plugins**. For the model `yunmi.kettle.v12`, call
+`sendToAsync("ble2.0", "readXiaomiKettlePro", { address, token })`. Use the Bluetooth
+MAC address and the 32-character hexadecimal token of the kettle paired to your Xiaomi account.
+The result contains the water temperature in degrees Celsius and the operating status.
+A connection-capable Bluetooth gateway must be in range.
+
 ## Plugin system
 Build the adapter from source with `npm ci` followed by `npm run build`. The generated backend `build/` directory is not tracked in Git. Published npm packages include the generated files; installation directly from Git is disabled with `common.nogit`.
 
@@ -408,6 +416,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * **BREAKING:** Rename the maintained fork to `iobroker.ble2` with the `ble2` adapter namespace.
 * **BREAKING:** Require Node.js 22.19 or newer; test Node.js 22, 24, and 26 on Linux, Windows, and macOS.
 * Added BTHome signed counters, signed power, volume storage, and direction measurements.
+* Read Xiaomi Mi Smart Kettle Pro v12 temperature and operating status using its paired device token.
 * Control MagicSwitchBot through a connection-capable Bluetooth gateway.
 * Use the latest Xiaomi measurements when one scan result contains multiple MiBeacon frames.
 * Fixed discovery and decoding of Ruuvi Tag manufacturer-only advertisements, including packets received after empty or unrelated frames.
