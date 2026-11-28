@@ -142,6 +142,14 @@ Select the plugin **Parrot Flower Power** under **Active plugins**.
 
 Enter your sensor addresses in **Parrot Flower Power sensors (MAC addresses)**. When a connection-capable gateway receives an advertisement from a configured sensor, the adapter reads the available calibrated moisture, air temperature, sunlight and battery characteristics. The first reading is due immediately. Further readings are due every 15 minutes, or after one minute following an unsuccessful read. The firmware must expose the calibrated Flower Power Live service for the plant measurements.
 
+## Reading a Xiaomi Mi Smart Kettle Pro
+
+Select **Xiaomi** under **Active plugins**. For the model `yunmi.kettle.v12`, call
+`sendToAsync("ble2.0", "readXiaomiKettlePro", { address, token })`. Use the Bluetooth
+MAC address and the 32-character hexadecimal token of the kettle paired to your Xiaomi account.
+The result contains the water temperature in degrees Celsius and the operating status.
+A connection-capable Bluetooth gateway must be in range.
+
 ## Reading and setting a Comet Blue thermostat
 
 Select the plugin **Comet Blue thermostats** under **Active plugins**.
@@ -244,14 +252,6 @@ Slots are numbered 1 to 4. The result includes the status code, elapsed seconds,
 in V, current in A, capacity in mAh and temperature in °C. The MC3000 accepts this status
 query over BLE without explicit pairing. The manufacturer documents this in the
 [MC3000 manual](https://www.skyrc.com/download/MC3000_Instruction_Manual_V1.17.pdf).
-
-## Reading a Xiaomi Mi Smart Kettle Pro
-
-Select **Xiaomi** under **Active plugins**. For the model `yunmi.kettle.v12`, call
-`sendToAsync("ble2.0", "readXiaomiKettlePro", { address, token })`. Use the Bluetooth
-MAC address and the 32-character hexadecimal token of the kettle paired to your Xiaomi account.
-The result contains the water temperature in degrees Celsius and the operating status.
-A connection-capable Bluetooth gateway must be in range.
 
 ## Plugin system
 Build the adapter from source with `npm ci` followed by `npm run build`. The generated backend `build/` directory is not tracked in Git. Published npm packages include the generated files; installation directly from Git is disabled with `common.nogit`.
