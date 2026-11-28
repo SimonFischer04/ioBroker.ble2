@@ -32,7 +32,7 @@ class CometGateway extends FakeGattGateway {
 								{
 									uuid: uuid("2b"),
 									handle: 52,
-									properties: 2,
+									properties: 10,
 									descriptors: [],
 								},
 								{
@@ -103,6 +103,66 @@ exports.runTests = function (suite) {
 			expect(Buffer.from(data, "base64").toString("hex")).to.equal(
 				"d2040000",
 			);
+		});
+
+		it("writes only requested setpoints and preserves the calibration offset", async function () {
+			this.timeout(20000);
+			const gateway = new CometGateway(harness);
+			gateway.values.set(52, "29261a2cfd0000");
+			const base = { address, pin: "1234" };
+			const command = "setCometBlueSetpoints";
+			for (const invalid of [
+				{},
+				{ ecoSetpoint: 7.5 },
+				{ comfortSetpoint: 22.2 },
+			]) {
+				const response = await sendToAdapter(harness, command, {
+					...base,
+					...invalid,
+				});
+				expect(response.error.code).to.equal("INVALID_PAYLOAD");
+			}
+			expect(gateway.commands).to.have.length(0);
+
+			const response = await sendToAdapter(harness, command, {
+				...base,
+				manualSetpoint: 21.5,
+				comfortSetpoint: 23,
+			});
+			expect(response).to.deep.equal({ error: null, result: {} });
+
+			const writes = gateway.commands
+				.filter(({ command }) => command === "gatt:write")
+				.map(({ message }) => [
+					message.handle,
+					Buffer.from(message.data, "base64").toString("hex"),
+				]);
+			expect(writes).to.deep.equal([
+				[50, "d2040000"],
+				[52, "802b802efd8080"],
+			]);
+		});
+
+		it("leaves the thermostat untouched if its calibration offset is unavailable", async function () {
+			this.timeout(20000);
+			const gateway = new CometGateway(harness);
+			gateway.values.set(52, "29261a2c800000");
+			const response = await sendToAdapter(
+				harness,
+				"setCometBlueSetpoints",
+				{
+					address,
+					pin: "1234",
+					ecoSetpoint: 18,
+				},
+			);
+			expect(response.error.code).to.equal("GATT_ERROR");
+			const writes = gateway.commands.filter(
+				({ command }) => command === "gatt:write",
+			);
+			expect(writes.map(({ message }) => message.handle)).to.deep.equal([
+				50,
+			]);
 		});
 	});
 };
