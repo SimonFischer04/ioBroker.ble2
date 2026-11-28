@@ -1,0 +1,417 @@
+import { createHash } from "node:crypto";
+import type { GatewayFeature, GatewayInfo } from "../lib/gateway-protocol";
+
+/** Timings of the GatewayRegistry, can be shortened for tests */
+export interface GatewayRegistryOptions {
+	/** A remote gateway is offline when it delivered nothing for this long */
+	remoteTimeoutMs: number;
+	/** How often the timestamp of the last advertisement is written to the states DB */
+	lastAdvertisementIntervalMs: number;
+}
+
+const defaultOptions: GatewayRegistryOptions = {
+	remoteTimeoutMs: 60000,
+	lastAdvertisementIntervalMs: 10000,
+};
+
+interface GatewayEntry extends GatewayInfo {
+	/** ID of the channel object, relative to the adapter namespace */
+	objectId: string;
+	/** Serializes the DB writes for this gateway, so they arrive in order */
+	queue: Promise<void>;
+	lastAdvertisementWritten: number;
+	/** When the gateway last delivered or announced anything */
+	lastMessage: number;
+	/** Whether the state freeSlots was created */
+	freeSlotsObject: boolean;
+	/** The value last written to the state freeSlots */
+	freeSlotsWritten?: number;
+}
+
+export type GatewayDescription = Pick<GatewayInfo, "id" | "type" | "sender">;
+
+/**
+ * Knows all sources of advertisements (the local Bluetooth adapter, the remote scan server
+ * and the gateways other adapters deliver advertisements for) and whether they are active.
+ * Mirrors that to the states `gateways.<id>.*` and `info.connection`.
+ */
+export class GatewayRegistry {
+	/**
+	 * Creates an empty registry; call init() before reporting gateways
+	 *
+	 * @param adapter Writes the gateway states and logs
+	 * @param options Missing options are taken from the defaults
+	 */
+	public constructor(
+		private readonly adapter: ioBroker.Adapter,
+		options: Partial<GatewayRegistryOptions> = {},
+	) {
+		this.options = { ...defaultOptions, ...options };
+	}
+
+	private readonly options: GatewayRegistryOptions;
+	private readonly gateways = new Map<string, GatewayEntry>();
+	private timer: NodeJS.Timeout | undefined;
+	private anyConnected = false;
+	private disposed = false;
+
+	/** Called when a gateway goes offline */
+	public onGatewayOffline?: (gatewayId: string) => void;
+
+	/** Must be called once before gateways are reported */
+	public async init(): Promise<void> {
+		// Gateways from the last run are offline until they deliver something again
+		const states = await this.adapter.getStatesAsync(
+			`${this.adapter.namespace}.gateways.*`,
+		);
+		for (const [id, state] of Object.entries(states ?? {})) {
+			if (id.endsWith(".connected") && state?.val === true) {
+				await this.adapter.setStateAsync(id, false, true);
+			}
+		}
+		await this.adapter.setStateAsync("info.connection", false, true);
+
+		const interval = Math.max(
+			250,
+			Math.min(5000, this.options.remoteTimeoutMs / 4),
+		);
+		this.timer = setInterval(() => this.checkTimeouts(), interval);
+	}
+
+	/** Stops the timeout check and drops all pending state writes */
+	public dispose(): void {
+		this.disposed = true;
+		if (this.timer) {
+			clearInterval(this.timer);
+		}
+		this.timer = undefined;
+	}
+
+	/** Lists all gateways that were active since the adapter started */
+	public list(): GatewayInfo[] {
+		return [...this.gateways.values()].map((gateway) =>
+			this.toInfo(gateway),
+		);
+	}
+
+	/**
+	 * The gateway with this (full) ID
+	 *
+	 * @param id Full ID of the gateway, e.g. "esphome.0:proxy-og"
+	 */
+	public get(id: string): GatewayInfo | undefined {
+		const gateway = this.gateways.get(id);
+		return gateway && this.toInfo(gateway);
+	}
+
+	private toInfo({
+		objectId,
+		queue,
+		lastAdvertisementWritten,
+		lastMessage,
+		freeSlotsObject,
+		freeSlotsWritten,
+		...info
+	}: GatewayEntry): GatewayInfo {
+		return { ...info, features: [...info.features] };
+	}
+
+	/**
+	 * Reports what a gateway can do. This also marks it as active.
+	 *
+	 * @param description Which gateway it is
+	 * @param capabilities What the gateway reported
+	 * @param capabilities.connect Whether connections to devices can be opened through it
+	 * @param capabilities.freeSlots How many more connections it can open right now, if known
+	 * @param capabilities.slotLimit How many connections it can have at the same time, if known
+	 * @param capabilities.features Optional commands it supports
+	 * @param now Current time, can be set by tests
+	 */
+	public announce(
+		description: GatewayDescription,
+		capabilities: {
+			connect: boolean;
+			freeSlots?: number;
+			slotLimit?: number;
+			/** Missing = none */
+			features?: GatewayFeature[];
+		},
+		now: number = Date.now(),
+	): void {
+		const gateway = this.getOrCreate(description);
+		gateway.connect = capabilities.connect;
+		gateway.freeSlots = capabilities.freeSlots;
+		gateway.slotLimit = capabilities.slotLimit;
+		gateway.features = capabilities.connect
+			? [...(capabilities.features ?? [])]
+			: [];
+		gateway.lastMessage = now;
+		this.updateConnected(gateway, true);
+
+		const freeSlots = capabilities.freeSlots;
+		if (freeSlots !== undefined && freeSlots !== gateway.freeSlotsWritten) {
+			gateway.freeSlotsWritten = freeSlots;
+			const create = !gateway.freeSlotsObject;
+			gateway.freeSlotsObject = true;
+			this.enqueue(gateway, async () => {
+				if (create) {
+					await this.adapter.setObjectNotExistsAsync(
+						`${gateway.objectId}.freeSlots`,
+						{
+							type: "state",
+							common: {
+								name: "Free connection slots",
+								role: "value",
+								type: "number",
+								read: true,
+								write: false,
+							},
+							native: {},
+						},
+					);
+				}
+				await this.adapter.setStateAsync(
+					`${gateway.objectId}.freeSlots`,
+					freeSlots,
+					true,
+				);
+			});
+		}
+	}
+
+	/**
+	 * Reports whether a gateway is active
+	 *
+	 * @param description Which gateway it is
+	 * @param connected Whether it is active
+	 */
+	public setConnected(
+		description: GatewayDescription,
+		connected: boolean,
+	): void {
+		const gateway = this.getOrCreate(description);
+		this.updateConnected(gateway, connected);
+	}
+
+	/**
+	 * Reports that a gateway received advertisements. This also marks it as active.
+	 *
+	 * @param description Which gateway it is
+	 * @param count How many advertisements it received
+	 * @param now Current time, can be set by tests
+	 */
+	public recordAdvertisements(
+		description: GatewayDescription,
+		count: number,
+		now: number = Date.now(),
+	): void {
+		const gateway = this.getOrCreate(description);
+		gateway.advertisements += count;
+		gateway.lastAdvertisement = now;
+		gateway.lastMessage = now;
+		this.updateConnected(gateway, true);
+
+		if (
+			now - gateway.lastAdvertisementWritten >=
+			this.options.lastAdvertisementIntervalMs
+		) {
+			gateway.lastAdvertisementWritten = now;
+			this.enqueue(gateway, () =>
+				this.adapter.setStateAsync(
+					`${gateway.objectId}.lastAdvertisement`,
+					now,
+					true,
+				),
+			);
+		}
+	}
+
+	/**
+	 * Reports that an advertisement was skipped because another gateway delivered it first
+	 *
+	 * @param gatewayId Full ID of the gateway whose advertisement was skipped
+	 */
+	public recordDuplicate(gatewayId: string): void {
+		const gateway = this.gateways.get(gatewayId);
+		if (gateway) {
+			gateway.duplicates++;
+		}
+	}
+
+	/**
+	 * Marks all gateways of an instance as offline, e.g. because that instance was stopped
+	 *
+	 * @param sender The instance, e.g. "esphome.0"
+	 */
+	public senderOffline(sender: string): void {
+		for (const gateway of this.gateways.values()) {
+			if (gateway.sender === sender) {
+				this.updateConnected(gateway, false);
+			}
+		}
+	}
+
+	private checkTimeouts(now: number = Date.now()): void {
+		for (const gateway of this.gateways.values()) {
+			if (
+				gateway.type === "remote" &&
+				gateway.connected &&
+				now - gateway.lastMessage > this.options.remoteTimeoutMs
+			) {
+				this.adapter.log.info(
+					`Gateway ${gateway.id} is offline: no message for ${Math.round(
+						this.options.remoteTimeoutMs / 1000,
+					)} seconds`,
+				);
+				this.updateConnected(gateway, false);
+			}
+		}
+	}
+
+	private getOrCreate(description: GatewayDescription): GatewayEntry {
+		let gateway = this.gateways.get(description.id);
+		if (!gateway) {
+			gateway = {
+				...description,
+				connected: false,
+				advertisements: 0,
+				duplicates: 0,
+				connect: false,
+				features: [],
+				objectId: `gateways.${toObjectId(description.id)}`,
+				queue: Promise.resolve(),
+				lastAdvertisementWritten: 0,
+				lastMessage: 0,
+				freeSlotsObject: false,
+			};
+			this.gateways.set(description.id, gateway);
+			if (description.type === "remote") {
+				this.adapter.log.info(`New gateway ${description.id}`);
+			}
+			this.enqueue(gateway, () => this.createObjects(gateway!));
+		}
+		return gateway;
+	}
+
+	private updateConnected(gateway: GatewayEntry, connected: boolean): void {
+		if (gateway.connected === connected) {
+			return;
+		}
+		gateway.connected = connected;
+		this.enqueue(gateway, () =>
+			this.adapter.setStateAsync(
+				`${gateway.objectId}.connected`,
+				connected,
+				true,
+			),
+		);
+
+		const anyConnected = [...this.gateways.values()].some(
+			(g) => g.connected,
+		);
+		if (anyConnected !== this.anyConnected) {
+			this.anyConnected = anyConnected;
+			this.adapter
+				.setState("info.connection", anyConnected, true)
+				.catch((error: unknown) => {
+					this.adapter.log.warn(
+						`Could not update info.connection: ${String(error)}`,
+					);
+				});
+		}
+
+		if (!connected && this.onGatewayOffline) {
+			try {
+				this.onGatewayOffline(gateway.id);
+			} catch (e) {
+				this.adapter.log.warn(
+					`Error while taking gateway ${gateway.id} offline: ${
+						(e as Error).message
+					}`,
+				);
+			}
+		}
+	}
+
+	private async createObjects(gateway: GatewayEntry): Promise<void> {
+		await this.adapter.setObjectNotExistsAsync(gateway.objectId, {
+			type: "channel",
+			common: { name: gateway.id },
+			native: {
+				id: gateway.id,
+				type: gateway.type,
+				sender: gateway.sender,
+			},
+		});
+		await this.adapter.setObjectNotExistsAsync(
+			`${gateway.objectId}.connected`,
+			{
+				type: "state",
+				common: {
+					name: "Gateway is active",
+					role: "indicator.reachable",
+					type: "boolean",
+					read: true,
+					write: false,
+					def: false,
+				},
+				native: {},
+			},
+		);
+		await this.adapter.setObjectNotExistsAsync(
+			`${gateway.objectId}.lastAdvertisement`,
+			{
+				type: "state",
+				common: {
+					name: "Last received advertisement",
+					role: "date",
+					type: "number",
+					read: true,
+					write: false,
+				},
+				native: {},
+			},
+		);
+	}
+
+	private enqueue(gateway: GatewayEntry, task: () => Promise<unknown>): void {
+		gateway.queue = gateway.queue
+			.then(async () => {
+				if (!this.disposed) {
+					await task();
+				}
+			})
+			.catch((e) => {
+				this.adapter.log.warn(
+					`Could not update the states of gateway ${gateway.id}: ${
+						(e as Error).message
+					}`,
+				);
+			});
+	}
+}
+
+/**
+ * Gateway IDs that stay readable as object IDs: "local" and "<adapter>.<instance>:<gateway>" with a
+ * gateway ID of letters, digits, "-" and single dots. Replacing "." and ":" by "_" cannot make two
+ * of them alike: the adapter name contains no "_", the instance only digits, the gateway no "_".
+ */
+const READABLE_ID =
+	/^(?:local|[a-z0-9-]+\.\d+:[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*)$/;
+
+/**
+ * The ID of the gateway's channel below "gateways.". Readable for the usual IDs
+ * ("esphome.0:proxy-og" → "esphome_0_proxy-og"). Every other ID (scan servers, IDs with "_")
+ * gets a hash of the full ID appended after "__", which readable IDs never contain, so that e.g.
+ * "proxy.garage" and "proxy_garage" or two IPv6 scan servers do not share their states.
+ *
+ * @param gatewayId Full ID of the gateway
+ */
+export function toObjectId(gatewayId: string): string {
+	const readable = gatewayId.replace(/[^A-Za-z0-9-]/g, "_");
+	if (READABLE_ID.test(gatewayId)) {
+		return readable;
+	}
+	const hash = createHash("sha256").update(gatewayId).digest("hex");
+	return `${readable}__${hash.slice(0, 12)}`;
+}

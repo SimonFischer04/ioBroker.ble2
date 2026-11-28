@@ -8,7 +8,7 @@ import type { PeripheralInfo } from "./scanProcessInterface";
  * @param manufacturerIds Bluetooth company identifiers to accept
  */
 export function matchesScanFilter(
-	peripheral: PeripheralInfo,
+	peripheral: Pick<PeripheralInfo, "advertisement">,
 	services: readonly string[],
 	manufacturerIds: readonly number[],
 ): boolean {
@@ -27,10 +27,10 @@ export function matchesScanFilter(
 		return true;
 	}
 
-	const data = advertisement.manufacturerData;
-	return (
-		data != null &&
-		data.length >= 2 &&
-		manufacturerIds.includes(data.readUInt16LE(0))
-	);
+	const matches = (data: Buffer): boolean =>
+		data.length >= 2 && manufacturerIds.includes(data.readUInt16LE(0));
+	const { manufacturerData, manufacturerDataBlocks } = advertisement;
+	return manufacturerDataBlocks
+		? manufacturerDataBlocks.some(matches)
+		: manufacturerData != null && matches(manufacturerData);
 }

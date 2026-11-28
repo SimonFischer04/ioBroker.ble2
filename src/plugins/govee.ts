@@ -10,19 +10,25 @@ interface ThermometerReading {
 	battery?: number;
 }
 
+function isGoveeBlock(data: Buffer): boolean {
+	// Some scanners concatenate the EC88 block with the following Apple iBeacon block.
+	return (
+		(data.length === 8 ||
+			(data.length === 33 &&
+				data.subarray(8, 12).equals(iBeaconHeader))) &&
+		data.readUInt16LE(0) === companyId
+	);
+}
+
 function readThermometer(
 	peripheral: PeripheralInfo,
 ): ThermometerReading | undefined {
-	const data = peripheral.advertisement?.manufacturerData;
-	if (!data || data.length < 8 || data.readUInt16LE(0) !== companyId) {
-		return;
-	}
-
-	// Some scanners concatenate the EC88 block with the following Apple iBeacon block.
-	if (
-		data.length !== 8 &&
-		(data.length !== 33 || !data.subarray(8, 12).equals(iBeaconHeader))
-	) {
+	const { manufacturerData, manufacturerDataBlocks } =
+		peripheral.advertisement ?? {};
+	const data = manufacturerDataBlocks
+		? manufacturerDataBlocks.find(isGoveeBlock)
+		: manufacturerData;
+	if (!data || !isGoveeBlock(data)) {
 		return;
 	}
 
