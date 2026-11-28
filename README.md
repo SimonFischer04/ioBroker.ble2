@@ -134,11 +134,16 @@ Select the plugin **Parrot Flower Power** under **Active plugins**.
 
 Enter your sensor addresses in **Parrot Flower Power sensors (MAC addresses)**. When a connection-capable gateway receives an advertisement from a configured sensor, the adapter reads the available calibrated moisture, air temperature, sunlight and battery characteristics. The first reading is due immediately. Further readings are due every 15 minutes, or after one minute following an unsuccessful read. The firmware must expose the calibrated Flower Power Live service for the plant measurements.
 
-## Reading a Comet Blue thermostat
+## Reading and setting a Comet Blue thermostat
 
 Select the plugin **Comet Blue thermostats** under **Active plugins**.
 
 Use `sendToAsync("ble2.0", "readCometBlue", { address, pin })` with the thermostat's Bluetooth MAC address and its PIN as a string. A connecting gateway must be in range. The command returns the ambient temperature, manual, eco and comfort setpoints in °C, and a battery percentage when the device provides it. It authenticates using the supplied PIN for the current session.
+
+Use `sendToAsync("ble2.0", "setCometBlueSetpoints", { address, pin, comfortSetpoint: 21.5 })`
+to write one or more of `manualSetpoint`, `ecoSetpoint` and `comfortSetpoint`.
+Enter 8–28 °C in half-degree increments. The manual setpoint takes effect in manual mode.
+The configured calibration offset is preserved.
 
 ## Controlling a SwitchBot Bot
 
@@ -362,6 +367,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * Allow a named GATT gateway for devices that have not been observed.
 * Read calibrated Parrot Flower Power data through a connecting gateway.
 * Read protected temperature and battery data from Comet Blue thermostats.
+* Set manual, eco and comfort temperatures on Eurotronic Comet Blue thermostats.
 * Add the SwitchBot Bot `switchBot` command for external GATT gateways.
 * Read standard Cycling Power notifications through a connecting gateway.
 * Other adapters can deliver BLE advertisements they received, e.g. from ESPHome Bluetooth proxies (`gateway:advertisements`). Several receivers can be used at the same time.
