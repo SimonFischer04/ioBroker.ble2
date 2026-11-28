@@ -315,7 +315,7 @@ The Xiaomi Door and Window Sensor 2 (MCCGQ02HL) publishes `contactOpen` and `doo
 
 With pvvx firmware, choose **ATC1441** or **PVVX (Custom)** in the firmware settings and enable **ATC1441 and PVVX** in the adapter. These formats carry temperature, humidity, and battery in the same packet. The scanner must expose the Bluetooth MAC address and forward `181a` service data. The **Xiaomi** plugin remains available for MiBeacon mode, where a battery packet may arrive separately from temperature and humidity.
 
-For a Govee H5072 or H5075, enable **Govee H5072/H5075** under **Active plugins**. The scanner must deliver the `EC88` manufacturer data containing the measurements. The separate Apple iBeacon block beginning with `4c000215` contains no Govee sensor readings. A gateway that forwards the raw advertisement and scan response preserves separate manufacturer data blocks. For devices handled by the default decoder, `services.manufacturerDataBlocks` lists those blocks as a JSON array of hexadecimal strings. A local Noble backend may supply only the last block. For a supported remote scanner with service filters, forward service `ec88` or add `--manufacturerIds 60552`.
+For a Govee H5072 or H5075, enable **Govee H5072/H5075** under **Active plugins**. The scanner needs the `EC88` manufacturer data containing the measurements. A gateway that forwards the raw advertisement and scan response preserves separate manufacturer data blocks. For devices handled by the default decoder, `services.manufacturerDataBlocks` lists those blocks as a JSON array of hexadecimal strings. When filtering by manufacturer ID, a Noble HCI scanner checks advertisements and scan responses separately. For a standalone `blerp.js` scanner, add `--manufacturerIds 60552` so that it forwards the measurement even when it arrives separately from the Apple iBeacon block.
 
 For Mopeka, add `mopeka` to **Active plugins** and enable **Accept new devices** while discovering the sensor. Local scanning includes its manufacturer identifier automatically. A remote scanner with service filters also needs `--manufacturerIds 89` to forward manufacturer-only advertisements.
 
@@ -436,6 +436,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * Use the latest Xiaomi measurements when one scan result contains multiple MiBeacon frames.
 * Fixed discovery and decoding of Ruuvi Tag manufacturer-only advertisements, including packets received after empty or unrelated frames.
 * Preserve separate manufacturer data blocks in raw gateway advertisements and decode Govee readings alongside iBeacon data.
+* Preserve Govee readings when a Noble HCI scan response carries separate iBeacon data.
 * Ignore invalid Mi Flora soil moisture readings above 100% to preserve the last valid measurement.
 * Decode button and rotation events from the Yeelight YLKG07YL and YLKG08YL dimmers.
 
