@@ -13,7 +13,9 @@
                     "default": true,
                     "xs": 12,
                     "sm": 6,
-                    "md": 4
+                    "md": 4,
+                    "lg": 4,
+                    "xl": 4
                 },
                 "remoteServers": {
                     "type": "text",
@@ -178,7 +180,12 @@
                 },
                 "xiaomiBindkeys": {
                     "type": "text",
-                    "hidden": true
+                    "hidden": true,
+                    "xs": 12,
+                    "sm": 12,
+                    "md": 12,
+                    "lg": 12,
+                    "xl": 12
                 },
                 "_xiaomiBindkeyHeading": {
                     "type": "header",
@@ -223,11 +230,20 @@
                             "validatorErrorText": "Enter a 24- or 32-digit hexadecimal Xiaomi bindkey.",
                             "validatorNoSaveOnError": true
                         }
-                    ]
+                    ],
+                    "sm": 12,
+                    "md": 12,
+                    "lg": 12,
+                    "xl": 12
                 },
                 "bthomeBindkeys": {
                     "type": "text",
-                    "hidden": true
+                    "hidden": true,
+                    "xs": 12,
+                    "sm": 12,
+                    "md": 12,
+                    "lg": 12,
+                    "xl": 12
                 },
                 "_bthomeHeading": {
                     "type": "header",
@@ -273,7 +289,11 @@
                             "validatorErrorText": "Enter a 32-digit hexadecimal bindkey.",
                             "validatorNoSaveOnError": true
                         }
-                    ]
+                    ],
+                    "sm": 12,
+                    "md": 12,
+                    "lg": 12,
+                    "xl": 12
                 },
                 "allowEmptyDevices": {
                     "type": "checkbox",
@@ -290,7 +310,10 @@
                     "help": "Separate addresses with commas or line breaks. A blank list allows any device during discovery.",
                     "minRows": 2,
                     "xs": 12,
-                    "sm": 6
+                    "sm": 6,
+                    "md": 6,
+                    "lg": 6,
+                    "xl": 6
                 },
                 "scanIntervalMinutes": {
                     "type": "number",
@@ -326,7 +349,10 @@
                     "label": "Suggest frequently seen Bluetooth devices",
                     "help": "Show suggestions at info.suggestedDevices. Open the state in Objects to see the addresses.",
                     "xs": 12,
-                    "sm": 6
+                    "sm": 6,
+                    "md": 6,
+                    "lg": 6,
+                    "xl": 6
                 },
                 "presenceDevices": {
                     "type": "table",
@@ -367,7 +393,11 @@
                             "max": 86400,
                             "step": 1
                         }
-                    ]
+                    ],
+                    "sm": 12,
+                    "md": 12,
+                    "lg": 12,
+                    "xl": 12
                 },
                 "_discovery": {
                     "type": "panel",
@@ -410,7 +440,10 @@
                     "min": 1,
                     "default": 60,
                     "xs": 12,
-                    "sm": 6
+                    "sm": 6,
+                    "md": 6,
+                    "lg": 6,
+                    "xl": 6
                 },
                 "miFloraBatteryDevices": {
                     "type": "text",
@@ -419,7 +452,10 @@
                     "minRows": 2,
                     "xs": 12,
                     "sm": 6,
-                    "hidden": "!['xiaomi', 'mi-flora'].some(p => (data._pluginSelection || []).includes(p))"
+                    "hidden": "!['xiaomi', 'mi-flora'].some(p => (data._pluginSelection || []).includes(p))",
+                    "md": 6,
+                    "lg": 6,
+                    "xl": 6
                 },
                 "lywsd02ClockDevices": {
                     "type": "text",
@@ -440,7 +476,10 @@
                     "minRows": 2,
                     "xs": 12,
                     "sm": 6,
-                    "hidden": "!['parrot'].some(p => (data._pluginSelection || []).includes(p))"
+                    "hidden": "!['parrot'].some(p => (data._pluginSelection || []).includes(p))",
+                    "md": 6,
+                    "lg": 6,
+                    "xl": 6
                 },
                 "cyclingPowerDevices": {
                     "type": "text",
@@ -449,7 +488,10 @@
                     "minRows": 2,
                     "xs": 12,
                     "sm": 6,
-                    "hidden": "!['cycling-power'].some(p => (data._pluginSelection || []).includes(p))"
+                    "hidden": "!['cycling-power'].some(p => (data._pluginSelection || []).includes(p))",
+                    "md": 6,
+                    "lg": 6,
+                    "xl": 6
                 },
                 "pvvxDevices": {
                     "type": "text",
@@ -460,7 +502,10 @@
                     "trim": false,
                     "xs": 12,
                     "sm": 6,
-                    "hidden": "!['atc'].some(p => (data._pluginSelection || []).includes(p))"
+                    "hidden": "!['atc'].some(p => (data._pluginSelection || []).includes(p))",
+                    "md": 6,
+                    "lg": 6,
+                    "xl": 6
                 },
                 "pvvxSyncInterval": {
                     "type": "number",
@@ -470,7 +515,10 @@
                     "default": 24,
                     "xs": 12,
                     "sm": 6,
-                    "hidden": "!['atc'].some(p => (data._pluginSelection || []).includes(p))"
+                    "hidden": "!['atc'].some(p => (data._pluginSelection || []).includes(p))",
+                    "md": 6,
+                    "lg": 6,
+                    "xl": 6
                 },
                 "pvvxFirmwareCheck": {
                     "type": "checkbox",
@@ -479,7 +527,10 @@
                     "default": true,
                     "xs": 12,
                     "sm": 6,
-                    "hidden": "!['atc'].some(p => (data._pluginSelection || []).includes(p))"
+                    "hidden": "!['atc'].some(p => (data._pluginSelection || []).includes(p))",
+                    "md": 6,
+                    "lg": 6,
+                    "xl": 6
                 }
             }
         },

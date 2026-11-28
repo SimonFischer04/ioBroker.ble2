@@ -51,7 +51,7 @@ export class GatewayRegistry {
 
 	private readonly options: GatewayRegistryOptions;
 	private readonly gateways = new Map<string, GatewayEntry>();
-	private timer: NodeJS.Timeout | undefined;
+	private timer: ioBroker.Interval | undefined;
 	private anyConnected = false;
 	private disposed = false;
 
@@ -75,14 +75,17 @@ export class GatewayRegistry {
 			250,
 			Math.min(5000, this.options.remoteTimeoutMs / 4),
 		);
-		this.timer = setInterval(() => this.checkTimeouts(), interval);
+		this.timer = this.adapter.setInterval(
+			() => this.checkTimeouts(),
+			interval,
+		);
 	}
 
 	/** Stops the timeout check and drops all pending state writes */
 	public dispose(): void {
 		this.disposed = true;
 		if (this.timer) {
-			clearInterval(this.timer);
+			this.adapter.clearInterval(this.timer);
 		}
 		this.timer = undefined;
 	}

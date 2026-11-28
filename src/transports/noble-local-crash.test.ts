@@ -12,7 +12,7 @@ function fixture() {
 	const { NobleLocalTransport } = proxyquire.noPreserveCache()<
 		typeof LocalModule
 	>("./noble-local", {
-		child_process: {
+		"node:child_process": {
 			fork: () => {
 				const child = new EventEmitter();
 				children.push(child);

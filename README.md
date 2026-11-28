@@ -427,6 +427,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * Recognize the Weber iGrill mini when it advertises its temperature service.
 * Suggest repeatedly observed Bluetooth devices before they have been recorded.
 * Replace the custom React settings page with responsive native JSONConfig (requires admin 7.6.20 or newer), preserving settings and the live discovery switch.
+* Complete Admin settings translations and responsive widths.
 * **BREAKING:** Rename the maintained fork to `iobroker.ble2` with the `ble2` adapter namespace.
 * **BREAKING:** Require Node.js 22.19 or newer; test Node.js 22, 24, and 26 on Linux, Windows, and macOS.
 * Added BTHome signed counters, signed power, volume storage, and direction measurements.
