@@ -118,6 +118,7 @@
 		"xiaomiBindkeys": "",
 		"bthomeBindkeys": "",
 		"allowEmptyDevices": false,
+		"discoveryAllowlist": "",
 		"suggestRecurringDevices": false,
 		"presenceDevices": [],
 		"rssiThrottle": 0,

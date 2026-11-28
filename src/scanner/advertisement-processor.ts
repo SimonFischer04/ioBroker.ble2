@@ -1,7 +1,7 @@
 import { entries } from "alcalzone-shared/objects";
 import type { DeviceRegistry } from "../devices/device-registry";
 import type { GatewayRegistry } from "../gateways/gateway-registry";
-import type { PeripheralInfo } from "../lib/advertisement";
+import { normalizeAddress, type PeripheralInfo } from "../lib/advertisement";
 import { DiscoverySuggestions } from "../lib/discovery-suggestions";
 import type { DevicePresence } from "../lib/device-presence";
 import { Global as _ } from "../lib/global";
@@ -21,6 +21,8 @@ export interface AdvertisementProcessorOptions {
 	plugins: Plugin[];
 	/** Whether devices without advertised data may be created */
 	allowEmptyDevices: boolean;
+	/** Addresses allowed when recording new devices; blank allows all */
+	discoveryAllowlist?: string;
 	/** How frequent the RSSI of devices should be updated, in ms */
 	rssiUpdateInterval: number;
 	/** After how many seconds without an advertisement the RSSI is set to 0, only used if between 1 and 86400 */
@@ -48,6 +50,27 @@ export class AdvertisementProcessor {
 		private readonly devices: DeviceRegistry,
 		private readonly gateways: GatewayRegistry,
 	) {
+		const addresses = options.discoveryAllowlist?.trim();
+		if (addresses) {
+			this.discoveryAllowlist = new Set(
+				addresses
+					.split(/[\s,;]+/)
+					.filter((address) =>
+						/^(?:[0-9a-f]{12}|(?:[0-9a-f]{2}:){5}[0-9a-f]{2}|(?:[0-9a-f]{2}-){5}[0-9a-f]{2})$/i.test(
+							address,
+						),
+					)
+					.map(normalizeAddress)
+					.filter(
+						(address): address is string => address !== undefined,
+					),
+			);
+			if (this.discoveryAllowlist.size === 0) {
+				_.adapter.log.warn(
+					"The new-device allowlist has no valid Bluetooth addresses. Discovery cannot add devices.",
+				);
+			}
+		}
 		this.rssiUpdates = new RssiUpdates(
 			_.adapter,
 			options.rssiUpdateInterval,
@@ -61,6 +84,7 @@ export class AdvertisementProcessor {
 	}
 
 	private readonly rssiUpdates: RssiUpdates;
+	private readonly discoveryAllowlist?: Set<string>;
 	private readonly rssiExpiry?: RssiExpiry;
 	private valueWriter?: ValueWriter;
 	private suggestions?: DiscoverySuggestions;
@@ -286,7 +310,10 @@ export class AdvertisementProcessor {
 		const deviceId = peripheral.address;
 
 		// Test if we may record this device
-		if (!this.allowNewDevices) {
+		if (
+			!this.allowNewDevices ||
+			(this.discoveryAllowlist && !this.discoveryAllowlist.has(deviceId))
+		) {
 			// We may not. First test if we already ignored this device
 			if (this.ignoredNewDeviceIDs.has(deviceId)) {
 				this.suggestions?.observe(

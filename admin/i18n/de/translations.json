@@ -73,6 +73,8 @@
     "Full score decay time [s]": "Abbauzeit bei vollem Punktestand [s]",
     "BTHome bindkeys": "BTHome-Bindkeys",
     "Enter the Bluetooth MAC address and bindkey for each encrypted BTHome device.": "Gib für jedes verschlüsselte BTHome-Gerät die Bluetooth-MAC-Adresse und den Bindkey ein.",
+    "Bluetooth address allowlist for new devices": "Erlaubte Bluetooth-Adressen für neue Geräte",
+    "Separate addresses with commas or line breaks. A blank list allows any device during discovery.": "Adressen durch Kommas oder Zeilenumbrüche trennen. Bei leerer Liste werden während der Suche alle Geräte zugelassen.",
     "Reset RSSI after inactivity [s]": "RSSI nach Inaktivität zurücksetzen [s]",
     "Set RSSI to 0 after this many seconds without an advertisement from the device. Set to 0 to disable.": "Setzt RSSI nach dieser Zeit ohne Werbepaket vom Gerät auf 0. 0 deaktiviert die Funktion.",
     "Mi Flora battery polling (MAC addresses)": "Mi-Flora-Batterieabfrage (MAC-Adressen)",

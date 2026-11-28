@@ -188,6 +188,7 @@ const adapter = utils.adapter({
 			{
 				plugins: enabledPlugins,
 				allowEmptyDevices: !!adapter.config.allowEmptyDevices,
+				discoveryAllowlist: adapter.config.discoveryAllowlist,
 				rssiUpdateInterval,
 				rssiTimeoutSeconds: adapter.config.rssiTimeoutSeconds ?? 0,
 				devicePresence,
