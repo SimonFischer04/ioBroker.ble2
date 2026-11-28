@@ -11,6 +11,7 @@ const flower_power_tests = require("./flower_power_tests");
 const comet_blue_tests = require("./comet_blue_tests");
 const switchbot_tests = require("./switchbot_tests");
 const cycling_power_tests = require("./cycling_power_tests");
+const igrill_discovery_tests = require("./igrill_discovery_tests");
 const hub_mode_tests = require("./hub_mode_tests");
 const mi_flora_battery_tests = require("./mi_flora_battery_tests");
 const multi_gateway_tests = require("./multi_gateway_tests");
@@ -39,6 +40,7 @@ exports.runTests = function (suite) {
 
 	// Real packets of the supported devices, delivered by a gateway
 	gateway_advertisement_tests.runTests(suite);
+	igrill_discovery_tests.runTests(suite);
 
 	// Several gateways receiving the same devices
 	multi_gateway_tests.runTests(suite);

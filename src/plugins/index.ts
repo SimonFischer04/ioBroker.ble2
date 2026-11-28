@@ -15,6 +15,7 @@ import cyclingPower = require("./cycling-power");
 import cometBlue = require("./comet-blue");
 import yeelight = require("./yeelight");
 import skyrc = require("./skyrc");
+import iGrill = require("./igrill");
 import defaultPlugin = require("./_default");
 
 export default [
@@ -29,6 +30,7 @@ export default [
 	miScale,
 	govee,
 	mopeka,
+	iGrill,
 	// Only an active part, they decode no advertisements
 	parrot,
 	cyclingPower,

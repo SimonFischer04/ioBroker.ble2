@@ -276,6 +276,7 @@ If you have any device transmitting specially encoded information via advertisem
 * `"magicswitchbot"`: Battery level and password status from MagicSwitchBot advertisements. For remote scanners with filters, include manufacturer ID 1282.
 * `"switchbot"`: SwitchBot Meter-family temperature, humidity, and battery advertisements (`fd3d` or `0d00`).
 * `"bthome"`: Sensors using [BTHome v2](https://bthome.io), including encrypted advertisements.
+* `"igrill"`: Discovers Weber iGrill mini by its advertised 128-bit service UUID. Enable **Allow creation of devices without advertised data** and **Accept new devices** to record the first advertisement. The advertised packet provides identity and RSSI.
 * `"mi-scale"`: Mi Scale V1 and V2 broadcast weight in kilograms and a stabilized flag (`181d` and `181b`).
 * `"govee"`: Govee H5072 and H5075 temperature, humidity, and battery from EC88 manufacturer data.
 * `"mopeka"`: Mopeka Pro Check LPG tank sensors (standard sensor type `0x03`).
@@ -403,6 +404,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * Replace manual plugin names with a multi-select dropdown, preserving existing plugin settings.
 * Set brightness on the Yeelight Candela YLFW01YL through a Bluetooth gateway.
 * Add Mopeka Pro Check support with raw level, temperature, battery, and reading quality states.
+* Recognize the Weber iGrill mini when it advertises its temperature service.
 * Suggest repeatedly observed Bluetooth devices before they have been recorded.
 * Replace the custom React settings page with responsive native JSONConfig (requires admin 7.6.20 or newer), preserving settings and the live discovery switch.
 * **BREAKING:** Rename the maintained fork to `iobroker.ble2` with the `ble2` adapter namespace.
