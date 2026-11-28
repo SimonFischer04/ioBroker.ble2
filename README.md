@@ -203,8 +203,12 @@ Select the plugin **Xiaomi** under **Active plugins**.
 After a connection-capable gateway has seen the thermometer, call
 `sendTo("ble2.0", "syncLywsd02Clock", { address: "AA:BB:CC:11:22:33" }, callback)`
 to set the factory firmware clock from the adapter host. On success,
-`<mac>.lywsd02LastTimeSync` stores the timestamp in milliseconds. Call the same command
-from a scheduled ioBroker JavaScript script to update the clock periodically.
+`<mac>.lywsd02LastTimeSync` stores the timestamp in milliseconds.
+
+For automatic updates, enter the addresses under **LYWSD02 clock sync (MAC addresses)**.
+The first update runs when a gateway that can connect sees each device. After a successful
+update the clock is due again in 24 hours. A failed attempt is retried after 15 minutes
+when the device is seen again.
 
 LYWSD02 firmware stores the time zone as a whole-hour UTC offset.
 
@@ -398,6 +402,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * Plugins can have an active part that connects to the devices through a gateway; it runs only when the plugin is selected
 * The clock of pvvx thermometers can be set automatically through such gateways: at start, in an interval, after each change between summer and winter time and with a button. Firmware version, hardware ID and the deviation of the clock are shown
 * Set the Xiaomi LYWSD02 factory firmware clock and record its last successful sync.
+* Synchronize configured Xiaomi LYWSD02 clocks daily when a gateway sees them.
 * Newer pvvx firmware can be installed on the thermometers through gateways that support it (`gatt:writeSequence`), after checks of battery and signal. The newest version is looked up once a day
 * Support encrypted BTHome v2 advertisements with per-device bindkeys.
 * Replace manual plugin names with a multi-select dropdown, preserving existing plugin settings.

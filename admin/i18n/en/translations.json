@@ -86,5 +86,7 @@
     "Enter the MAC address and bindkey for each encrypted Xiaomi MiBeacon device.": "Enter the MAC address and bindkey for each encrypted Xiaomi MiBeacon device.",
     "Enter a 24- or 32-digit hexadecimal Xiaomi bindkey.": "Enter a 24- or 32-digit hexadecimal Xiaomi bindkey.",
     "Suggest frequently seen Bluetooth devices": "Suggest frequently seen Bluetooth devices",
-    "Show suggestions at info.suggestedDevices. Open the state in Objects to see the addresses.": "Show suggestions at info.suggestedDevices. Open the state in Objects to see the addresses."
+    "Show suggestions at info.suggestedDevices. Open the state in Objects to see the addresses.": "Show suggestions at info.suggestedDevices. Open the state in Objects to see the addresses.",
+    "LYWSD02 clock sync (MAC addresses)": "LYWSD02 clock sync (MAC addresses)",
+    "Add one factory-firmware LYWSD02 per line to set its clock daily through a gateway.": "Add one factory-firmware LYWSD02 per line to set its clock daily through a gateway."
 }

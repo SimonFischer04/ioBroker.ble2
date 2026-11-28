@@ -86,5 +86,7 @@
     "Enter the MAC address and bindkey for each encrypted Xiaomi MiBeacon device.": "MAC-Adresse und Bindkey für jedes verschlüsselte Xiaomi-MiBeacon-Gerät eingeben.",
     "Enter a 24- or 32-digit hexadecimal Xiaomi bindkey.": "Einen 24- oder 32-stelligen hexadezimalen Xiaomi-Bindkey eingeben.",
     "Suggest frequently seen Bluetooth devices": "Häufig empfangene Bluetooth-Geräte vorschlagen",
-    "Show suggestions at info.suggestedDevices. Open the state in Objects to see the addresses.": "Vorschläge unter info.suggestedDevices anzeigen. Die Adressen stehen im Datenpunkt unter Objekte."
+    "Show suggestions at info.suggestedDevices. Open the state in Objects to see the addresses.": "Vorschläge unter info.suggestedDevices anzeigen. Die Adressen stehen im Datenpunkt unter Objekte.",
+    "LYWSD02 clock sync (MAC addresses)": "LYWSD02-Uhr synchronisieren (MAC-Adressen)",
+    "Add one factory-firmware LYWSD02 per line to set its clock daily through a gateway.": "Pro Zeile einen LYWSD02 mit Original-Firmware eintragen, um seine Uhr täglich über ein Gateway zu stellen."
 }

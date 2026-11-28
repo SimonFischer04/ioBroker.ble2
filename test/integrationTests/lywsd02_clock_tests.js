@@ -9,6 +9,7 @@ const {
 	sendToAdapter,
 	startAdapter,
 	stopAdapter,
+	waitFor,
 } = require("./helpers");
 
 const address = "aa:bb:cc:11:22:33";
@@ -93,6 +94,62 @@ exports.runTests = function (suite) {
 			expect(
 				await getValue(harness, `${address}.lywsd02LastTimeSync`),
 			).to.equal(result.timestamp);
+		});
+	});
+
+	suite("LYWSD02 automatic clock sync", (getHarness) => {
+		const other = "aa:bb:cc:11:22:34";
+		let harness;
+
+		before(async function () {
+			this.timeout(60000);
+			harness = getHarness();
+			await startAdapter(
+				harness,
+				{
+					plugins: "xiaomi",
+					lywsd02ClockDevices: address.toUpperCase(),
+				},
+				{ TZ: "Etc/GMT+3" },
+			);
+		});
+
+		after(() => stopAdapter(harness));
+
+		it("updates a configured clock when seen and leaves other devices alone", async function () {
+			this.timeout(20000);
+			const gateway = new ClockGateway(harness);
+			await sendToAdapter(harness, "gateway:announce", {
+				protocol: "ble-gateway/1",
+				gateways: [{ gatewayId: "automatic-clock", connect: true }],
+			});
+			await deliver(
+				harness,
+				"automatic-clock",
+				[other, address, address].map((device) => ({
+					address: device,
+					data: PACKETS.bthomeThermometer,
+				})),
+			);
+			const timestamp = await waitFor(
+				() => getValue(harness, `${address}.lywsd02LastTimeSync`),
+				"automatic clock sync",
+			);
+			expect(await getValue(harness, `${other}.lywsd02LastTimeSync`)).to
+				.be.undefined;
+			const writes = gateway.commands.filter(
+				({ command }) => command === "gatt:write",
+			);
+			expect(writes).to.have.length(1);
+			const message = writes[0].message;
+			expect(message).to.include({
+				address,
+				handle: 50,
+				withResponse: true,
+			});
+			expect(
+				Buffer.from(message.data, "base64").readUInt32LE() * 1000,
+			).to.equal(timestamp);
 		});
 	});
 };
