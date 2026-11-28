@@ -142,6 +142,14 @@ Select the plugin **Parrot Flower Power** under **Active plugins**.
 
 Enter your sensor addresses in **Parrot Flower Power sensors (MAC addresses)**. When a connection-capable gateway receives an advertisement from a configured sensor, the adapter reads the available calibrated moisture, air temperature, sunlight and battery characteristics. The first reading is due immediately. Further readings are due every 15 minutes, or after one minute following an unsuccessful read. The firmware must expose the calibrated Flower Power Live service for the plant measurements.
 
+## Reading a Xiaomi Mi Smart Kettle Pro
+
+Select **Xiaomi** under **Active plugins**. For the model `yunmi.kettle.v12`, call
+`sendToAsync("ble2.0", "readXiaomiKettlePro", { address, token })`. Use the Bluetooth
+MAC address and the 32-character hexadecimal token of the kettle paired to your Xiaomi account.
+The result contains the water temperature in degrees Celsius and the operating status.
+A connection-capable Bluetooth gateway must be in range.
+
 ## Reading and setting a Comet Blue thermostat
 
 Select the plugin **Comet Blue thermostats** under **Active plugins**.
@@ -422,6 +430,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * **BREAKING:** Rename the maintained fork to `iobroker.ble2` with the `ble2` adapter namespace.
 * **BREAKING:** Require Node.js 22.19 or newer; test Node.js 22, 24, and 26 on Linux, Windows, and macOS.
 * Added BTHome signed counters, signed power, volume storage, and direction measurements.
+* Read Xiaomi Mi Smart Kettle Pro v12 temperature and operating status using its paired device token.
 * Control MagicSwitchBot through a connection-capable Bluetooth gateway.
 * Use the latest Xiaomi measurements when one scan result contains multiple MiBeacon frames.
 * Fixed discovery and decoding of Ruuvi Tag manufacturer-only advertisements, including packets received after empty or unrelated frames.

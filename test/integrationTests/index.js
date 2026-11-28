@@ -13,6 +13,7 @@ const switchbot_tests = require("./switchbot_tests");
 const cycling_power_tests = require("./cycling_power_tests");
 const igrill_discovery_tests = require("./igrill_discovery_tests");
 const hub_mode_tests = require("./hub_mode_tests");
+const kettle_pro_tests = require("./kettle_pro_tests");
 const mi_flora_battery_tests = require("./mi_flora_battery_tests");
 const multi_gateway_tests = require("./multi_gateway_tests");
 const skyrc_mc3000_tests = require("./skyrc_mc3000_tests");
@@ -57,6 +58,7 @@ exports.runTests = function (suite) {
 	mi_flora_battery_tests.runTests(suite);
 	flower_power_tests.runTests(suite);
 	comet_blue_tests.runTests(suite);
+	kettle_pro_tests.runTests(suite);
 	switchbot_tests.runTests(suite);
 	cycling_power_tests.runTests(suite);
 	candela_tests.runTests(suite);
