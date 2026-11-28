@@ -1,6 +1,6 @@
 import type RuuviTagModule = require("../ruuvi-tag");
 /* eslint-disable @typescript-eslint/no-namespace */
-import type { PeripheralInfo } from "../../lib/scanProcessInterface";
+import type { PeripheralInfo } from "../../lib/advertisement";
 import { expect } from "chai";
 import * as proxyquireModule from "proxyquire";
 import { createGlobalMock } from "../../../test/mocks/global";
@@ -77,7 +77,7 @@ describe("ruuvi-tag protocol (manufacturer data) => ", () => {
 		const packet = {
 			...peripheral,
 			advertisement,
-		} as unknown as PeripheralInfo;
+		};
 		expect(plugin.isHandling(packet)).to.be.true;
 		const context = plugin.createContext(packet)!;
 		expect(context).to.include({
