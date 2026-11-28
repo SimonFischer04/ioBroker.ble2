@@ -234,7 +234,7 @@ An update takes a few minutes. The states below `<mac>.pvvx`:
 
 After the update the adapter connects again, checks the new version and sets the clock. A failed update is not repeated automatically. Devices with a PIN code are not supported.
 
-## Reading a SkyRC MC3000 charging slot
+## Reading and controlling a SkyRC MC3000 charging slot
 
 Select the plugin **SkyRC MC3000** under **Active plugins**.
 
@@ -244,6 +244,12 @@ Slots are numbered 1 to 4. The result includes the status code, elapsed seconds,
 in V, current in A, capacity in mAh and temperature in °C. The MC3000 accepts this status
 query over BLE without explicit pairing. The manufacturer documents this in the
 [MC3000 manual](https://www.skyrc.com/download/MC3000_Instruction_Manual_V1.17.pdf).
+
+Use `sendTo("ble2.0", "controlSkyrcMc3000Slot", { address, slot: 1, action: "start" }, callback)`
+to start the program selected for a slot on the charger, or use `action: "stop"` to stop it.
+Check the slot's program and battery type on the charger before starting. The command waits
+for the charger to acknowledge the request. Read the slot status to check the resulting state.
+
 
 ## Plugin system
 Build the adapter from source with `npm ci` followed by `npm run build`. The generated backend `build/` directory is not tracked in Git. Published npm packages include the generated files; installation directly from Git is disabled with `common.nogit`.
@@ -394,6 +400,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * The connection to a remote scan server is re-established when it was lost, a server that is down is reported once instead of every 10 seconds
 * The monitored services also apply to the advertisements of remote scan servers
 * Read individual charging slot measurements from a SkyRC MC3000 through a Bluetooth gateway.
+* Start or stop the selected program on one SkyRC MC3000 slot.
 * Connections to devices through gateways of other adapters, e.g. ESPHome Bluetooth proxies: `discoverServices`, `readCharacteristic` and `writeCharacteristic`
 * Plugins can have an active part that connects to the devices through a gateway; it runs only when the plugin is selected
 * The clock of pvvx thermometers can be set automatically through such gateways: at start, in an interval, after each change between summer and winter time and with a button. Firmware version, hardware ID and the deviation of the clock are shown
