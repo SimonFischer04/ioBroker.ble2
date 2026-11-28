@@ -96,7 +96,7 @@
                     "label": "Active plugins:",
                     "help": "Select the plugins for your sensors and devices. A plugin also enables its connections to the devices, e.g. setting a clock. Basic advertisement data is always available.",
                     "doNotSave": true,
-                    "defaultFunc": "[...new Set((Array.isArray(data.plugins) ? data.plugins : String(data.plugins || '').split(',')).map(p => p.trim().toLowerCase()).filter(p => ['xiaomi', 'mi-flora', 'eddystone', 'ruuvi-tag', 'atc', 'magicswitchbot', 'switchbot', 'bthome', 'mi-scale', 'govee', 'mopeka', 'parrot', 'cycling-power', 'comet-blue', 'yeelight', 'skyrc'].includes(p)))]",
+                    "defaultFunc": "[...new Set((Array.isArray(data.plugins) ? data.plugins : String(data.plugins || '').split(',')).map(p => p.trim().toLowerCase()).filter(p => ['xiaomi', 'mi-flora', 'eddystone', 'ruuvi-tag', 'atc', 'magicswitchbot', 'switchbot', 'bthome', 'mi-scale', 'govee', 'mopeka', 'parrot', 'cycling-power', 'comet-blue', 'yeelight', 'skyrc', 'igrill'].includes(p)))]",
                     "onChange": {
                         "calculateFunc": "const selection = data._pluginSelection || []; data.plugins = selection.join(','); return selection;"
                     },
@@ -164,6 +164,10 @@
                         {
                             "label": "SkyRC MC3000",
                             "value": "skyrc"
+                        },
+                        {
+                            "label": "Weber iGrill mini",
+                            "value": "igrill"
                         }
                     ],
                     "xs": 12,
