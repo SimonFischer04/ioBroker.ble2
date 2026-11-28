@@ -118,6 +118,7 @@
 		"xiaomiBindkeys": "",
 		"bthomeBindkeys": "",
 		"allowEmptyDevices": false,
+		"suggestRecurringDevices": false,
 		"presenceDevices": [],
 		"rssiThrottle": 0,
 		"rssiTimeoutSeconds": 0,
@@ -138,6 +139,19 @@
 			"type": "channel",
 			"common": {
 				"name": "Adapter-Information"
+			},
+			"native": {}
+		},
+		{
+			"_id": "info.suggestedDevices",
+			"type": "state",
+			"common": {
+				"name": "Suggested Bluetooth devices",
+				"role": "json",
+				"type": "string",
+				"read": true,
+				"write": false,
+				"def": "[]"
 			},
 			"native": {}
 		},

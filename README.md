@@ -33,6 +33,10 @@ If `info.driverState` is `driverError`, check the instance log for the scanner's
 Select the local Bluetooth adapter by its HCI name and bus type, such as `hci0 (USB)`. If the list is unavailable, enter the index manually using the number after `hci`.
 In the textbox below, enter all UUIDs of the advertised services you want to record (as found in the nRF Connect app).
 
+### Suggested devices
+
+Enable **Suggest frequently seen Bluetooth devices** to see unrecorded devices in `info.suggestedDevices`. A candidate needs three sightings at least ten seconds apart within ten minutes. The list is refreshed every 15 seconds and shows the Bluetooth address, name and sighting count. Device creation still follows **Accept new devices**.
+
 ### Moving from ble to ble2
 
 Install `iobroker.ble2` and create a new `ble2` instance. Copy your settings from the old `ble` instance. If both instances use the same Bluetooth device or remote scanner, disable the old instance before starting the new one.
@@ -395,6 +399,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * Replace manual plugin names with a multi-select dropdown, preserving existing plugin settings.
 * Set brightness on the Yeelight Candela YLFW01YL through a Bluetooth gateway.
 * Add Mopeka Pro Check support with raw level, temperature, battery, and reading quality states.
+* Suggest repeatedly observed Bluetooth devices before they have been recorded.
 * Replace the custom React settings page with responsive native JSONConfig (requires admin 7.6.20 or newer), preserving settings and the live discovery switch.
 * **BREAKING:** Rename the maintained fork to `iobroker.ble2` with the `ble2` adapter namespace.
 * **BREAKING:** Require Node.js 22.19 or newer; test Node.js 22, 24, and 26 on Linux, Windows, and macOS.

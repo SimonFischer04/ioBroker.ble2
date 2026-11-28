@@ -196,6 +196,7 @@ const adapter = utils.adapter({
 			gateways,
 		);
 		await processor.restoreRssiTimers();
+		await processor.startSuggestions();
 		const handleAdvertisement = (peripheral: PeripheralInfo): void => {
 			processor!.process(peripheral).catch((e) => {
 				adapter.log.error(
@@ -335,6 +336,7 @@ const adapter = utils.adapter({
 		if (obj) {
 			// it has just been changed, so update the cached object
 			_.objectCache.updateObject(obj);
+			processor?.observeObject(id);
 		} else {
 			// it has been deleted, so delete it from the cache
 			_.objectCache.invalidateObject(id);

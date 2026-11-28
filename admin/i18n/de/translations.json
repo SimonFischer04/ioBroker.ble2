@@ -82,5 +82,7 @@
     "Cycling Power sensors (MAC addresses)": "Radsport-Leistungssensoren (MAC-Adressen)",
     "Add one cycling power sensor address per line. A gateway that can connect is required.": "Eine Sensoradresse pro Zeile eintragen. Ein verbindungsfähiges Gateway ist erforderlich.",
     "Enter the MAC address and bindkey for each encrypted Xiaomi MiBeacon device.": "MAC-Adresse und Bindkey für jedes verschlüsselte Xiaomi-MiBeacon-Gerät eingeben.",
-    "Enter a 24- or 32-digit hexadecimal Xiaomi bindkey.": "Einen 24- oder 32-stelligen hexadezimalen Xiaomi-Bindkey eingeben."
+    "Enter a 24- or 32-digit hexadecimal Xiaomi bindkey.": "Einen 24- oder 32-stelligen hexadezimalen Xiaomi-Bindkey eingeben.",
+    "Suggest frequently seen Bluetooth devices": "Häufig empfangene Bluetooth-Geräte vorschlagen",
+    "Show suggestions at info.suggestedDevices. Open the state in Objects to see the addresses.": "Vorschläge unter info.suggestedDevices anzeigen. Die Adressen stehen im Datenpunkt unter Objekte."
 }

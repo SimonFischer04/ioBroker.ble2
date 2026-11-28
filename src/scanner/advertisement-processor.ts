@@ -2,6 +2,7 @@ import { entries } from "alcalzone-shared/objects";
 import type { DeviceRegistry } from "../devices/device-registry";
 import type { GatewayRegistry } from "../gateways/gateway-registry";
 import type { PeripheralInfo } from "../lib/advertisement";
+import { DiscoverySuggestions } from "../lib/discovery-suggestions";
 import type { DevicePresence } from "../lib/device-presence";
 import { Global as _ } from "../lib/global";
 import {
@@ -30,6 +31,7 @@ export interface AdvertisementProcessorOptions {
 
 /** After how many ms accepting new devices is disabled again */
 const ALLOW_NEW_DEVICES_TIMEOUT = 5 * 60000;
+const SUGGESTION_STATE = "info.suggestedDevices";
 
 /**
  * Turns advertisements into ioBroker objects and states: finds the plugin that handles
@@ -61,6 +63,50 @@ export class AdvertisementProcessor {
 	private readonly rssiUpdates: RssiUpdates;
 	private readonly rssiExpiry?: RssiExpiry;
 	private valueWriter?: ValueWriter;
+	private suggestions?: DiscoverySuggestions;
+	private suggestionTimer?: ioBroker.Interval;
+
+	/** Clears old suggestions and starts publishing newly seen candidates when enabled. */
+	public async startSuggestions(): Promise<void> {
+		const { adapter } = _;
+		await adapter.setStateChangedAsync(SUGGESTION_STATE, "[]", true);
+		if (!adapter.config.suggestRecurringDevices) {
+			return;
+		}
+		const suggestions = new DiscoverySuggestions();
+		this.suggestions = suggestions;
+		let publishing = false;
+		this.suggestionTimer = adapter.setInterval(() => {
+			if (publishing) {
+				return;
+			}
+			publishing = true;
+			void adapter
+				.setStateChangedAsync(
+					SUGGESTION_STATE,
+					JSON.stringify(suggestions.list(Date.now())),
+					true,
+				)
+				.catch((error: unknown) =>
+					adapter.log.warn(
+						`Could not publish discovery suggestions: ${String(error)}`,
+					),
+				)
+				.finally(() => {
+					publishing = false;
+				});
+		}, 15_000);
+	}
+
+	/** Forgets a suggestion when the device's RSSI object has been created. */
+	public observeObject(id: string): void {
+		const prefix = `${_.adapter.namespace}.`;
+		if (id.startsWith(prefix) && id.endsWith(".rssi")) {
+			const address = id.slice(prefix.length, -5);
+			this.suggestions?.remove(address);
+			this.ignoredNewDeviceIDs.delete(address);
+		}
+	}
 
 	/** Restarts the RSSI timeouts for the RSSI states that are set, so they are reset after a restart, too */
 	public async restoreRssiTimers(): Promise<void> {
@@ -122,6 +168,8 @@ export class AdvertisementProcessor {
 	/** Stops all timers. To be called when the adapter stops. */
 	public dispose(): void {
 		this.rssiExpiry?.stop();
+		_.adapter.clearInterval(this.suggestionTimer);
+		this.suggestions = undefined;
 		if (this.resetAllowNewDevicesTimeout) {
 			_.adapter.clearTimeout(this.resetAllowNewDevicesTimeout);
 		}
@@ -241,6 +289,11 @@ export class AdvertisementProcessor {
 		if (!this.allowNewDevices) {
 			// We may not. First test if we already ignored this device
 			if (this.ignoredNewDeviceIDs.has(deviceId)) {
+				this.suggestions?.observe(
+					deviceId,
+					advertisement.localName,
+					Date.now(),
+				);
 				return;
 			}
 			// If not, check if the RSSI object exists, as that exists for every one
@@ -250,7 +303,14 @@ export class AdvertisementProcessor {
 				))
 			) {
 				// This is a new device. Remember that we need to ignore it
-				this.ignoredNewDeviceIDs.add(deviceId);
+				if (this.ignoredNewDeviceIDs.size < 4096) {
+					this.ignoredNewDeviceIDs.add(deviceId);
+				}
+				this.suggestions?.observe(
+					deviceId,
+					advertisement.localName,
+					Date.now(),
+				);
 				return;
 			}
 			// This is a known device
@@ -287,6 +347,7 @@ export class AdvertisementProcessor {
 			},
 			native: {},
 		});
+		this.suggestions?.remove(deviceId);
 		// Use the signal strength of the gateway that receives the device best.
 		const rssiId = `${_.adapter.namespace}.${deviceId}.rssi`;
 		if (this.rssiExpiry) {
