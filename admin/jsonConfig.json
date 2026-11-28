@@ -6,17 +6,27 @@
             "type": "panel",
             "label": "Settings",
             "items": {
-                "server": {
+                "localScanner": {
+                    "type": "checkbox",
+                    "label": "Use the Bluetooth adapter of this host",
+                    "help": "When disabled, only advertisements from remote scan servers and other adapters are handled. No Bluetooth hardware is needed then.",
+                    "default": true,
+                    "xs": 12,
+                    "sm": 6,
+                    "md": 4
+                },
+                "remoteServers": {
                     "type": "text",
-                    "label": "Use remote server:",
-                    "placeholder": "address:port",
-                    "help": "when configured, the local bluetooth adapter is not used",
+                    "label": "Remote scan servers:",
+                    "placeholder": "host:port",
+                    "help": "One per line, as host or host:port (default port 8734). Each runs bin/blerp.js. They are used together with the local Bluetooth adapter.",
                     "trim": false,
                     "xs": 12,
                     "sm": 6,
                     "md": 4,
                     "lg": 4,
-                    "xl": 4
+                    "xl": 4,
+                    "minRows": 2
                 },
                 "hciDevice": {
                     "type": "selectSendTo",
@@ -30,7 +40,8 @@
                     "sm": 6,
                     "md": 4,
                     "lg": 4,
-                    "xl": 4
+                    "xl": 4,
+                    "disabled": "data.localScanner === false"
                 },
                 "rssiThrottle": {
                     "type": "number",
@@ -83,9 +94,9 @@
                     "type": "select",
                     "multiple": true,
                     "label": "Active plugins:",
-                    "help": "Select the plugins for your sensors. Basic advertisement data is always available.",
+                    "help": "Select the plugins for your sensors and devices. A plugin also enables its connections to the devices, e.g. setting a clock. Basic advertisement data is always available.",
                     "doNotSave": true,
-                    "defaultFunc": "[...new Set((Array.isArray(data.plugins) ? data.plugins : String(data.plugins || '').split(',')).map(p => p.trim().toLowerCase()).filter(p => ['xiaomi', 'mi-flora', 'ruuvi-tag', 'atc', 'bthome', 'mopeka', 'switchbot', 'magicswitchbot', 'eddystone', 'mi-scale', 'govee'].includes(p)))]",
+                    "defaultFunc": "[...new Set((Array.isArray(data.plugins) ? data.plugins : String(data.plugins || '').split(',')).map(p => p.trim().toLowerCase()).filter(p => ['xiaomi', 'mi-flora', 'eddystone', 'ruuvi-tag', 'atc', 'magicswitchbot', 'switchbot', 'bthome', 'mi-scale', 'govee', 'mopeka', 'parrot', 'cycling-power', 'comet-blue', 'yeelight', 'skyrc'].includes(p)))]",
                     "onChange": {
                         "calculateFunc": "const selection = data._pluginSelection || []; data.plugins = selection.join(','); return selection;"
                     },
@@ -115,7 +126,7 @@
                             "value": "magicswitchbot"
                         },
                         {
-                            "label": "SwitchBot Meter",
+                            "label": "SwitchBot",
                             "value": "switchbot"
                         },
                         {
@@ -133,6 +144,26 @@
                         {
                             "label": "Mopeka Pro Check",
                             "value": "mopeka"
+                        },
+                        {
+                            "label": "Parrot Flower Power",
+                            "value": "parrot"
+                        },
+                        {
+                            "label": "Cycling Power sensors",
+                            "value": "cycling-power"
+                        },
+                        {
+                            "label": "Comet Blue thermostats",
+                            "value": "comet-blue"
+                        },
+                        {
+                            "label": "Yeelight Candela",
+                            "value": "yeelight"
+                        },
+                        {
+                            "label": "SkyRC MC3000",
+                            "value": "skyrc"
                         }
                     ],
                     "xs": 12,
@@ -270,7 +301,8 @@
                     "sm": 6,
                     "md": 4,
                     "lg": 4,
-                    "xl": 4
+                    "xl": 4,
+                    "disabled": "data.localScanner === false"
                 },
                 "scanWindowSeconds": {
                     "type": "number",
@@ -284,7 +316,8 @@
                     "sm": 6,
                     "md": 4,
                     "lg": 4,
-                    "xl": 4
+                    "xl": 4,
+                    "disabled": "data.localScanner === false"
                 },
                 "presenceDevices": {
                     "type": "table",
@@ -360,6 +393,72 @@
                             "xl": 12
                         }
                     }
+                },
+                "gatewayTimeout": {
+                    "type": "number",
+                    "label": "Gateway timeout [s]:",
+                    "help": "Mark a gateway offline after this many seconds without advertisements.",
+                    "min": 1,
+                    "default": 60,
+                    "xs": 12,
+                    "sm": 6
+                },
+                "miFloraBatteryDevices": {
+                    "type": "text",
+                    "label": "Mi Flora battery polling (MAC addresses)",
+                    "help": "Add one address per line. A gateway that can connect is required.",
+                    "minRows": 2,
+                    "xs": 12,
+                    "sm": 6,
+                    "hidden": "!['xiaomi', 'mi-flora'].some(p => (data._pluginSelection || []).includes(p))"
+                },
+                "flowerPowerDevices": {
+                    "type": "text",
+                    "label": "Parrot Flower Power sensors (MAC addresses)",
+                    "help": "Add one Parrot Flower Power sensor per line. A gateway that can connect is required.",
+                    "minRows": 2,
+                    "xs": 12,
+                    "sm": 6,
+                    "hidden": "!['parrot'].some(p => (data._pluginSelection || []).includes(p))"
+                },
+                "cyclingPowerDevices": {
+                    "type": "text",
+                    "label": "Cycling Power sensors (MAC addresses)",
+                    "help": "Add one cycling power sensor address per line. A gateway that can connect is required.",
+                    "minRows": 2,
+                    "xs": 12,
+                    "sm": 6,
+                    "hidden": "!['cycling-power'].some(p => (data._pluginSelection || []).includes(p))"
+                },
+                "pvvxDevices": {
+                    "type": "text",
+                    "label": "pvvx thermometers (MAC addresses):",
+                    "placeholder": "a4:c1:38:12:34:56",
+                    "help": "The clock of these devices is set to the local time: at start, in this interval, after each change between summer and winter time, and with the button pvvx.syncTime. Needs a gateway that can connect, e.g. an ESPHome Bluetooth proxy.",
+                    "minRows": 3,
+                    "trim": false,
+                    "xs": 12,
+                    "sm": 6,
+                    "hidden": "!['atc'].some(p => (data._pluginSelection || []).includes(p))"
+                },
+                "pvvxSyncInterval": {
+                    "type": "number",
+                    "label": "Time sync interval [h]:",
+                    "help": "0 = only at start, after a time change and with the button.",
+                    "min": 0,
+                    "default": 24,
+                    "xs": 12,
+                    "sm": 6,
+                    "hidden": "!['atc'].some(p => (data._pluginSelection || []).includes(p))"
+                },
+                "pvvxFirmwareCheck": {
+                    "type": "checkbox",
+                    "label": "Check daily for new pvvx firmware",
+                    "help": "Once a day, the adapter looks up the newest firmware for the pvvx thermometers on GitHub (pvvx/ATC_MiThermometer) and shows it in pvvx.firmwareAvailable. Nothing is installed without pressing a button.",
+                    "default": true,
+                    "xs": 12,
+                    "sm": 6,
+                    "hidden": "!['atc'].some(p => (data._pluginSelection || []).includes(p))"
                 }
             }
         },
