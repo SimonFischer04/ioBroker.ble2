@@ -21,6 +21,7 @@ export enum CapabilityFlags {
 }
 
 const YEELIGHT_DIMMER = 0x03b6;
+const YEELIGHT_V5_KEY_SUFFIX = Buffer.from("ffffffff", "hex");
 
 export enum XiaomiEventIDs_Internal {
 	Button = 0x1001,
@@ -191,7 +192,16 @@ export class XiaomiAdvertisement {
 		) {
 			throw new Error("Invalid MAC address for encrypted MiBeacon");
 		}
-		const key = findBindkey?.(mac);
+		let key = findBindkey?.(mac);
+		if (
+			this._productID === YEELIGHT_DIMMER &&
+			this._version === 5 &&
+			key?.length === 12
+		) {
+			// Some dimmers return a 12-byte bindkey but use AES-CCM with
+			// four trailing FF bytes for their v5 advertisements.
+			key = Buffer.concat([key, YEELIGHT_V5_KEY_SUFFIX]);
+		}
 		if (!key || key.length !== (legacy ? 12 : 16)) {
 			throw new Error("No valid MiBeacon bindkey is configured");
 		}

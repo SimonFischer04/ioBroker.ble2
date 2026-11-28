@@ -354,9 +354,10 @@ Keep the sensor near the scanner during discovery. If you run a remote scanner w
 #### Yeelight YLKG07YL and YLKG08YL dimmers
 
 The Xiaomi plugin decodes presses and rotations from these dimmers under `dimmerAction`.
-Rotation events also set `dimmerSteps`. Configure the device's 24-digit hexadecimal bindkey for
-encrypted MiBeacon v3 advertisements. The battery state is updated when a MiBeacon battery
-measurement is received.
+Rotation events also set `dimmerSteps`. Configure the device's hexadecimal bindkey. The original
+MiBeacon v3 dimmers use a 24-digit key. Newer YLYKQ-0004 and YLYKQ-0005 dimmers can send
+authenticated MiBeacon v5 advertisements with either a 32-digit key or a 24-digit key that
+ble2 expands for v5. The battery state is updated when a MiBeacon battery measurement is received.
 
 ## Publishing releases
 
@@ -439,6 +440,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * Preserve Govee readings when a Noble HCI scan response carries separate iBeacon data.
 * Ignore invalid Mi Flora soil moisture readings above 100% to preserve the last valid measurement.
 * Decode button and rotation events from the Yeelight YLKG07YL and YLKG08YL dimmers.
+* Use short bindkeys from newer Yeelight dimmers to authenticate MiBeacon v5 readings.
 
 ### 0.14.2-beta.1 (2026-11-21)
 * Prepare a fresh prerelease version to verify npm Trusted Publishing.

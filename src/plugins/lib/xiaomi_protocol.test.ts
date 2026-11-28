@@ -104,6 +104,63 @@ describe("xiaomi protocol => ", () => {
 				).to.throw(/legacy mibeacon measurement/i);
 			}
 		});
+
+		describe("authenticated MiBeacon v5 dimmers", () => {
+			// Synthetic AES-CCM vectors generated with Python cryptography.
+			const withMac =
+				"5850b603076655443322119e945e6a68200d0134670102035f466718";
+			const withoutMac = "4850b60308a5fd98d60102035a9054d9";
+
+			it("accepts the owner's short bindkey and the full v5 key", () => {
+				const fullKey = () =>
+					Buffer.concat([key(), Buffer.alloc(4, 0xff)]);
+				for (const bindkey of [key, fullKey]) {
+					const frame = new XiaomiAdvertisement(
+						Buffer.from(withMac, "hex"),
+						mac,
+						bindkey,
+					);
+					expect(frame.event).to.deep.equal({
+						dimmerAction: "single press",
+						battery: 90,
+					});
+				}
+			});
+
+			it("uses the advertiser MAC when the v5 frame omits it", () => {
+				const frame = new XiaomiAdvertisement(
+					Buffer.from(withoutMac, "hex"),
+					mac,
+					key,
+				);
+				expect(frame.event).to.deep.equal({ battery: 57 });
+			});
+
+			it("still authenticates the frame and limits short keys to dimmers", () => {
+				const tampered = Buffer.from(withMac, "hex");
+				tampered[tampered.length - 1] ^= 1;
+				expect(
+					() => new XiaomiAdvertisement(tampered, mac, key),
+				).to.throw(/authenticate/i);
+				expect(() => {
+					new XiaomiAdvertisement(
+						Buffer.from(withMac, "hex"),
+						mac,
+						() => Buffer.alloc(12, 1),
+					);
+				}).to.throw(/authenticate/i);
+				expect(() => {
+					new XiaomiAdvertisement(
+						Buffer.from(
+							"5850aa0109665544332211a9baffd60102039aa81257",
+							"hex",
+						),
+						mac,
+						key,
+					);
+				}).to.throw(/no valid mibeacon bindkey/i);
+			});
+		});
 	});
 
 	describe("authenticated MiBeacon advertisements", () => {
