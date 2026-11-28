@@ -168,7 +168,7 @@ export class NobleLocalTransport implements Transport {
 				break;
 			case "error": // fall through
 			case "fatal":
-				this.handleError(message.error);
+				this.handleError(message.error, message.type === "fatal");
 				break;
 			case "log":
 				adapter.log[message.level ?? "info"](message.message);
@@ -181,8 +181,9 @@ export class NobleLocalTransport implements Transport {
 	 * it may still receive advertisements from external gateways.
 	 *
 	 * @param err The error the scanner process reported
+	 * @param fatal Whether the scanner will stop after reporting it
 	 */
-	private handleError(err: Error): void {
+	private handleError(err: Error, fatal: boolean): void {
 		const { adapter } = this.ctx;
 		switch (classifyScanError(err)) {
 			case "no-hardware":
@@ -213,6 +214,11 @@ export class NobleLocalTransport implements Transport {
 					process.exit(13);
 				}
 				adapter.log.error(err.message);
+				break;
+			case "ignorable":
+				adapter.log[fatal ? "error" : "debug"](
+					`Bluetooth scanner: ${err.message}`,
+				);
 				break;
 			default:
 				// This is something unexpected. We don't want to bring down the main process, so just log it

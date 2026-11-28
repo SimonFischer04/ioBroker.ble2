@@ -368,6 +368,7 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * The adapter can run without Bluetooth hardware: the Bluetooth adapter of the host can be disabled in the settings, and the Bluetooth driver is an optional dependency now
 * A problem with the Bluetooth adapter of the host no longer terminates the adapter
 * Several remote scan servers (`bin/blerp.js`) can be used at the same time, together with the Bluetooth adapter of the host. The setting of version 0.14 is migrated, its behaviour stays the same.
+* Log transient Bluetooth packet offset errors at debug level while preserving fatal scanner errors.
 * The connection to a remote scan server is re-established when it was lost, a server that is down is reported once instead of every 10 seconds
 * The monitored services also apply to the advertisements of remote scan servers
 * Read individual charging slot measurements from a SkyRC MC3000 through a Bluetooth gateway.
