@@ -60,5 +60,7 @@
     "Bluetooth MAC address": "Bluetooth-MAC-adres",
     "Bindkey": "Versleutelingssleutel",
     "Enter a valid Bluetooth MAC address.": "Voer een geldig Bluetooth-MAC-adres in.",
-    "Enter a 32-digit hexadecimal bindkey.": "Voer een sleutel met 32 hexadecimale cijfers in."
+    "Enter a 32-digit hexadecimal bindkey.": "Voer een sleutel met 32 hexadecimale cijfers in.",
+    "LYWSD02 clock sync (MAC addresses)": "LYWSD02-kloksynchronisatie (MAC-adressen)",
+    "Add one factory-firmware LYWSD02 per line to set its clock daily through a gateway.": "Voeg één LYWSD02 met fabrieksfirmware per regel toe om de klok dagelijks via een gateway in te stellen."
 }

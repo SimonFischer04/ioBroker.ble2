@@ -4,6 +4,8 @@ declare global {
 		interface AdapterConfig {
 			/** MAC addresses of the Mi Flora sensors whose battery is read over a gateway */
 			miFloraBatteryDevices?: string;
+			/** Factory-firmware LYWSD02 clocks to synchronize through a gateway */
+			lywsd02ClockDevices?: string;
 		}
 	}
 }

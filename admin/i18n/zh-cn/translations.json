@@ -60,5 +60,7 @@
     "Bluetooth MAC address": "蓝牙 MAC 地址",
     "Bindkey": "加密密钥",
     "Enter a valid Bluetooth MAC address.": "请输入有效的蓝牙 MAC 地址。",
-    "Enter a 32-digit hexadecimal bindkey.": "请输入由 32 个十六进制字符组成的密钥。"
+    "Enter a 32-digit hexadecimal bindkey.": "请输入由 32 个十六进制字符组成的密钥。",
+    "LYWSD02 clock sync (MAC addresses)": "LYWSD02 时钟同步（MAC 地址）",
+    "Add one factory-firmware LYWSD02 per line to set its clock daily through a gateway.": "每行添加一个使用原厂固件的 LYWSD02，以便每天通过网关设置其时钟。"
 }

@@ -127,6 +127,7 @@
 		"gatewayTimeout": 60,
 		"pvvxDevices": "",
 		"miFloraBatteryDevices": "",
+		"lywsd02ClockDevices": "",
 		"flowerPowerDevices": "",
 		"cyclingPowerDevices": "",
 		"pvvxSyncInterval": 24,

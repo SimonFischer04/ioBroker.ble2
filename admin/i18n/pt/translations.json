@@ -60,5 +60,7 @@
     "Bluetooth MAC address": "Endereço MAC Bluetooth",
     "Bindkey": "Chave de encriptação",
     "Enter a valid Bluetooth MAC address.": "Introduza um endereço MAC Bluetooth válido.",
-    "Enter a 32-digit hexadecimal bindkey.": "Introduza uma chave com 32 dígitos hexadecimais."
+    "Enter a 32-digit hexadecimal bindkey.": "Introduza uma chave com 32 dígitos hexadecimais.",
+    "LYWSD02 clock sync (MAC addresses)": "Sincronização do relógio LYWSD02 (endereços MAC)",
+    "Add one factory-firmware LYWSD02 per line to set its clock daily through a gateway.": "Adicione um LYWSD02 com firmware de fábrica por linha para acertar o relógio diariamente através de um gateway."
 }

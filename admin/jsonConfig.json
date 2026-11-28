@@ -417,6 +417,18 @@
                     "sm": 6,
                     "hidden": "!['xiaomi', 'mi-flora'].some(p => (data._pluginSelection || []).includes(p))"
                 },
+                "lywsd02ClockDevices": {
+                    "type": "text",
+                    "label": "LYWSD02 clock sync (MAC addresses)",
+                    "help": "Add one factory-firmware LYWSD02 per line to set its clock daily through a gateway.",
+                    "minRows": 2,
+                    "xs": 12,
+                    "sm": 6,
+                    "md": 6,
+                    "lg": 6,
+                    "xl": 6,
+                    "hidden": "!['xiaomi'].some(p => (data._pluginSelection || []).includes(p))"
+                },
                 "flowerPowerDevices": {
                     "type": "text",
                     "label": "Parrot Flower Power sensors (MAC addresses)",
