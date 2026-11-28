@@ -1,5 +1,6 @@
 import { fork, type ChildProcess } from "child_process";
 import * as path from "path";
+import { performance } from "node:perf_hooks";
 import type { GatewayDescription } from "../gateways/gateway-registry";
 import {
 	ScanExitCodes,
@@ -18,6 +19,17 @@ export interface NobleLocalOptions {
 	/** Index of the HCI device to use */
 	hciDevice?: number;
 }
+
+const NATIVE_CRASH_SIGNALS: ReadonlySet<NodeJS.Signals> = new Set([
+	"SIGABRT",
+	"SIGBUS",
+	"SIGILL",
+	"SIGSEGV",
+	"SIGTRAP",
+]);
+const INITIAL_RESTART_DELAY_MS = 1000;
+const MAX_RESTART_DELAY_MS = 60_000;
+const STABLE_SCANNER_UPTIME_MS = 60_000;
 
 const HUB_HINT =
 	"The adapter keeps running and accepts advertisements from external gateways.";
@@ -45,12 +57,14 @@ export class NobleLocalTransport implements Transport {
 	};
 
 	private scanProcess: ChildProcess | undefined;
+	private restartTimer?: ioBroker.Timeout;
+	private restartDelayMs = INITIAL_RESTART_DELAY_MS;
 	/** Whether the scanner was stopped for good */
 	private stopped = false;
 
 	/** Starts the scanner process, unless the scanner was stopped for good */
 	public start(): void {
-		if (this.stopped) {
+		if (this.stopped || this.scanProcess || this.restartTimer) {
 			return;
 		}
 		const { adapter } = this.ctx;
@@ -87,27 +101,27 @@ export class NobleLocalTransport implements Transport {
 			}
 		}
 		adapter.log.info("starting scanner process...");
-		this.scanProcess = fork(
-			path.join(__dirname, "..", "scanProcess"),
-			args,
-			{
-				stdio: ["pipe", "pipe", "pipe", "ipc"],
-			},
-		).on("exit", (code, signal) => {
+		const startedAt = performance.now();
+		const child = fork(path.join(__dirname, "..", "scanProcess"), args, {
+			stdio: ["pipe", "pipe", "pipe", "ipc"],
+		});
+		this.scanProcess = child;
+		child.once("exit", (code, signal) => {
+			this.scanProcess = undefined;
 			this.ctx.gateways.setConnected(NobleLocalTransport.gateway, false);
-			if (
-				!this.stopped &&
-				!signal &&
-				code !== 0 &&
-				code !== ScanExitCodes.RequireNobleFailed
-			) {
-				adapter.log.warn("scanner process crashed, restarting...");
-				setImmediate(() => this.start());
-			} else {
-				this.scanProcess = undefined;
+			if (this.stopped) {
+				return;
+			}
+			const crashed = signal
+				? NATIVE_CRASH_SIGNALS.has(signal)
+				: code !== 0 && code !== ScanExitCodes.RequireNobleFailed;
+			if (crashed) {
+				this.restartAfterCrash(
+					signal ?? String(code),
+					performance.now() - startedAt,
+				);
 			}
 		});
-		const child = this.scanProcess;
 		// fork() reports a process that could not be started (e.g. EAGAIN) with "error", not "exit".
 		// Unhandled, that event would stop the adapter, and gateways of other adapters with it.
 		child.on("error", (error) => {
@@ -120,22 +134,54 @@ export class NobleLocalTransport implements Transport {
 				this.scanProcess = undefined;
 			}
 		});
-		this.scanProcess.on(
+		child.on(
 			"message",
-			getMessageReviver<ScanMessage>((message) =>
-				this.handleMessage(message),
-			),
+			getMessageReviver<ScanMessage>((message) => {
+				if (!this.stopped && this.scanProcess === child) {
+					this.handleMessage(message);
+				}
+			}),
 		);
 	}
 
 	/** Stops the scanner for good and kills its process */
 	public stop(): void {
 		this.stopped = true;
+		this.ctx.adapter.clearTimeout(this.restartTimer);
+		this.restartTimer = undefined;
 		try {
 			this.scanProcess?.kill();
 		} catch {
 			// The process may have already exited.
 		}
+	}
+
+	private restartAfterCrash(exitReason: string, uptimeMs: number): void {
+		const { adapter } = this.ctx;
+		if (uptimeMs >= STABLE_SCANNER_UPTIME_MS) {
+			this.restartDelayMs = INITIAL_RESTART_DELAY_MS;
+		}
+		const delay = this.restartDelayMs;
+		this.restartDelayMs = Math.min(delay * 2, MAX_RESTART_DELAY_MS);
+		this.reportDriverState("driverError");
+		adapter.log.warn(
+			`Scanner process crashed (${exitReason}), restarting in ${delay / 1000} s.`,
+		);
+		this.restartTimer = adapter.setTimeout(() => {
+			this.restartTimer = undefined;
+			this.start();
+		}, delay);
+	}
+
+	private reportDriverState(state: string): void {
+		const { adapter } = this.ctx;
+		adapter
+			.setState("info.driverState", state, true)
+			.catch((error: unknown) =>
+				adapter.log.warn(
+					`Could not update info.driverState: ${String(error)}`,
+				),
+			);
 	}
 
 	private handleMessage(message: ScanMessage): void {
@@ -158,17 +204,11 @@ export class NobleLocalTransport implements Transport {
 				});
 				break;
 			case "driverState":
-				adapter
-					.setState("info.driverState", message.driverState, true)
-					.catch((e) =>
-						adapter.log.warn(
-							`Could not update info.driverState: ${(e as Error).message}`,
-						),
-					);
+				this.reportDriverState(message.driverState);
 				break;
 			case "error": // fall through
 			case "fatal":
-				this.handleError(message.error);
+				this.handleError(message.error, message.type === "fatal");
 				break;
 			case "log":
 				adapter.log[message.level ?? "info"](message.message);
@@ -181,8 +221,9 @@ export class NobleLocalTransport implements Transport {
 	 * it may still receive advertisements from external gateways.
 	 *
 	 * @param err The error the scanner process reported
+	 * @param fatal Whether the scanner will stop after reporting it
 	 */
-	private handleError(err: Error): void {
+	private handleError(err: Error, fatal: boolean): void {
 		const { adapter } = this.ctx;
 		switch (classifyScanError(err)) {
 			case "no-hardware":
@@ -213,6 +254,11 @@ export class NobleLocalTransport implements Transport {
 					process.exit(13);
 				}
 				adapter.log.error(err.message);
+				break;
+			case "ignorable":
+				adapter.log[fatal ? "error" : "debug"](
+					`Bluetooth scanner: ${err.message}`,
+				);
 				break;
 			default:
 				// This is something unexpected. We don't want to bring down the main process, so just log it

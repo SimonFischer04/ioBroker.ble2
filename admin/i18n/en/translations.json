@@ -84,5 +84,7 @@
     "Cycling Power sensors (MAC addresses)": "Cycling Power sensors (MAC addresses)",
     "Add one cycling power sensor address per line. A gateway that can connect is required.": "Add one cycling power sensor address per line. A gateway that can connect is required.",
     "Enter the MAC address and bindkey for each encrypted Xiaomi MiBeacon device.": "Enter the MAC address and bindkey for each encrypted Xiaomi MiBeacon device.",
-    "Enter a 24- or 32-digit hexadecimal Xiaomi bindkey.": "Enter a 24- or 32-digit hexadecimal Xiaomi bindkey."
+    "Enter a 24- or 32-digit hexadecimal Xiaomi bindkey.": "Enter a 24- or 32-digit hexadecimal Xiaomi bindkey.",
+    "Suggest frequently seen Bluetooth devices": "Suggest frequently seen Bluetooth devices",
+    "Show suggestions at info.suggestedDevices. Open the state in Objects to see the addresses.": "Show suggestions at info.suggestedDevices. Open the state in Objects to see the addresses."
 }

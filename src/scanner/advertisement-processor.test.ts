@@ -24,6 +24,7 @@ describe("AdvertisementProcessor discovery allowlist", () => {
 			log: { level: "info", info: () => {}, warn: () => {} },
 			setTimeout: () => 1,
 			clearTimeout: () => {},
+			clearInterval: () => {},
 		} as unknown as ioBroker.Adapter;
 		Global.objectCache = {
 			objectExists: (id: string) => Promise.resolve(known.has(id)),
@@ -95,5 +96,45 @@ describe("AdvertisementProcessor discovery allowlist", () => {
 		start("invalid");
 		await send("aa:bb:cc:dd:ee:02");
 		expect(handled).to.be.empty;
+	});
+
+	it("suggests blocked devices and forgets them when recorded", async () => {
+		let publish: () => void = () => {};
+		const published: string[] = [];
+		Object.assign(Global.adapter, {
+			config: { suggestRecurringDevices: true },
+			setStateChangedAsync: (_id: string, value: string) => {
+				published.push(value);
+				return Promise.resolve();
+			},
+			setInterval: (callback: () => void) => {
+				publish = callback;
+				return 1;
+			},
+		});
+		start("aa:bb:cc:dd:ee:01");
+		await processor.startSuggestions();
+		const originalNow = Date.now;
+		let now = originalNow();
+		Date.now = () => now;
+		try {
+			for (let i = 0; i < 3; i++) {
+				await send("aa:bb:cc:dd:ee:02");
+				now += 10_000;
+			}
+			publish();
+			await Promise.resolve();
+			await Promise.resolve();
+			expect(JSON.parse(published.at(-1)!)).to.deep.equal([
+				{ address: "aa:bb:cc:dd:ee:02", name: "", sightings: 3 },
+			]);
+			processor.observeObject("ble2.0.aa:bb:cc:dd:ee:02.rssi");
+			publish();
+			await Promise.resolve();
+			await Promise.resolve();
+			expect(JSON.parse(published.at(-1)!)).to.deep.equal([]);
+		} finally {
+			Date.now = originalNow;
+		}
 	});
 });

@@ -105,6 +105,46 @@ describe("xiaomi plugin => ", () => {
 		});
 	});
 
+	it("keeps the latest temperature and humidity when a scan contains repeated MiBeacon data", () => {
+		// The first and later FE95 readings in #37, with the MAC anonymized.
+		const peripheral = {
+			address: "aa:bb:cc:dd:ee:ff",
+			advertisement: {
+				serviceData: [
+					{
+						uuid: "fe95",
+						data: Buffer.from(
+							"5020aa0144ffeeddccbbaa0d1004bd002a02",
+							"hex",
+						),
+					},
+					{ uuid: "ffff", data: Buffer.alloc(6) },
+					{
+						uuid: "fe95",
+						data: Buffer.from(
+							"5020aa0156ffeeddccbbaa0d1004be002902",
+							"hex",
+						),
+					},
+					{
+						uuid: "fe95",
+						data: Buffer.from(
+							"5020aa0157ffeeddccbbaa041002bf00",
+							"hex",
+						),
+					},
+					{ uuid: "fe95", data: Buffer.from("5020aa01", "hex") },
+				],
+			},
+		} as PeripheralInfo;
+		expect(
+			xiaomiPlugin.getValues(xiaomiPlugin.createContext(peripheral)),
+		).to.deep.equal({
+			temperature: 19.1,
+			humidity: 55.3,
+		});
+	});
+
 	describe("mosquito repellent measurements", () => {
 		const cases = [
 			{

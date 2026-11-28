@@ -197,6 +197,7 @@ const adapter = utils.adapter({
 			gateways,
 		);
 		await processor.restoreRssiTimers();
+		await processor.startSuggestions();
 		const handleAdvertisement = (peripheral: PeripheralInfo): void => {
 			processor!.process(peripheral).catch((e) => {
 				adapter.log.error(

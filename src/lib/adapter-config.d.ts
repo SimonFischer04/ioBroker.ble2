@@ -22,6 +22,7 @@ declare global {
 			bthomeBindkeys?: string;
 			allowEmptyDevices: boolean;
 			discoveryAllowlist?: string;
+			suggestRecurringDevices?: boolean;
 			presenceDevices?: {
 				address: string;
 				packets: number;

@@ -37,6 +37,10 @@ In the textbox below, enter all UUIDs of the advertised services you want to rec
 
 Enter the addresses you want to add under **Bluetooth address allowlist for new devices**, then turn on **Accept new devices**. This limits new objects in busy environments. Devices already recorded keep updating at their existing addresses. An empty list allows any device that meets the other discovery settings.
 
+### Suggested devices
+
+Enable **Suggest frequently seen Bluetooth devices** to see unrecorded devices in `info.suggestedDevices`. A candidate needs three sightings at least ten seconds apart within ten minutes. The list is refreshed every 15 seconds and shows the Bluetooth address, name and sighting count. Device creation still follows **Accept new devices**.
+
 ### Moving from ble to ble2
 
 Install `iobroker.ble2` and create a new `ble2` instance. Copy your settings from the old `ble` instance. If both instances use the same Bluetooth device or remote scanner, disable the old instance before starting the new one.
@@ -138,11 +142,16 @@ Select the plugin **Parrot Flower Power** under **Active plugins**.
 
 Enter your sensor addresses in **Parrot Flower Power sensors (MAC addresses)**. When a connection-capable gateway receives an advertisement from a configured sensor, the adapter reads the available calibrated moisture, air temperature, sunlight and battery characteristics. The first reading is due immediately. Further readings are due every 15 minutes, or after one minute following an unsuccessful read. The firmware must expose the calibrated Flower Power Live service for the plant measurements.
 
-## Reading a Comet Blue thermostat
+## Reading and setting a Comet Blue thermostat
 
 Select the plugin **Comet Blue thermostats** under **Active plugins**.
 
 Use `sendToAsync("ble2.0", "readCometBlue", { address, pin })` with the thermostat's Bluetooth MAC address and its PIN as a string. A connecting gateway must be in range. The command returns the ambient temperature, manual, eco and comfort setpoints in °C, and a battery percentage when the device provides it. It authenticates using the supplied PIN for the current session.
+
+Use `sendToAsync("ble2.0", "setCometBlueSetpoints", { address, pin, comfortSetpoint: 21.5 })`
+to write one or more of `manualSetpoint`, `ecoSetpoint` and `comfortSetpoint`.
+Enter 8–28 °C in half-degree increments. The manual setpoint takes effect in manual mode.
+The configured calibration offset is preserved.
 
 ## Controlling a SwitchBot Bot
 
@@ -323,6 +332,13 @@ The stock firmware can send encrypted Xiaomi measurements. For passive readings 
 
 Keep the sensor near the scanner during discovery. If you run a remote scanner with an explicit service filter, include `fcd2` so BTHome advertisements reach the adapter.
 
+#### Yeelight YLKG07YL and YLKG08YL dimmers
+
+The Xiaomi plugin decodes presses and rotations from these dimmers under `dimmerAction`.
+Rotation events also set `dimmerSteps`. Configure the device's 24-digit hexadecimal bindkey for
+encrypted MiBeacon v3 advertisements. The battery state is updated when a MiBeacon battery
+measurement is received.
+
 ## Publishing releases
 
 The npm package is `iobroker.ble2`; its ioBroker adapter name is `ble2`. The GitHub repository is `SimonFischer04/ioBroker.ble2`.
@@ -366,12 +382,15 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * Allow a named GATT gateway for devices that have not been observed.
 * Read calibrated Parrot Flower Power data through a connecting gateway.
 * Read protected temperature and battery data from Comet Blue thermostats.
+* Set manual, eco and comfort temperatures on Eurotronic Comet Blue thermostats.
 * Add the SwitchBot Bot `switchBot` command for external GATT gateways.
 * Read standard Cycling Power notifications through a connecting gateway.
 * Other adapters can deliver BLE advertisements they received, e.g. from ESPHome Bluetooth proxies (`gateway:advertisements`). Several receivers can be used at the same time.
 * The adapter can run without Bluetooth hardware: the Bluetooth adapter of the host can be disabled in the settings, and the Bluetooth driver is an optional dependency now
 * A problem with the Bluetooth adapter of the host no longer terminates the adapter
+* Restart the local Bluetooth scanner after native crashes with increasing retry delays.
 * Several remote scan servers (`bin/blerp.js`) can be used at the same time, together with the Bluetooth adapter of the host. The setting of version 0.14 is migrated, its behaviour stays the same.
+* Log transient Bluetooth packet offset errors at debug level while preserving fatal scanner errors.
 * The connection to a remote scan server is re-established when it was lost, a server that is down is reported once instead of every 10 seconds
 * The monitored services also apply to the advertisements of remote scan servers
 * Read individual charging slot measurements from a SkyRC MC3000 through a Bluetooth gateway.
@@ -384,14 +403,17 @@ No `NPM_TOKEN` secret is needed. The deploy job has `id-token: write` for npm au
 * Replace manual plugin names with a multi-select dropdown, preserving existing plugin settings.
 * Set brightness on the Yeelight Candela YLFW01YL through a Bluetooth gateway.
 * Add Mopeka Pro Check support with raw level, temperature, battery, and reading quality states.
+* Suggest repeatedly observed Bluetooth devices before they have been recorded.
 * Replace the custom React settings page with responsive native JSONConfig (requires admin 7.6.20 or newer), preserving settings and the live discovery switch.
 * **BREAKING:** Rename the maintained fork to `iobroker.ble2` with the `ble2` adapter namespace.
 * **BREAKING:** Require Node.js 22.19 or newer; test Node.js 22, 24, and 26 on Linux, Windows, and macOS.
 * Added BTHome signed counters, signed power, volume storage, and direction measurements.
 * Control MagicSwitchBot through a connection-capable Bluetooth gateway.
+* Use the latest Xiaomi measurements when one scan result contains multiple MiBeacon frames.
 * Fixed discovery and decoding of Ruuvi Tag manufacturer-only advertisements, including packets received after empty or unrelated frames.
 * Preserve separate manufacturer data blocks in raw gateway advertisements and decode Govee readings alongside iBeacon data.
 * Ignore invalid Mi Flora soil moisture readings above 100% to preserve the last valid measurement.
+* Decode button and rotation events from the Yeelight YLKG07YL and YLKG08YL dimmers.
 
 ### 0.14.2-beta.1 (2026-11-21)
 * Prepare a fresh prerelease version to verify npm Trusted Publishing.

@@ -5,6 +5,7 @@ import {
 	type ScanMessage,
 } from "../lib/scanProcessInterface";
 import type { RemoteServer } from "./server-list";
+import { classifyScanError } from "./scan-errors";
 import type { Transport, TransportContext } from "./transport";
 
 const RECONNECT_INTERVAL_MS = 10000;
@@ -227,12 +228,16 @@ export class NobleRemoteTransport implements Transport {
 				}
 				break;
 			case "error": // fall through
-			case "fatal":
+			case "fatal": {
 				// A problem on the server must not stop the adapter
-				adapter.log.error(
+				const recoverable =
+					message.type === "error" &&
+					classifyScanError(message.error) === "ignorable";
+				adapter.log[recoverable ? "debug" : "error"](
 					`BLE server ${this.name}: ${message.error.message}`,
 				);
 				break;
+			}
 			case "log":
 				adapter.log[message.level ?? "info"](
 					`BLE server ${this.name}: ${message.message}`,
