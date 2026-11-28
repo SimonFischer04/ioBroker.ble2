@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import type { PeripheralInfo } from "../lib/scanProcessInterface";
-import plugin = require("./atc");
+import type { PeripheralInfo } from "../../lib/scanProcessInterface";
+import plugin = require(".");
 
 function packet(hex: string, address = "a4:c1:38:12:34:56"): PeripheralInfo {
 	return {

@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import type { PeripheralInfo } from "../lib/scanProcessInterface";
-import plugin = require("./switchbot");
+import type { PeripheralInfo } from "../../lib/scanProcessInterface";
+import plugin = require(".");
 
 function peripheral(
 	uuid: string,

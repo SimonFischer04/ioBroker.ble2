@@ -1,5 +1,6 @@
-import type { PeripheralInfo } from "../lib/scanProcessInterface";
-import { getServiceData, type Plugin } from "./plugin";
+import type { PeripheralInfo } from "../../lib/scanProcessInterface";
+import { getServiceData, type Plugin } from "../plugin";
+import { startSwitchBot } from "./active";
 
 const serviceIds = ["fd3d", "0d00"];
 const meterTypes = new Set(["t", "i", "w", "4", "5"]);
@@ -75,6 +76,8 @@ const plugin: Plugin<MeterReading> = {
 		})),
 	}),
 	getValues: (context) => context,
+	// Bot actions over a gateway
+	start: startSwitchBot,
 };
 
 export = plugin;

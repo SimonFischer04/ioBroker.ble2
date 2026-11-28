@@ -1,12 +1,12 @@
-import type XiaomiModule = require("./xiaomi");
+import type XiaomiModule = require(".");
 import { expect } from "chai";
 import * as proxyquireModule from "proxyquire";
-import { createGlobalMock } from "../../test/mocks/global";
-import type { PeripheralInfo } from "../lib/scanProcessInterface";
+import { createGlobalMock } from "../../../test/mocks/global";
+import type { PeripheralInfo } from "../../lib/scanProcessInterface";
 
 const xiaomiPlugin = proxyquireModule.noPreserveCache()<typeof XiaomiModule>(
-	"./xiaomi",
-	{ "../lib/global": createGlobalMock({}) },
+	"./index",
+	{ "../../lib/global": createGlobalMock({}) },
 );
 
 describe("xiaomi plugin => ", () => {
@@ -84,20 +84,17 @@ describe("xiaomi plugin => ", () => {
 		});
 
 		it("handles a pvvx event after a status-only frame from the same device", () => {
+			const service = {
+				uuid: "fe95",
+				data: Buffer.from("10306f0601d36e14342d58", "hex"),
+			};
 			const peripheral = {
-				advertisement: {
-					serviceData: [
-						{
-							uuid: "fe95",
-							data: Buffer.from("10306f0601d36e14342d58", "hex"),
-						},
-					],
-				},
+				advertisement: { serviceData: [service] },
 				address: "58:2d:34:14:6e:d3",
 			} as PeripheralInfo;
 			expect(xiaomiPlugin.isHandling(peripheral)).to.be.false;
 			// Captured in issue #48. This packet carries a battery event.
-			peripheral.advertisement.serviceData[0].data = Buffer.from(
+			service.data = Buffer.from(
 				"50306f0602d36e14342d580a10016401a801",
 				"hex",
 			);
@@ -167,8 +164,8 @@ describe("Xiaomi Door and Window Sensor 2", () => {
 		]),
 	} as ioBroker.AdapterConfig;
 	const plugin = proxyquireModule.noPreserveCache()<typeof XiaomiModule>(
-		"./xiaomi",
-		{ "../lib/global": mock },
+		"./index",
+		{ "../../lib/global": mock },
 	);
 
 	function advertisement(hex: string): PeripheralInfo {

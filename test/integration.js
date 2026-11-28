@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const path = require("node:path");
 const { createServer } = require("node:net");
 const { tests } = require("@iobroker/testing");
+const integrationTests = require("./integrationTests");
 const adapterDir = path.join(__dirname, "..");
 
 // Run tests
@@ -13,6 +14,7 @@ tests.integration(adapterDir, {
 	allowedExitCodes: [11],
 
 	defineAdditionalTests({ it, suite }) {
+		integrationTests.runTests(suite);
 		const ENV = { TESTING: "true" };
 
 		suite("Renamed adapter namespace", (getHarness) => {
@@ -64,6 +66,8 @@ tests.integration(adapterDir, {
 					client.on("error", (error) => {
 						scannerError = error;
 					});
+					// Like bin/blerp.js: a new client is told that the server scans
+					client.write(`${JSON.stringify({ type: "connected" })}\n`);
 				});
 				await new Promise((resolve, reject) => {
 					server.once("error", reject);

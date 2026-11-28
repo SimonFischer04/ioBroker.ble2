@@ -3,16 +3,17 @@
  */
 
 import { entries } from "alcalzone-shared/objects";
-import type {} from "../lib/adapter-config";
-import { Global as _ } from "../lib/global";
-import type { PeripheralInfo } from "../lib/scanProcessInterface";
-import { XiaomiAdvertisement, type XiaomiEvent } from "./lib/xiaomi_protocol";
+import type {} from "../../lib/adapter-config";
+import { Global as _ } from "../../lib/global";
+import type { PeripheralInfo } from "../../lib/scanProcessInterface";
+import { XiaomiAdvertisement, type XiaomiEvent } from "../lib/xiaomi_protocol";
+import { startXiaomi } from "./active";
 import {
 	getServiceData,
 	type DeviceObjectDefinition,
 	type Plugin,
 	type StateObjectDefinition,
-} from "./plugin";
+} from "../plugin";
 
 interface XiaomiContext {
 	event?: XiaomiEvent;
@@ -332,6 +333,8 @@ const plugin: Plugin<XiaomiContext> = {
 		// The event is simply the value dictionary itself
 		return context.event;
 	},
+	// Mi Flora battery and LYWSD02 clock over a gateway
+	start: startXiaomi,
 };
 
 export = plugin as Plugin;
