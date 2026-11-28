@@ -309,6 +309,11 @@ function maybeStartServer(): Promise<void> {
 async function loadNoble(): Promise<void> {
 	// load noble driver with the correct device selected
 	process.env.NOBLE_HCI_DEVICE_ID = argv.hciDevice.toString();
+	if (argv.manufacturerIds.length > 0) {
+		// A scan response can overwrite a matching manufacturer block before
+		// Noble emits its combined discovery. Filter the individual reports.
+		process.env.NOBLE_REPORT_ALL_HCI_EVENTS ??= "1";
+	}
 	try {
 		// Noble must load after NOBLE_HCI_DEVICE_ID is set.
 		// eslint-disable-next-line @typescript-eslint/no-require-imports
